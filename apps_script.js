@@ -178,7 +178,7 @@ function handleDashboardGet(e) {
     orders.sort((a,b) => b.submitted.localeCompare(a.submitted));
 
     const logData = logWs ? logWs.getDataRange().getValues() : [];
-    const itemTotals = {};
+    const itemTotals = {}, itemSpend = {};
     for (let i = 1; i < logData.length; i++) {
       const row     = logData[i];
       const rowSite = (row[1] || '').toString().trim();
@@ -186,13 +186,20 @@ function handleDashboardGet(e) {
       const rowDate = parseDDMMYYYY((row[12] || '').toString());
       if (fromDate && rowDate && rowDate < fromDate) continue;
       if (toDate   && rowDate && rowDate > toDate)   continue;
-      const name = (row[2] || '').toString().trim();
-      const qty  = parseFloat(row[4]) || 0;
+      const name  = (row[2] || '').toString().trim();
+      const qty   = parseFloat(row[4]) || 0;
+      const total = parseFloat(row[7]) || 0;
       if (!name || qty <= 0) continue;
       itemTotals[name] = (itemTotals[name] || 0) + qty;
+      itemSpend[name]  = Math.round(((itemSpend[name] || 0) + total) * 100) / 100;
     }
+    // Include both qty and spend so the frontend can sort either way
     const topItems = Object.entries(itemTotals).sort((a,b) => b[1]-a[1]).slice(0,50)
-      .map(([name,qty]) => ({ name, qty: Math.round(qty*10)/10 }));
+      .map(([name,qty]) => ({
+        name,
+        qty:   Math.round(qty * 10) / 10,
+        spend: Math.round((itemSpend[name] || 0) * 100) / 100
+      }));
 
     // Supplier breakdown from Order Log
     const supplierMap2 = {};

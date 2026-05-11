@@ -3110,19 +3110,58 @@ function renderDashboard(data, siteFilter, from, to) {
           scales:{ x:{ ticks:{callback:v=>'£'+v.toLocaleString()} }, y:{} } });
   }
 
-  // ── 5. ITEMS RANKED BY ORDER VOLUME ───────────────────────────
+  // ── 5. ITEMS RANKED ───────────────────────────────────────────
   if (data.topItems && data.topItems.length) {
-    body.appendChild(makeSectionTitle('Items Ranked by Order Volume'));
-    const card = mkCard('');
-    card.appendChild(mkTable(
-      ['Rank','Item','Total Qty Ordered'],
-      data.topItems.map((it, i) => [
-        `<span class="rank-num">${i + 1}</span>`,
-        it.name,
-        `<strong>${it.qty}</strong>`
-      ])
-    ));
-    body.appendChild(card);
+    const itemsTitle = document.createElement('div');
+    itemsTitle.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin:20px 0 8px;padding-left:2px';
+    const titleEl = document.createElement('div');
+    titleEl.className = 'dash-section-title'; titleEl.style.margin = '0';
+    titleEl.textContent = 'Items Ranked';
+    const toggleWrap = document.createElement('div');
+    toggleWrap.style.cssText = 'display:flex;gap:4px';
+    const btnQty  = document.createElement('button');
+    const btnCost = document.createElement('button');
+    [btnQty, btnCost].forEach(b => {
+      b.style.cssText = 'padding:4px 12px;border-radius:20px;border:1.5px solid var(--border-strong);background:var(--bg);font-family:var(--font);font-size:11px;font-weight:600;color:var(--text-secondary);cursor:pointer;transition:all .15s';
+    });
+    btnQty.textContent  = 'By Quantity';
+    btnCost.textContent = 'By Cost (£)';
+    btnQty.style.background  = '#6366F1'; btnQty.style.borderColor = '#6366F1'; btnQty.style.color = '#fff';
+    toggleWrap.appendChild(btnQty); toggleWrap.appendChild(btnCost);
+    itemsTitle.appendChild(titleEl); itemsTitle.appendChild(toggleWrap);
+    body.appendChild(itemsTitle);
+
+    const itemsCard = mkCard('');
+    const itemsTableWrap = document.createElement('div');
+    itemsCard.appendChild(itemsTableWrap);
+    body.appendChild(itemsCard);
+
+    function renderItemsTable(sortBy) {
+      const sorted = data.topItems.slice().sort((a, b) => sortBy === 'cost' ? b.spend - a.spend : b.qty - a.qty);
+      itemsTableWrap.innerHTML = '';
+      itemsTableWrap.appendChild(mkTable(
+        sortBy === 'cost'
+          ? ['Rank','Item','Total Cost (£)','Total Qty']
+          : ['Rank','Item','Total Qty Ordered','Total Cost (£)'],
+        sorted.map((it, i) => sortBy === 'cost'
+          ? [`<span class="rank-num">${i+1}</span>`, it.name, `<strong>£${it.spend.toLocaleString()}</strong>`, it.qty]
+          : [`<span class="rank-num">${i+1}</span>`, it.name, `<strong>${it.qty}</strong>`, '£'+it.spend.toLocaleString()]
+        )
+      ));
+    }
+
+    renderItemsTable('qty');
+
+    btnQty.onclick = () => {
+      renderItemsTable('qty');
+      btnQty.style.background = '#6366F1'; btnQty.style.borderColor = '#6366F1'; btnQty.style.color = '#fff';
+      btnCost.style.background = 'var(--bg)'; btnCost.style.borderColor = 'var(--border-strong)'; btnCost.style.color = 'var(--text-secondary)';
+    };
+    btnCost.onclick = () => {
+      renderItemsTable('cost');
+      btnCost.style.background = '#6366F1'; btnCost.style.borderColor = '#6366F1'; btnCost.style.color = '#fff';
+      btnQty.style.background = 'var(--bg)'; btnQty.style.borderColor = 'var(--border-strong)'; btnQty.style.color = 'var(--text-secondary)';
+    };
   }
 
   // ── 6. ALL ORDERS ──────────────────────────────────────────────
