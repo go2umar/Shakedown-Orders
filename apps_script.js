@@ -188,20 +188,69 @@ function handleDashboardGet(e) {
     const topItems = Object.entries(itemTotals).sort((a,b) => b[1]-a[1]).slice(0,15)
       .map(([name,qty]) => ({ name, qty: Math.round(qty*10)/10 }));
 
+    // Supplier breakdown from Order Log
+    const supplierMap2 = {};
+    for (let i = 1; i < logData.length; i++) {
+      const row     = logData[i];
+      const rowSite = (row[1] || '').toString().trim();
+      if (site && rowSite !== site) continue;
+      const rowDate = parseDDMMYYYY((row[12] || '').toString());
+      if (fromDate && rowDate && rowDate < fromDate) continue;
+      if (toDate   && rowDate && rowDate > toDate)   continue;
+      const sup   = (row[5]  || '').toString().trim() || 'Unknown';
+      const total = parseFloat(row[7]) || 0;
+      if (!supplierMap2[sup]) supplierMap2[sup] = { supplier: sup, rows: 0, spend: 0 };
+      supplierMap2[sup].rows++;
+      supplierMap2[sup].spend += total;
+    }
+    const grandSpend = Object.values(supplierMap2).reduce((s,x) => s + x.spend, 0);
+    const bySupplier = Object.values(supplierMap2)
+      .sort((a,b) => b.spend - a.spend)
+      .map(s => ({ supplier: s.supplier, orders: s.rows,
+                   spend: Math.round(s.spend*100)/100,
+                   pct:   grandSpend > 0 ? Math.round((s.spend/grandSpend)*1000)/10 : 0 }));
+
+    // Per-site with avg per order + % of total
+    const grandValue = Object.values(bySiteMap).reduce((s,x) => s + x.value, 0);
     const bySite = ALL_SITES.filter(s => bySiteMap[s].orders > 0)
-      .map(s => ({ site:s, orders:bySiteMap[s].orders, items:bySiteMap[s].items, value:Math.round(bySiteMap[s].value*100)/100 }))
-      .sort((a,b) => b.orders-a.orders);
+      .map(s => ({
+        site:   s,
+        orders: bySiteMap[s].orders,
+        items:  bySiteMap[s].items,
+        value:  Math.round(bySiteMap[s].value*100)/100,
+        avg:    bySiteMap[s].orders > 0 ? Math.round((bySiteMap[s].value/bySiteMap[s].orders)*100)/100 : 0,
+        pct:    grandValue > 0 ? Math.round((bySiteMap[s].value/grandValue)*1000)/10 : 0
+      }))
+      .sort((a,b) => b.value - a.value);
 
     const mOrd = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const mParse = m => { const p = m.split('-'); return parseInt(p[1])*12 + mOrd.indexOf(p[0]); };
     const byMonthArr = Object.values(byMonth).sort((a,b) => mParse(b.month)-mParse(a.month))
       .map(m => ({ ...m, value:Math.round(m.value*100)/100 }));
 
+    // Add vs prior month
+    for (let i = 0; i < byMonthArr.length; i++) {
+      const prev = byMonthArr[i + 1];
+      byMonthArr[i].vsPrior = prev != null ? Math.round((byMonthArr[i].value - prev.value)*100)/100 : null;
+    }
+
+    // Recent credits
+    const credWs2   = ss.getSheetByName('Credits');
+    const credData  = credWs2 ? credWs2.getDataRange().getValues() : [];
+    const credits   = [];
+    for (let i = credData.length - 1; i >= 1 && credits.length < 50; i--) {
+      const r = credData[i];
+      credits.push({ time: r[0], site: r[1], orderRef: r[2], item: r[3],
+                     qty: r[4], unit: r[5], price: r[6], total: r[7], reason: r[8] });
+    }
+
     const json = JSON.stringify({
       ok:true, site:site||'all', days,
       stats:{ orders:totalOrders, items:totalItems, value:Math.round(totalValue*100)/100,
               avg: totalOrders ? Math.round((totalItems/totalOrders)*10)/10 : 0 },
-      bySite, byMonth:byMonthArr, orders:orders.slice(0,150), totalCount:orders.length, failures, topItems
+      bySite, byMonth:byMonthArr, bySupplier,
+      orders:orders.slice(0,150), totalCount:orders.length,
+      failures, topItems, credits
     });
     const cb = params.callback;
     if (cb) return ContentService.createTextOutput(cb+'('+json+')').setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -322,6 +371,8 @@ function doPost(e) {
       payload = JSON.parse(e.postData.contents);
     }
 
+    if ((payload.action || '') === 'record_credit') return handleCreditPost(payload);
+
     const site      = (payload.site      || '').trim();
     const orderType = (payload.orderType || '').trim();
     const notes     = (payload.notes     || '').trim();
@@ -369,7 +420,7 @@ function doPost(e) {
       const qty  = parseFloat(item.qty) || 0;
       if (!name || qty <= 0 || qty > 999) return;
 
-      const price    = priceMap[name]    || 0;
+      const price    = priceMap[name] || item.price || 0;
       const supplier = supplierMap[name] || '';
       const unit     = unitMap[name]     || item.unit || '';
       const total    = Math.round(price * qty * 100) / 100;
@@ -537,6 +588,47 @@ function createMonthlyArchives() {
   });
 
   Logger.log('Monthly archives created for ' + monthLabel);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// CREDIT RECORDER — logs items that couldn't be delivered
+// ════════════════════════════════════════════════════════════════════
+function handleCreditPost(payload) {
+  try {
+    const site     = (payload.site     || '').trim();
+    const orderRef = (payload.orderRef || '').trim();
+    const itemName = (payload.itemName || '').trim();
+    const qty      = parseFloat(payload.qty)   || 0;
+    const unit     = (payload.unit     || '').trim();
+    const price    = parseFloat(payload.price) || 0;
+    const reason   = (payload.reason   || 'Out of stock').trim();
+
+    if (!site || !itemName || qty <= 0) {
+      return jsonResponse({ ok: false, error: 'Missing required fields (site, item, qty).' });
+    }
+
+    const ss       = SpreadsheetApp.getActiveSpreadsheet();
+    const stamp    = new Date();
+    const timeStr  = Utilities.formatDate(stamp, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+    const dateOnly = Utilities.formatDate(stamp, Session.getScriptTimeZone(), 'dd/MM/yyyy');
+    const monthYr  = Utilities.formatDate(stamp, Session.getScriptTimeZone(), 'MMM-yyyy');
+    const total    = Math.round(price * qty * 100) / 100;
+
+    let credWs = ss.getSheetByName('Credits');
+    if (!credWs) {
+      credWs = ss.insertSheet('Credits');
+      credWs.appendRow(['Timestamp','Site','Order Ref','Item Name','Qty','Unit','Price (£)','Total (£)','Reason','Date','Month-Year']);
+      credWs.getRange(1,1,1,11).setFontWeight('bold').setBackground('#FFF3CD');
+      credWs.setFrozenRows(1);
+    }
+
+    credWs.appendRow([timeStr, site, orderRef, itemName, qty, unit, price, total, reason, dateOnly, monthYr]);
+    return jsonResponse({ ok: true });
+
+  } catch(err) {
+    Logger.log('handleCreditPost error: ' + err);
+    return jsonResponse({ ok: false, error: err.toString() });
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════

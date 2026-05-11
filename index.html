@@ -312,7 +312,7 @@ body{min-height:100vh}
 
 /* ── CUSTOM ITEMS ────────────────────────────────────── */
 .custom-col-hdrs{
-  display:grid;grid-template-columns:1fr 64px 74px 80px;
+  display:grid;grid-template-columns:1fr 56px 64px 68px 72px;
   gap:8px;padding:10px 16px 6px;
   font-size:10px;font-weight:700;letter-spacing:.6px;
   text-transform:uppercase;color:var(--text-tertiary);
@@ -320,7 +320,7 @@ body{min-height:100vh}
   background:#FAFAFA;
 }
 .custom-row{
-  display:grid;grid-template-columns:1fr 64px 74px 80px;
+  display:grid;grid-template-columns:1fr 56px 64px 68px 72px;
   gap:8px;padding:9px 16px;
   border-bottom:1px solid var(--border);align-items:center;
 }
@@ -896,6 +896,28 @@ body{min-height:100vh}
 /* ── MONTHLY TABLE ───────────────────────────────────── */
 .month-bar-wrap{width:80px;height:5px;background:var(--bg);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:8px}
 .month-bar{height:100%;background:#6366F1;border-radius:3px}
+.vs-up{color:var(--prep);font-weight:600}
+.vs-down{color:var(--brand);font-weight:600}
+
+/* ── CREDIT FORM ─────────────────────────────────────── */
+.credit-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px}
+.credit-field label{display:block;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:5px}
+.credit-field input,.credit-field select{
+  width:100%;padding:9px 12px;background:var(--bg);
+  border:1.5px solid var(--border-strong);border-radius:var(--radius-xs);
+  color:var(--text-primary);font-family:var(--font);font-size:13px;
+  outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none;
+}
+.credit-field input:focus,.credit-field select:focus{border-color:#6366F1;background:var(--surface)}
+.credit-field.full{grid-column:1/-1}
+.credit-submit-btn{
+  margin:0 16px 16px;width:calc(100% - 32px);padding:13px;
+  background:#6366F1;color:#fff;border:none;border-radius:var(--radius-sm);
+  font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;
+}
+.credit-submit-btn:hover{background:#4F46E5}
+.credit-success{color:var(--prep);font-size:13px;font-weight:600;padding:8px 16px;display:none}
+.credit-success.show{display:block}
 @media(max-width:480px){
   .dash-filter-bar{top:53px}
   .dash-custom-wrap{width:100%}
@@ -1103,7 +1125,7 @@ body{min-height:100vh}
       <div class="card-head-title">Add unlisted items</div>
     </div>
     <div class="custom-col-hdrs">
-      <span>Item Name</span><span>Qty</span><span>Unit</span><span>Type</span>
+      <span>Item Name</span><span>Qty</span><span>Unit</span><span>Price (£)</span><span>Type</span>
     </div>
     <div class="custom-rows-wrap" id="custom-rows"></div>
     <button class="add-custom-btn" onclick="addCustomRow()">+ Add another item</button>
@@ -1319,7 +1341,8 @@ body{min-height:100vh}
 
 <script>
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyoQZasT3UeYdz9ABhYj3qVFay1GtcJJadDPBmxBWGS9jPSrCWZR0YfjcHDNUwEYeeI/exec";
+const SCRIPT_URL     = "https://script.google.com/macros/s/AKfycbyoQZasT3UeYdz9ABhYj3qVFay1GtcJJadDPBmxBWGS9jPSrCWZR0YfjcHDNUwEYeeI/exec";
+const ALL_SITES_LIST = ['SD Withington','SD Wythenshawe','SD Cheadle','SD Newcastle','SD EH 12','SD EH 15','DC Withington','DC Cheadle','DC Oxford Road'];
 let SITE_DATA    = null;
 let orderType    = null;
 let currentSite  = null;
@@ -1485,9 +1508,10 @@ function addCustomRow() {
   const row = document.createElement('div');
   row.className = 'custom-row';
   row.innerHTML = `
-    <input type="text"   class="custom-name" placeholder="Item name">
-    <input type="number" class="custom-qty"  placeholder="0" min="0" max="999" step="0.5" oninput="updateStatus()">
-    <input type="text"   class="custom-unit" placeholder="kg/box">
+    <input type="text"   class="custom-name"  placeholder="Item name">
+    <input type="number" class="custom-qty"   placeholder="0" min="0" max="999" step="0.5" oninput="updateStatus()">
+    <input type="text"   class="custom-unit"  placeholder="kg/box">
+    <input type="number" class="custom-price" placeholder="0.00" min="0" step="0.01">
     <select class="custom-type">
       <option value="stock">Stock</option>
       <option value="prep">Prep</option>
@@ -1669,11 +1693,12 @@ async function submitOrder() {
     }
   });
   document.querySelectorAll('.custom-row').forEach(row => {
-    const name = row.querySelector('.custom-name').value.trim();
-    const qty  = parseFloat(row.querySelector('.custom-qty').value) || 0;
-    const unit = row.querySelector('.custom-unit').value.trim() || '—';
-    const sec  = row.querySelector('.custom-type').value;
-    if (name && qty > 0 && qty <= 999) items.push({ name, unit, qty, section:sec, custom:true });
+    const name  = row.querySelector('.custom-name').value.trim();
+    const qty   = parseFloat(row.querySelector('.custom-qty').value)   || 0;
+    const unit  = row.querySelector('.custom-unit').value.trim()       || '—';
+    const price = parseFloat(row.querySelector('.custom-price').value) || 0;
+    const sec   = row.querySelector('.custom-type').value;
+    if (name && qty > 0 && qty <= 999) items.push({ name, unit, qty, price, section:sec, custom:true });
   });
   if (!items.length) { showError('Please add at least one item — either from the list above or in the \'Items Not on the List\' section.', false); window.scrollTo(0,0); submitBtn.disabled=false; return; }
 
@@ -2966,23 +2991,28 @@ function renderDashboard(data, siteFilter, from, to) {
     body.appendChild(card);
   }
 
-  // ── Monthly breakdown ──────────────────────────────────────────
+  // ── Section E: Monthly Spend Trend ────────────────────────────
   if (data.byMonth && data.byMonth.length) {
-    body.appendChild(makeSectionTitle('Monthly Breakdown'));
+    body.appendChild(makeSectionTitle('Section E — Monthly Spend Trend'));
     const card = document.createElement('div');
     card.className = 'dash-card';
     const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
     const table = document.createElement('table'); table.className = 'dash-table';
-    table.innerHTML = '<thead><tr><th>Month</th><th>Orders</th><th>Items</th><th>Value (£)</th></tr></thead>';
+    table.innerHTML = '<thead><tr><th>Month</th><th>Orders</th><th>Total Spend (£)</th><th>vs Prior Month</th></tr></thead>';
     const tbody = document.createElement('tbody');
     const maxO = Math.max(...data.byMonth.map(m => m.orders), 1);
     data.byMonth.forEach(m => {
       const tr = document.createElement('tr');
-      const barW = Math.round((m.orders / maxO) * 80);
+      const barW = Math.round((m.orders / maxO) * 70);
+      let vsHtml = '—';
+      if (m.vsPrior !== null && m.vsPrior !== undefined) {
+        const sign = m.vsPrior >= 0 ? '+' : '';
+        const cls  = m.vsPrior >= 0 ? 'vs-up' : 'vs-down';
+        vsHtml = `<span class="${cls}">${sign}£${Math.abs(m.vsPrior).toLocaleString()}</span>`;
+      }
       tr.innerHTML = `<td><strong>${m.month}</strong></td>
-        <td>${m.orders} <span class="month-bar-wrap"><span class="month-bar" style="width:${barW}px"></span></span></td>
-        <td>${m.items}</td>
-        <td>£${m.value.toLocaleString()}</td>`;
+        <td>${m.orders}<span class="month-bar-wrap"><span class="month-bar" style="width:${barW}px"></span></span></td>
+        <td>£${m.value.toLocaleString()}</td><td>${vsHtml}</td>`;
       tbody.appendChild(tr);
     });
     table.appendChild(tbody); wrap.appendChild(table); card.appendChild(wrap);
@@ -3062,6 +3092,151 @@ function renderDashboard(data, siteFilter, from, to) {
     });
     table.appendChild(tbody); wrap.appendChild(table); itemCard.appendChild(wrap);
     body.appendChild(itemCard);
+  }
+
+  // ── Section D: Spend by Supplier ───────────────────────────────
+  if (data.bySupplier && data.bySupplier.length) {
+    body.appendChild(makeSectionTitle('Section D — Spend by Supplier'));
+    const suppCard = document.createElement('div');
+    suppCard.className = 'dash-card';
+    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
+    const table = document.createElement('table'); table.className = 'dash-table';
+    table.innerHTML = '<thead><tr><th>Supplier</th><th>Total Orders</th><th>Total Spend (£)</th><th>% of Total</th></tr></thead>';
+    const tbody = document.createElement('tbody');
+    data.bySupplier.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><strong>${s.supplier}</strong></td><td>${s.orders}</td><td>£${s.spend.toLocaleString()}</td><td>${s.pct}%</td>`;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody); wrap.appendChild(table); suppCard.appendChild(wrap);
+    body.appendChild(suppCard);
+  }
+
+  // ── Section F: All-Time Spend per Site ─────────────────────────
+  if (data.bySite && data.bySite.length) {
+    body.appendChild(makeSectionTitle('Section F — Spend per Site'));
+    const siteCard = document.createElement('div');
+    siteCard.className = 'dash-card';
+    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
+    const table = document.createElement('table'); table.className = 'dash-table';
+    table.innerHTML = '<thead><tr><th>Site</th><th>Total Orders</th><th>Total Spend (£)</th><th>Avg per Order (£)</th><th>% of Total</th></tr></thead>';
+    const tbody = document.createElement('tbody');
+    data.bySite.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><strong>${s.site}</strong></td><td>${s.orders}</td><td>£${s.value.toLocaleString()}</td><td>£${s.avg.toLocaleString()}</td><td>${s.pct}%</td>`;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody); wrap.appendChild(table); siteCard.appendChild(wrap);
+    body.appendChild(siteCard);
+  }
+
+  // ── Credits log ────────────────────────────────────────────────
+  body.appendChild(makeSectionTitle('Credits Recorded'));
+  const creditLogCard = document.createElement('div');
+  creditLogCard.className = 'dash-card';
+  if (data.credits && data.credits.length) {
+    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
+    const table = document.createElement('table'); table.className = 'dash-table';
+    table.innerHTML = '<thead><tr><th>Date</th><th>Site</th><th>Order Ref</th><th>Item</th><th>Qty</th><th>Credit (£)</th><th>Reason</th></tr></thead>';
+    const tbody = document.createElement('tbody');
+    data.credits.forEach(c => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${c.time}</td><td>${c.site}</td><td>${c.orderRef||'—'}</td><td>${c.item}</td><td>${c.qty} ${c.unit}</td><td style="color:var(--brand);font-weight:600">-£${c.total}</td><td>${c.reason}</td>`;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody); wrap.appendChild(table); creditLogCard.appendChild(wrap);
+  } else {
+    creditLogCard.innerHTML = '<div class="dash-empty">No credits recorded yet.</div>';
+  }
+  body.appendChild(creditLogCard);
+
+  // ── Record a Credit ────────────────────────────────────────────
+  body.appendChild(makeSectionTitle('Record a Credit'));
+  const creditFormCard = document.createElement('div');
+  creditFormCard.className = 'dash-card';
+  creditFormCard.innerHTML = `
+    <div class="credit-form-grid">
+      <div class="credit-field">
+        <label>Site</label>
+        <select id="cr-site">
+          <option value="">— Select site —</option>
+          ${ALL_SITES_LIST.map(s => `<option>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="credit-field">
+        <label>Order Reference (optional)</label>
+        <input type="text" id="cr-ref" placeholder="e.g. ORD-0042">
+      </div>
+      <div class="credit-field full">
+        <label>Item Name</label>
+        <input type="text" id="cr-item" placeholder="e.g. Chicken Breast">
+      </div>
+      <div class="credit-field">
+        <label>Qty</label>
+        <input type="number" id="cr-qty" placeholder="0" min="0" step="0.5">
+      </div>
+      <div class="credit-field">
+        <label>Unit</label>
+        <input type="text" id="cr-unit" placeholder="kg / box">
+      </div>
+      <div class="credit-field">
+        <label>Price per unit (£)</label>
+        <input type="number" id="cr-price" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="credit-field">
+        <label>Reason</label>
+        <select id="cr-reason">
+          <option>Out of stock</option>
+          <option>Damaged on delivery</option>
+          <option>Wrong item delivered</option>
+          <option>Short delivery</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="credit-success" id="cr-success">✅ Credit recorded successfully</div>
+    <button class="credit-submit-btn" onclick="submitCredit()">Record Credit</button>`;
+  body.appendChild(creditFormCard);
+}
+
+async function submitCredit() {
+  const site    = document.getElementById('cr-site').value;
+  const ref     = document.getElementById('cr-ref').value.trim();
+  const item    = document.getElementById('cr-item').value.trim();
+  const qty     = parseFloat(document.getElementById('cr-qty').value)   || 0;
+  const unit    = document.getElementById('cr-unit').value.trim();
+  const price   = parseFloat(document.getElementById('cr-price').value) || 0;
+  const reason  = document.getElementById('cr-reason').value;
+
+  if (!site || !item || qty <= 0) {
+    alert('Please fill in Site, Item Name and Qty before recording a credit.');
+    return;
+  }
+
+  const btn = document.querySelector('.credit-submit-btn');
+  btn.disabled = true; btn.textContent = 'Recording…';
+
+  try {
+    const res  = await fetch(SCRIPT_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    'data=' + encodeURIComponent(JSON.stringify({ action:'record_credit', site, orderRef:ref, itemName:item, qty, unit, price, reason }))
+    });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('cr-success').classList.add('show');
+      ['cr-site','cr-ref','cr-item','cr-qty','cr-unit','cr-price'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      setTimeout(() => document.getElementById('cr-success').classList.remove('show'), 3000);
+    } else {
+      alert('Error: ' + (data.error || 'Could not record credit.'));
+    }
+  } catch(err) {
+    alert('Connection error — please try again.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Record Credit';
   }
 }
 
