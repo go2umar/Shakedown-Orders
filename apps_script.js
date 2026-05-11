@@ -260,7 +260,11 @@ function handleDashboardGet(e) {
       // Only include items with no supplier (indicates custom/unlisted)
       const supplier = (row[5] || '').toString().trim();
       if (supplier) continue;
-      unpriced.push({ orderId: ordId, site: rowSite, date: (row[12]||'').toString(),
+      const rawD12  = row[12];
+      const dateStr = rawD12 instanceof Date
+        ? Utilities.formatDate(rawD12, Session.getScriptTimeZone(), 'dd/MM/yyyy')
+        : (rawD12 || '').toString();
+      unpriced.push({ orderId: ordId, site: rowSite, date: dateStr,
                       item: itemName, qty: parseFloat(row[4])||0, unit: (row[3]||'').toString() });
     }
 

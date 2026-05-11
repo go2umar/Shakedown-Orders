@@ -3219,9 +3219,31 @@ function renderDashboard(data, siteFilter, from, to) {
     data.unpriced.forEach(u => {
       const tr = document.createElement('tr');
       const inputId = 'price-' + u.orderId + '-' + u.item.replace(/\s+/g,'_');
-      tr.innerHTML = `<td><span class="dash-oid">${u.orderId}</span></td><td>${u.site}</td><td>${u.date}</td><td><strong>${u.item}</strong></td><td>${u.qty}</td><td>${u.unit}</td>
-        <td><input type="number" id="${inputId}" step="0.01" min="0" placeholder="0.00" style="width:80px;padding:5px 8px;border:1.5px solid var(--border-strong);border-radius:var(--radius-xs);font-family:var(--font);font-size:13px;outline:none;background:var(--bg)"></td>
-        <td><button onclick="saveItemPrice('${u.orderId}','${u.site}','${u.item.replace(/'/g,"\\'").replace(/"/g,'&quot;')}','${inputId}')" style="padding:5px 12px;background:#6366F1;color:#fff;border:none;border-radius:var(--radius-xs);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer">Save</button></td>`;
+      // Build row with DOM to avoid escaping issues with special chars in item names
+      const cells = [
+        `<span class="dash-oid">${u.orderId}</span>`, u.site, u.date,
+        `<strong>${u.item}</strong>`, u.qty, u.unit
+      ];
+      cells.forEach(c => { const td = document.createElement('td'); td.innerHTML = c; tr.appendChild(td); });
+
+      const priceTd = document.createElement('td');
+      const priceIn = document.createElement('input');
+      priceIn.type = 'number'; priceIn.id = inputId; priceIn.step = '0.01'; priceIn.min = '0'; priceIn.placeholder = '0.00';
+      priceIn.style.cssText = 'width:80px;padding:5px 8px;border:1.5px solid var(--border-strong);border-radius:var(--radius-xs);font-family:var(--font);font-size:13px;outline:none;background:var(--bg)';
+      priceTd.appendChild(priceIn);
+
+      const saveTd  = document.createElement('td');
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = 'Save';
+      saveBtn.style.cssText = 'padding:5px 12px;background:#6366F1;color:#fff;border:none;border-radius:var(--radius-xs);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer';
+      saveBtn.dataset.orderid = u.orderId;
+      saveBtn.dataset.site    = u.site;
+      saveBtn.dataset.item    = u.item;
+      saveBtn.dataset.inputid = inputId;
+      saveBtn.onclick = function() { saveItemPrice(this); };
+      saveTd.appendChild(saveBtn);
+
+      tr.appendChild(priceTd); tr.appendChild(saveTd);
       tbody.appendChild(tr);
     });
     table.appendChild(tbody); wrap.appendChild(table); unpricedCard.appendChild(wrap);
@@ -3293,12 +3315,22 @@ function renderDashboard(data, siteFilter, from, to) {
   body.appendChild(creditFormCard);
 }
 
-async function saveItemPrice(orderId, site, itemName, inputId) {
-  const input = document.getElementById(inputId);
-  const price = parseFloat(input.value) || 0;
-  if (price <= 0) { input.focus(); input.style.borderColor = 'var(--brand)'; return; }
+async function saveItemPrice(btn) {
+  const orderId  = btn.dataset.orderid;
+  const site     = btn.dataset.site;
+  const itemName = btn.dataset.item;
+  const inputId  = btn.dataset.inputid;
+  const input    = document.getElementById(inputId);
+  const price    = parseFloat(input ? input.value : 0) || 0;
 
+  if (price <= 0) {
+    if (input) { input.focus(); input.style.borderColor = 'var(--brand)'; }
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Saving…';
   input.disabled = true;
+
   try {
     const res  = await fetch(SCRIPT_URL, {
       method:  'POST',
@@ -3307,16 +3339,17 @@ async function saveItemPrice(orderId, site, itemName, inputId) {
     });
     const data = await res.json();
     if (data.ok) {
-      const row = input.closest('tr');
+      const row = btn.closest('tr');
       row.style.opacity = '.4';
-      row.querySelector('button').textContent = '✓ Saved';
-      row.querySelector('button').disabled = true;
+      btn.textContent = '✓ Saved';
     } else {
       alert('Error: ' + (data.error || 'Could not save price.'));
+      btn.disabled = false; btn.textContent = 'Save';
       input.disabled = false;
     }
   } catch(err) {
     alert('Connection error — please try again.');
+    btn.disabled = false; btn.textContent = 'Save';
     input.disabled = false;
   }
 }
