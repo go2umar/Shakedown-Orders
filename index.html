@@ -858,6 +858,90 @@ body{min-height:100vh}
 .dash-spinner{text-align:center;padding:40px}
 .rank-num{color:var(--text-tertiary);font-weight:700;font-size:12px;min-width:24px}
 
+/* ── ORDER LOOKUP ────────────────────────────────────── */
+.orders-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:250;overflow-y:auto}
+.orders-overlay.show{display:block}
+.orders-search-bar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;
+  position:sticky;top:57px;z-index:9;
+}
+.orders-mode-tabs{display:flex;gap:4px;width:100%}
+.orders-mode-tab{
+  padding:7px 16px;border-radius:20px;border:1.5px solid var(--border-strong);
+  background:var(--bg);font-family:var(--font);font-size:12px;font-weight:600;
+  color:var(--text-secondary);cursor:pointer;transition:all .15s;
+}
+.orders-mode-tab.active{background:#6366F1;border-color:#6366F1;color:#fff}
+.orders-search-input{
+  flex:1;padding:9px 12px;background:var(--bg);border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-sm);font-family:var(--font);font-size:13px;
+  color:var(--text-primary);outline:none;min-width:160px;
+}
+.orders-search-input:focus{border-color:#6366F1;background:var(--surface)}
+.orders-search-btn{
+  padding:9px 18px;background:#6366F1;color:#fff;border:none;
+  border-radius:var(--radius-sm);font-family:var(--font);font-size:13px;
+  font-weight:600;cursor:pointer;white-space:nowrap;
+}
+.orders-search-btn:hover{background:#4F46E5}
+.order-result-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:var(--shadow-sm);
+  margin-bottom:10px;overflow:hidden;
+}
+.order-result-hdr{
+  display:flex;align-items:center;flex-wrap:wrap;gap:10px;
+  padding:13px 16px;cursor:pointer;transition:background .1s;
+  border-bottom:1px solid transparent;
+}
+.order-result-hdr:hover{background:#FAFAFA}
+.order-result-hdr.open{border-bottom-color:var(--border)}
+.order-result-body{display:none;padding:0}
+.order-result-body.open{display:block}
+.order-result-meta{font-size:12px;color:var(--text-secondary)}
+.order-items-table{width:100%;border-collapse:collapse;font-size:13px}
+.order-items-table th{
+  text-align:left;padding:8px 14px;
+  font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--text-tertiary);border-bottom:1.5px solid var(--border);background:#FAFAFA;
+}
+.order-items-table td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-primary)}
+.order-items-table tr:last-child td{border-bottom:none}
+.credit-item-btn{
+  padding:4px 10px;background:var(--brand-light);color:var(--brand);
+  border:1.5px solid #FBBCBC;border-radius:var(--radius-xs);
+  font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;
+  white-space:nowrap;transition:all .15s;
+}
+.credit-item-btn:hover{background:var(--brand);color:#fff}
+.credit-inline-form{
+  background:#FFF5F5;border-top:1px solid #FBBCBC;
+  padding:12px 14px;display:none;
+}
+.credit-inline-form.open{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.credit-inline-form label{font-size:11px;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:.5px}
+.credit-inline-input{
+  padding:6px 10px;border:1.5px solid #FBBCBC;border-radius:var(--radius-xs);
+  background:#fff;font-family:var(--font);font-size:13px;outline:none;
+}
+.credit-inline-confirm{
+  padding:6px 14px;background:var(--brand);color:#fff;border:none;
+  border-radius:var(--radius-xs);font-family:var(--font);font-size:12px;
+  font-weight:700;cursor:pointer;
+}
+.credit-inline-cancel{
+  padding:6px 12px;background:none;border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-xs);font-family:var(--font);font-size:12px;
+  color:var(--text-secondary);cursor:pointer;
+}
+.lookup-btn{
+  padding:8px 14px;background:#EEF2FF;border:1.5px solid #6366F1;
+  color:#6366F1;border-radius:var(--radius-sm);font-family:var(--font);
+  font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.lookup-btn:hover{background:#6366F1;color:#fff}
+
 /* ── FILTER BAR ──────────────────────────────────────── */
 .dash-filter-bar{
   background:var(--surface);border-bottom:1px solid var(--border);
@@ -1216,6 +1300,7 @@ body{min-height:100vh}
       <div class="dash-title">Manager Dashboard</div>
       <div class="dash-sub" id="dash-sub">Loading…</div>
     </div>
+    <button class="lookup-btn" onclick="openOrderLookup()">📋 Orders</button>
   </div>
 
   <!-- Filter bar -->
@@ -1245,6 +1330,49 @@ body{min-height:100vh}
 
   <div class="dash-body" id="dash-body">
     <div class="dash-spinner"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ORDER LOOKUP OVERLAY -->
+<div class="orders-overlay" id="orders-overlay">
+  <div class="dash-header">
+    <button class="review-back-btn" onclick="closeOrderLookup()">← Dashboard</button>
+    <div>
+      <div class="dash-title">Order Lookup</div>
+      <div class="dash-sub" id="lookup-sub">Search by Order ID or by Site &amp; Date</div>
+    </div>
+  </div>
+
+  <div class="orders-search-bar">
+    <div class="orders-mode-tabs">
+      <button class="orders-mode-tab active" id="lookup-tab-id"   onclick="setLookupMode('id')">By Order ID</button>
+      <button class="orders-mode-tab"        id="lookup-tab-date" onclick="setLookupMode('date')">By Site &amp; Date</button>
+    </div>
+
+    <!-- Search by Order ID -->
+    <div id="lookup-id-controls" style="display:flex;gap:8px;width:100%;flex-wrap:wrap">
+      <input type="text" class="orders-search-input" id="lookup-order-id"
+             placeholder="e.g. ORD-0042" onkeydown="if(event.key==='Enter')runLookup()">
+      <button class="orders-search-btn" onclick="runLookup()">Search</button>
+    </div>
+
+    <!-- Search by Site + Date -->
+    <div id="lookup-date-controls" style="display:none;gap:8px;width:100%;flex-wrap:wrap">
+      <select class="dash-filter-select" id="lookup-site">
+        <option value="">All Sites</option>
+        <option>SD Withington</option><option>SD Wythenshawe</option>
+        <option>SD Cheadle</option><option>SD Newcastle</option>
+        <option>SD EH 12</option><option>SD EH 15</option>
+        <option>DC Withington</option><option>DC Cheadle</option>
+        <option>DC Oxford Road</option>
+      </select>
+      <input type="date" class="dash-date-input" id="lookup-date" style="width:150px">
+      <button class="orders-search-btn" onclick="runLookup()">Search</button>
+    </div>
+  </div>
+
+  <div class="dash-body" id="lookup-results">
+    <div class="dash-empty" style="padding:40px">Enter an Order ID or select a site and date to search.</div>
   </div>
 </div>
 
@@ -2841,6 +2969,206 @@ function addScannedToOrder() {
   if (addedCount > 0) window.scrollTo(0, 0);
 }
 
+// ── ORDER LOOKUP ──────────────────────────────────────────────────
+let _lookupMode = 'id';
+
+function openOrderLookup() {
+  document.getElementById('orders-overlay').classList.add('show');
+  document.getElementById('orders-overlay').scrollTop = 0;
+}
+
+function closeOrderLookup() {
+  document.getElementById('orders-overlay').classList.remove('show');
+}
+
+function setLookupMode(mode) {
+  _lookupMode = mode;
+  document.getElementById('lookup-tab-id').classList.toggle('active',   mode === 'id');
+  document.getElementById('lookup-tab-date').classList.toggle('active', mode === 'date');
+  document.getElementById('lookup-id-controls').style.display   = mode === 'id'   ? 'flex' : 'none';
+  document.getElementById('lookup-date-controls').style.display = mode === 'date' ? 'flex' : 'none';
+  document.getElementById('lookup-results').innerHTML =
+    '<div class="dash-empty" style="padding:40px">Enter search criteria above.</div>';
+}
+
+function runLookup() {
+  const resultsEl = document.getElementById('lookup-results');
+  resultsEl.innerHTML = '<div class="dash-spinner"><div class="spinner"></div></div>';
+  document.getElementById('lookup-sub').textContent = 'Searching…';
+
+  let params = 'action=get_orders';
+  if (_lookupMode === 'id') {
+    const id = document.getElementById('lookup-order-id').value.trim().toUpperCase();
+    if (!id) { resultsEl.innerHTML = '<div class="dash-empty" style="padding:40px">Please enter an Order ID.</div>'; return; }
+    params += '&orderId=' + encodeURIComponent(id);
+  } else {
+    const site = document.getElementById('lookup-site').value;
+    const date = document.getElementById('lookup-date').value; // YYYY-MM-DD
+    if (!site && !date) { resultsEl.innerHTML = '<div class="dash-empty" style="padding:40px">Please select a site or date.</div>'; return; }
+    if (site) params += '&site=' + encodeURIComponent(site);
+    if (date) {
+      // Convert YYYY-MM-DD to DD/MM/YYYY for Apps Script
+      const [y,m,d] = date.split('-');
+      params += '&date=' + encodeURIComponent(d+'/'+m+'/'+y);
+    }
+  }
+
+  const old = document.getElementById('lookup-jsonp'); if (old) old.remove();
+  window._onLookupLoaded = function(data) {
+    if (!data || !data.ok) {
+      resultsEl.innerHTML = '<div class="dash-empty" style="padding:40px">' + (data && data.error || 'Error loading data.') + '</div>';
+      document.getElementById('lookup-sub').textContent = 'Search failed';
+      return;
+    }
+    if (data.mode === 'items') {
+      renderOrderItems(data.orderId, data.site, data.items, resultsEl);
+    } else {
+      renderOrderList(data.orders, resultsEl);
+    }
+    document.getElementById('lookup-sub').textContent =
+      data.mode === 'items' ? data.orderId + ' — ' + (data.site||'') : (data.orders||[]).length + ' orders found';
+  };
+  const s = document.createElement('script');
+  s.id = 'lookup-jsonp';
+  s.src = SCRIPT_URL + '?' + params + '&callback=_onLookupLoaded';
+  s.onerror = () => { resultsEl.innerHTML = '<div class="dash-empty" style="padding:40px">Connection error.</div>'; };
+  document.head.appendChild(s);
+}
+
+function renderOrderList(orders, container) {
+  container.innerHTML = '';
+  if (!orders || !orders.length) {
+    container.innerHTML = '<div class="dash-empty" style="padding:40px">No orders found for this search.</div>';
+    return;
+  }
+  orders.forEach(o => {
+    const card = document.createElement('div');
+    card.className = 'order-result-card';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'order-result-hdr';
+    const tg = (o.prepTg + ' ' + o.stockTg).includes('❌')
+      ? '<span class="dash-tg-fail">❌ Failed</span>'
+      : '<span class="dash-tg-ok">✅ Sent</span>';
+    hdr.innerHTML = `
+      <span class="dash-oid">${o.orderId}</span>
+      <span class="order-result-meta">${o.site}</span>
+      <span class="order-result-meta">${o.submitted}</span>
+      <span class="order-result-meta">🗓 ${o.delivDate||'—'}</span>
+      <span class="order-result-meta">${o.items} items · £${o.value.toLocaleString()}</span>
+      ${tg}
+      <span style="margin-left:auto;color:var(--text-tertiary);font-size:12px">▶ View items</span>`;
+
+    const body = document.createElement('div');
+    body.className = 'order-result-body';
+
+    hdr.onclick = () => {
+      const isOpen = body.classList.contains('open');
+      if (!isOpen && !body._loaded) {
+        body._loaded = true;
+        body.innerHTML = '<div style="padding:16px;text-align:center"><div class="spinner" style="width:28px;height:28px;border-width:2px"></div></div>';
+        fetchOrderItems(o.orderId, o.site, body);
+      }
+      body.classList.toggle('open');
+      hdr.classList.toggle('open');
+      hdr.querySelector('span:last-child').textContent = body.classList.contains('open') ? '▼ Hide items' : '▶ View items';
+    };
+
+    card.appendChild(hdr); card.appendChild(body);
+    container.appendChild(card);
+  });
+}
+
+function fetchOrderItems(orderId, site, container) {
+  const old = document.getElementById('lookup-items-jsonp-' + orderId); if (old) old.remove();
+  const cbName = '_onItemsLoaded_' + orderId.replace('-','_');
+  window[cbName] = function(data) {
+    if (!data || !data.ok) { container.innerHTML = '<div class="dash-empty">Could not load items.</div>'; return; }
+    renderOrderItems(orderId, site, data.items, container);
+  };
+  const s = document.createElement('script');
+  s.id  = 'lookup-items-jsonp-' + orderId;
+  s.src = SCRIPT_URL + '?action=get_orders&orderId=' + encodeURIComponent(orderId) + '&callback=' + cbName;
+  document.head.appendChild(s);
+}
+
+function renderOrderItems(orderId, site, items, container) {
+  container.innerHTML = '';
+  if (!items || !items.length) {
+    container.innerHTML = '<div class="dash-empty">No items found for ' + orderId + '</div>';
+    return;
+  }
+  const wrap  = document.createElement('div'); wrap.style.overflowX = 'auto';
+  const table = document.createElement('table'); table.className = 'order-items-table';
+  table.innerHTML = '<thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Price (£)</th><th>Total (£)</th><th>Supplier</th><th>Action</th></tr></thead>';
+  const tbody = document.createElement('tbody');
+
+  items.forEach(item => {
+    const tr = document.createElement('tr');
+    // Item cells
+    const cells = [item.name, item.qty, item.unit, '£'+item.price, '£'+item.total, item.supplier||'—'];
+    cells.forEach(c => { const td = document.createElement('td'); td.innerHTML = c; tr.appendChild(td); });
+
+    // Credit button + inline form
+    const actionTd = document.createElement('td');
+    const creditBtn = document.createElement('button');
+    creditBtn.className = 'credit-item-btn'; creditBtn.textContent = 'Credit';
+
+    // Inline credit form (hidden by default)
+    const inlineForm = document.createElement('tr');
+    inlineForm.style.display = 'none';
+    const formTd = document.createElement('td'); formTd.colSpan = 7; formTd.style.padding = '0';
+    const formDiv = document.createElement('div'); formDiv.className = 'credit-inline-form open';
+    formDiv.innerHTML = `
+      <span style="font-size:12px;font-weight:600;color:var(--brand)">Crediting: ${item.name}</span>
+      <label>Qty</label>
+      <input type="number" class="credit-inline-input" style="width:70px" value="${item.qty}" min="0.5" max="${item.qty}" step="0.5">
+      <label>Reason</label>
+      <select class="credit-inline-input">
+        <option>Out of stock</option>
+        <option>Damaged on delivery</option>
+        <option>Wrong item delivered</option>
+        <option>Short delivery</option>
+        <option>Other</option>
+      </select>
+      <button class="credit-inline-confirm">Confirm Credit</button>
+      <button class="credit-inline-cancel">Cancel</button>`;
+
+    formDiv.querySelector('.credit-inline-confirm').onclick = async () => {
+      const qty    = parseFloat(formDiv.querySelector('input').value) || 0;
+      const reason = formDiv.querySelector('select').value;
+      if (qty <= 0) { formDiv.querySelector('input').focus(); return; }
+      const confirmBtn = formDiv.querySelector('.credit-inline-confirm');
+      confirmBtn.textContent = 'Saving…'; confirmBtn.disabled = true;
+      try {
+        const res  = await fetch(SCRIPT_URL, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body:    'data=' + encodeURIComponent(JSON.stringify({
+            action:'record_credit', site, orderRef:orderId,
+            itemName:item.name, qty, unit:item.unit, price:item.price, reason
+          }))
+        });
+        const d = await res.json();
+        if (d.ok) {
+          inlineForm.style.display = 'none';
+          tr.style.opacity = '.4';
+          creditBtn.textContent = '✓ Credited'; creditBtn.disabled = true;
+        } else {
+          alert('Error: ' + (d.error || 'Could not record credit.')); confirmBtn.textContent = 'Confirm Credit'; confirmBtn.disabled = false;
+        }
+      } catch(e) { alert('Connection error.'); confirmBtn.textContent = 'Confirm Credit'; confirmBtn.disabled = false; }
+    };
+    formDiv.querySelector('.credit-inline-cancel').onclick = () => { inlineForm.style.display = 'none'; };
+
+    creditBtn.onclick = () => { inlineForm.style.display = inlineForm.style.display === 'none' ? 'table-row' : 'none'; };
+    actionTd.appendChild(creditBtn); tr.appendChild(actionTd);
+    formTd.appendChild(formDiv); inlineForm.appendChild(formTd);
+    tbody.appendChild(tr); tbody.appendChild(inlineForm);
+  });
+  table.appendChild(tbody); wrap.appendChild(table); container.appendChild(wrap);
+}
+
 // ── MANAGER DASHBOARD ─────────────────────────────────────────────
 const MANAGER_PIN      = '1234'; // change by asking Claude
 let   _managerUnlocked = false;
@@ -3266,53 +3594,7 @@ function renderDashboard(data, siteFilter, from, to) {
   }
   body.appendChild(clCard);
 
-  // ── 10. RECORD A CREDIT ────────────────────────────────────────
-  body.appendChild(makeSectionTitle('Record a Credit'));
-  const creditFormCard = document.createElement('div');
-  creditFormCard.className = 'dash-card';
-  creditFormCard.innerHTML = `
-    <div class="credit-form-grid">
-      <div class="credit-field">
-        <label>Site</label>
-        <select id="cr-site">
-          <option value="">— Select site —</option>
-          ${ALL_SITES_LIST.map(s => `<option>${s}</option>`).join('')}
-        </select>
-      </div>
-      <div class="credit-field">
-        <label>Order Reference (optional)</label>
-        <input type="text" id="cr-ref" placeholder="e.g. ORD-0042">
-      </div>
-      <div class="credit-field full">
-        <label>Item Name</label>
-        <input type="text" id="cr-item" placeholder="e.g. Chicken Breast">
-      </div>
-      <div class="credit-field">
-        <label>Qty</label>
-        <input type="number" id="cr-qty" placeholder="0" min="0" step="0.5">
-      </div>
-      <div class="credit-field">
-        <label>Unit</label>
-        <input type="text" id="cr-unit" placeholder="kg / box">
-      </div>
-      <div class="credit-field">
-        <label>Price per unit (£)</label>
-        <input type="number" id="cr-price" placeholder="0.00" min="0" step="0.01">
-      </div>
-      <div class="credit-field">
-        <label>Reason</label>
-        <select id="cr-reason">
-          <option>Out of stock</option>
-          <option>Damaged on delivery</option>
-          <option>Wrong item delivered</option>
-          <option>Short delivery</option>
-          <option>Other</option>
-        </select>
-      </div>
-    </div>
-    <div class="credit-success" id="cr-success">✅ Credit recorded successfully</div>
-    <button class="credit-submit-btn" onclick="submitCredit()">Record Credit</button>`;
-  body.appendChild(creditFormCard);
+  // Record a Credit moved to Order Lookup (📋 Orders button)
 }
 
 async function saveItemPrice(btn) {

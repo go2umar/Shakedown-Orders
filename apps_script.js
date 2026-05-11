@@ -28,8 +28,9 @@ const SUMMARY_HEADERS = [
 // ════════════════════════════════════════════════════════════════════
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'products';
-  if (action === 'summary')   return handleSummaryGet(e);
-  if (action === 'dashboard') return handleDashboardGet(e);
+  if (action === 'summary')    return handleSummaryGet(e);
+  if (action === 'dashboard')  return handleDashboardGet(e);
+  if (action === 'get_orders') return handleGetOrders(e);
   return handleProductsGet(e);
 }
 
@@ -306,6 +307,88 @@ function parseFlexDate(str) {
     return new Date(parseInt(y), parseInt(m)-1, parseInt(d));
   }
   return parseDDMMYYYY(str);
+}
+
+// ── Order lookup — search by Order ID or by site + date ─────────────
+function handleGetOrders(e) {
+  try {
+    const params  = (e && e.parameter) || {};
+    const orderId = (params.orderId || '').trim();
+    const site    = (params.site    || '').trim();
+    const date    = (params.date    || '').trim(); // DD/MM/YYYY
+
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const logWs = ss.getSheetByName('Order Log');
+    const sumWs = ss.getSheetByName('Orders Summary');
+    const cb    = params.callback;
+
+    const resp = obj => {
+      const json = JSON.stringify(obj);
+      if (cb) return ContentService.createTextOutput(cb+'('+json+')').setMimeType(ContentService.MimeType.JAVASCRIPT);
+      return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+    };
+
+    if (!logWs) return resp({ ok: false, error: 'Order Log not found.' });
+
+    // Search by Order ID — return every item in that order
+    if (orderId) {
+      const logData = logWs.getDataRange().getValues();
+      const items   = [];
+      for (let i = 1; i < logData.length; i++) {
+        const row = logData[i];
+        if ((row[11]||'').toString().trim() !== orderId) continue;
+        const rawD9  = row[9];
+        items.push({
+          name:      (row[2] ||'').toString().trim(),
+          unit:      (row[3] ||'').toString().trim(),
+          qty:       parseFloat(row[4]) || 0,
+          supplier:  (row[5] ||'').toString().trim(),
+          price:     parseFloat(row[6]) || 0,
+          total:     parseFloat(row[7]) || 0,
+          tgStatus:  (row[10]||'').toString().trim(),
+          site:      (row[1] ||'').toString().trim(),
+          submitted: (row[0] ||'').toString().trim(),
+          delivDate: rawD9 instanceof Date ? Utilities.formatDate(rawD9, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rawD9||'').toString().trim()
+        });
+      }
+      return resp({ ok: true, mode: 'items', orderId, site: items[0] ? items[0].site : '', items });
+    }
+
+    // Search by site + date — return list of matching orders
+    if (!sumWs) return resp({ ok: false, error: 'Orders Summary not found. Run migrateHistoricalData() first.' });
+    const sumData = sumWs.getDataRange().getValues();
+    const orders  = [];
+    for (let i = 1; i < sumData.length; i++) {
+      const row     = sumData[i];
+      const rowSite = (row[1]||'').toString().trim();
+      const rawD10  = row[10];
+      const rowDate = rawD10 instanceof Date
+        ? Utilities.formatDate(rawD10, Session.getScriptTimeZone(), 'dd/MM/yyyy')
+        : (rawD10||'').toString().trim();
+      if (site && rowSite !== site) continue;
+      if (date && rowDate !== date) continue;
+      orders.push({
+        orderId:   (row[0]||'').toString().trim(),
+        site:      rowSite,
+        type:      (row[2]||'').toString().trim(),
+        submitted: (row[3]||'').toString().trim(),
+        delivDate: (row[4]||'').toString().trim(),
+        items:     parseInt(row[5])   || 0,
+        value:     parseFloat(row[6]) || 0,
+        prepTg:    (row[7]||'').toString().trim(),
+        stockTg:   (row[8]||'').toString().trim(),
+        date:      rowDate
+      });
+    }
+    orders.sort((a, b) => b.submitted.localeCompare(a.submitted));
+    return resp({ ok: true, mode: 'orders', orders });
+
+  } catch(err) {
+    const json = JSON.stringify({ ok: false, error: err.toString() });
+    const cb   = e && e.parameter && e.parameter.callback;
+    if (cb) return ContentService.createTextOutput(cb+'('+json+')').setMimeType(ContentService.MimeType.JAVASCRIPT);
+    return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 // ── Summary handler — last 7 days, per site, per order ──────────────
