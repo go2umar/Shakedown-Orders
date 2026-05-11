@@ -1537,8 +1537,10 @@ function buildCats(containerId, productsObj, section) {
     wrap.appendChild(es);
     return;
   }
-  for (const [cat, items] of Object.entries(productsObj)) {
-    if (!items || !items.length) continue;
+  for (const [cat, rawItems] of Object.entries(productsObj)) {
+    if (!rawItems || !rawItems.length) continue;
+    // Sort alphabetically within each category
+    const items = [...rawItems].sort((a, b) => a.name.localeCompare(b.name));
 
     // ── Category header — built with DOM API (XSS-safe) ──
     const hdr = document.createElement('div');
@@ -2138,10 +2140,11 @@ function onItemSearch(val) {
   if (!q) return;
 
   // Exact start-of-word matches first, then other contains matches
-  const starts   = _searchIndex.filter(p => p.name.toLowerCase().startsWith(q));
+  const alpha  = (a, b) => a.name.localeCompare(b.name);
+  const starts   = _searchIndex.filter(p => p.name.toLowerCase().startsWith(q)).sort(alpha);
   const contains = _searchIndex.filter(p =>
     !p.name.toLowerCase().startsWith(q) && p.name.toLowerCase().includes(q)
-  );
+  ).sort(alpha);
   const matches = [...starts, ...contains].slice(0, 40);
 
   if (!matches.length) {

@@ -642,9 +642,25 @@ function sendTelegram(chatId, site, items, notes, deliveryDate, orderId, timeStr
   msg     += `Ref: ${orderId} | ${timeStr}\n`;
   if (deliveryDate) msg += `🗓 Delivery: ${deliveryDate}\n`;
   msg     += `─────────────────────\n`;
-  items.forEach(it => { msg += `${it.name} — ${it.qty}x (${it.unit})\n`; });
+  sorted.forEach(it => {
+    const q   = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
+    // If unit starts with a digit (e.g. "1 box", "2 litre") show as QTY × UNIT
+    // If unit is a measure (e.g. "kg", "box") show as QTY UNIT
+    const qty = /^\d/.test(it.unit) ? q + ' × ' + it.unit : q + ' ' + it.unit;
+    msg += '• ' + it.name + '  —  ' + qty + '\n';
+  });
   msg     += `─────────────────────`;
   if (notes) msg += `\nNotes: ${notes}`;
+
+  // Sort: DC sites → Club items first, then alphabetical; all others → alphabetical
+  const sorted = items.slice().sort((a, b) => {
+    if (site.startsWith('DC')) {
+      const aClub = a.name.toLowerCase().startsWith('club');
+      const bClub = b.name.toLowerCase().startsWith('club');
+      if (aClub !== bClub) return aClub ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name);
+  });
 
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
   try {
