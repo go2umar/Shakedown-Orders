@@ -378,7 +378,7 @@ function handleGetOrders(e) {
         value:     parseFloat(row[6]) || 0,
         prepTg:    (row[7]||'').toString().trim(),
         stockTg:   (row[8]||'').toString().trim(),
-        date:      rowDate
+        date:      rowDelivDate
       });
     }
     orders.sort((a, b) => b.submitted.localeCompare(a.submitted));
