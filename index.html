@@ -730,6 +730,134 @@ body{min-height:100vh}
 }
 .scan-rescan-btn:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-light)}
 
+/* ── MANAGER BUTTON ──────────────────────────────────── */
+.manager-btn{
+  width:34px;height:34px;border-radius:var(--radius-xs);
+  background:var(--bg);border:1.5px solid var(--border-strong);
+  color:var(--text-secondary);font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;flex-shrink:0;margin-left:6px;
+}
+.manager-btn:hover{background:#EEF2FF;border-color:#6366F1;color:#6366F1}
+.manager-btn.unlocked{background:#EEF2FF;border-color:#6366F1;color:#6366F1}
+
+/* ── PIN OVERLAY ─────────────────────────────────────── */
+.pin-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(8px);
+  z-index:500;align-items:center;justify-content:center;padding:20px;
+}
+.pin-overlay.show{display:flex}
+.pin-box{
+  background:var(--surface);border-radius:24px;
+  padding:40px 32px;text-align:center;
+  max-width:320px;width:100%;box-shadow:var(--shadow-lg);
+}
+.pin-box-icon{font-size:44px;margin-bottom:14px}
+.pin-box h2{font-size:20px;font-weight:700;margin-bottom:6px}
+.pin-box p{color:var(--text-secondary);font-size:14px;margin-bottom:24px}
+.pin-input{
+  width:100%;padding:14px;text-align:center;
+  font-size:28px;font-weight:700;letter-spacing:10px;
+  background:var(--bg);border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-sm);font-family:var(--font);
+  outline:none;transition:border-color .15s;
+  -webkit-text-security:disc;
+}
+.pin-input:focus{border-color:#6366F1;background:var(--surface)}
+.pin-error{color:var(--brand);font-size:13px;font-weight:600;margin-top:10px;display:none}
+.pin-error.show{display:block}
+.pin-submit{
+  width:100%;margin-top:16px;padding:14px;
+  background:#6366F1;color:#fff;border:none;
+  border-radius:var(--radius-sm);font-family:var(--font);
+  font-size:15px;font-weight:700;cursor:pointer;transition:background .15s;
+}
+.pin-submit:hover{background:#4F46E5}
+.pin-cancel{
+  margin-top:10px;background:none;border:none;
+  color:var(--text-tertiary);font-family:var(--font);
+  font-size:13px;cursor:pointer;
+}
+
+/* ── DASHBOARD OVERLAY ───────────────────────────────── */
+.dash-overlay{
+  display:none;position:fixed;inset:0;
+  background:var(--bg);z-index:200;overflow-y:auto;
+}
+.dash-overlay.show{display:block}
+.dash-header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:14px 20px;display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:10;box-shadow:var(--shadow-sm);
+}
+.dash-title{font-size:16px;font-weight:700;color:var(--text-primary)}
+.dash-sub{font-size:12px;color:var(--text-secondary);margin-top:1px}
+.period-tabs{display:flex;gap:4px;margin-left:auto;flex-shrink:0}
+.period-tab{
+  padding:6px 13px;border-radius:20px;
+  border:1.5px solid var(--border-strong);background:var(--bg);
+  font-family:var(--font);font-size:12px;font-weight:600;
+  color:var(--text-secondary);cursor:pointer;transition:all .15s;
+}
+.period-tab.active{background:#6366F1;border-color:#6366F1;color:#fff}
+.dash-body{max-width:700px;margin:0 auto;padding:20px 16px 60px}
+
+/* ── STAT CARDS ──────────────────────────────────────── */
+.dash-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px;box-shadow:var(--shadow-sm);
+}
+.stat-label{
+  font-size:10px;font-weight:700;letter-spacing:.7px;
+  text-transform:uppercase;color:var(--text-tertiary);margin-bottom:8px;
+}
+.stat-value{font-size:24px;font-weight:700;color:var(--text-primary);line-height:1}
+.stat-sub{font-size:11px;color:var(--text-tertiary);margin-top:4px}
+@media(max-width:380px){.stat-value{font-size:18px}}
+
+/* ── DASHBOARD SECTIONS ──────────────────────────────── */
+.dash-section-title{
+  font-size:11px;font-weight:700;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--text-tertiary);
+  margin:20px 0 8px;padding-left:2px;
+}
+.dash-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;
+  box-shadow:var(--shadow-sm);margin-bottom:16px;
+}
+.site-row{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 16px;border-bottom:1px solid var(--border);
+}
+.site-row:last-child{border-bottom:none}
+.site-name{font-size:13px;font-weight:600;color:var(--text-primary);min-width:130px;flex-shrink:0}
+.site-bar-wrap{flex:1;height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
+.site-bar{height:100%;background:#6366F1;border-radius:3px;transition:width .5s}
+.site-count{font-size:12px;font-weight:700;color:var(--text-secondary);min-width:70px;text-align:right;flex-shrink:0}
+.dash-table-wrap{overflow-x:auto}
+.dash-table{width:100%;border-collapse:collapse;font-size:13px;min-width:420px}
+.dash-table th{
+  text-align:left;padding:9px 14px;
+  font-size:10px;font-weight:700;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--text-tertiary);
+  border-bottom:1.5px solid var(--border);background:#FAFAFA;
+}
+.dash-table td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-primary)}
+.dash-table tr:last-child td{border-bottom:none}
+.dash-table tbody tr:hover td{background:#FAFAFA}
+.dash-oid{
+  font-weight:700;color:var(--brand);background:var(--brand-light);
+  padding:2px 7px;border-radius:var(--radius-xs);font-size:11px;white-space:nowrap;
+}
+.dash-tg-ok{color:var(--prep);font-weight:600;font-size:12px}
+.dash-tg-fail{color:var(--brand-dark);font-weight:600;font-size:12px}
+.dash-empty{padding:24px;text-align:center;color:var(--text-tertiary);font-size:13px;font-weight:500}
+.dash-spinner{text-align:center;padding:40px}
+.rank-num{color:var(--text-tertiary);font-weight:700;font-size:12px;min-width:24px}
+
 /* ── SUMMARY BUTTON ──────────────────────────────────── */
 .summary-btn{
   width:34px;height:34px;
@@ -809,7 +937,7 @@ body{min-height:100vh}
     <p id="header-sub">Loading products…</p>
   </div>
   <div class="header-badge" id="hdr-badge">0 items</div>
-  <button class="summary-btn" onclick="openSummary()" title="Weekly Summary">📊</button>
+  <button class="manager-btn" id="manager-btn" onclick="openManagerLogin()" title="Manager Dashboard">🔑</button>
 </header>
 
 <div class="status-bar">
@@ -995,6 +1123,39 @@ body{min-height:100vh}
     <p style="font-size:13px;color:var(--text-tertiary);margin-bottom:5px">Your order reference:</p>
     <div class="order-ref" id="success-ref">ORD-000000</div>
     <button class="new-order-btn" onclick="resetForm()">Submit Another Order</button>
+  </div>
+</div>
+
+<!-- PIN OVERLAY -->
+<div class="pin-overlay" id="pin-overlay">
+  <div class="pin-box">
+    <div class="pin-box-icon">🔑</div>
+    <h2>Manager Access</h2>
+    <p>Enter your PIN to view the dashboard</p>
+    <input type="password" class="pin-input" id="pin-input" maxlength="4"
+           placeholder="••••" inputmode="numeric" onkeydown="if(event.key==='Enter')checkPin()">
+    <div class="pin-error" id="pin-error">Incorrect PIN — try again</div>
+    <button class="pin-submit" onclick="checkPin()">Unlock Dashboard</button>
+    <button class="pin-cancel" onclick="closePinOverlay()">Cancel</button>
+  </div>
+</div>
+
+<!-- MANAGER DASHBOARD -->
+<div class="dash-overlay" id="dash-overlay">
+  <div class="dash-header">
+    <button class="review-back-btn" onclick="closeDashboard()">← Back</button>
+    <div>
+      <div class="dash-title">Manager Dashboard</div>
+      <div class="dash-sub" id="dash-sub">Loading…</div>
+    </div>
+    <div class="period-tabs">
+      <button class="period-tab active" id="tab-7"  onclick="switchPeriod(7)">7d</button>
+      <button class="period-tab"        id="tab-30" onclick="switchPeriod(30)">30d</button>
+      <button class="period-tab"        id="tab-0"  onclick="switchPeriod(0)">All</button>
+    </div>
+  </div>
+  <div class="dash-body" id="dash-body">
+    <div class="dash-spinner"><div class="spinner"></div></div>
   </div>
 </div>
 
@@ -2587,142 +2748,212 @@ function addScannedToOrder() {
   if (addedCount > 0) window.scrollTo(0, 0);
 }
 
-// ── WEEKLY SUMMARY ────────────────────────────────────────────────
-function openSummary() {
-  document.getElementById('summary-overlay').classList.add('show');
-  document.getElementById('summary-overlay').scrollTop = 0;
-  loadSummary();
+// ── MANAGER DASHBOARD ─────────────────────────────────────────────
+const MANAGER_PIN      = '1234'; // change by asking Claude
+let   _managerUnlocked = false;
+let   _dashPeriod      = 7;
+let   _dashLoading     = false;
+
+function openManagerLogin() {
+  if (_managerUnlocked) { openDashboard(); return; }
+  const overlay = document.getElementById('pin-overlay');
+  overlay.classList.add('show');
+  setTimeout(() => document.getElementById('pin-input').focus(), 100);
 }
 
-function closeSummary() {
-  document.getElementById('summary-overlay').classList.remove('show');
+function closePinOverlay() {
+  document.getElementById('pin-overlay').classList.remove('show');
+  document.getElementById('pin-input').value = '';
+  document.getElementById('pin-error').classList.remove('show');
 }
 
-let _summaryLoading = false;
-function loadSummary() {
-  if (_summaryLoading) return;
-  _summaryLoading = true;
-
-  document.getElementById('summary-period').textContent = 'Loading…';
-  document.getElementById('summary-body').innerHTML =
-    '<div style="text-align:center;padding:40px"><div class="spinner"></div><div class="loading-msg">Loading summary…</div></div>';
-
-  const old = document.getElementById('summary-jsonp');
-  if (old) old.remove();
-
-  window._onSummaryLoaded = function(data) {
-    _summaryLoading = false;
-    if (!data || !data.ok) {
-      document.getElementById('summary-body').innerHTML =
-        '<div class="summary-no-activity">Could not load summary — please tap Refresh.</div>';
-      return;
-    }
-    renderSummary(data);
-  };
-
-  const script = document.createElement('script');
-  script.id  = 'summary-jsonp';
-  script.src = SCRIPT_URL + '?action=summary&callback=_onSummaryLoaded';
-  script.onerror = () => {
-    _summaryLoading = false;
-    document.getElementById('summary-body').innerHTML =
-      '<div class="summary-no-activity">Connection error — check your internet and tap Refresh.</div>';
-  };
-  document.head.appendChild(script);
-}
-
-function renderSummary(data) {
-  document.getElementById('summary-period').textContent = 'Last 7 days: ' + data.period;
-
-  const body = document.getElementById('summary-body');
-  body.innerHTML = '';
-
-  const SITE_ORDER = [
-    'SD Withington','SD Wythenshawe','SD Cheadle','SD Newcastle',
-    'SD EH 12','SD EH 15','DC Withington','DC Cheadle','DC Oxford Road'
-  ];
-
-  let anyActivity = false;
-  SITE_ORDER.forEach(site => {
-    const orders = (data.sites || {})[site];
-    if (!orders || !orders.length) return;
-    anyActivity = true;
-
-    const section = document.createElement('div');
-    section.className = 'review-section';
-
-    const title = document.createElement('div');
-    title.className = 'review-section-title';
-    title.textContent = site + ' — ' + orders.length + (orders.length === 1 ? ' order' : ' orders');
-    section.appendChild(title);
-
-    const card = document.createElement('div');
-    card.className = 'order-log-card';
-
-    orders.forEach(order => {
-      const row = document.createElement('div');
-      row.className = 'order-log-row';
-
-      const top = document.createElement('div');
-      top.className = 'order-log-top';
-      const ref = document.createElement('span');
-      ref.className = 'order-log-ref';
-      ref.textContent = order.orderId;
-      const time = document.createElement('span');
-      time.className = 'order-log-time';
-      time.textContent = order.time;
-      top.appendChild(ref);
-      top.appendChild(time);
-
-      const bottom = document.createElement('div');
-      bottom.className = 'order-log-bottom';
-
-      const itemsMeta = document.createElement('span');
-      itemsMeta.className = 'order-log-meta';
-      itemsMeta.textContent = order.items + (order.items === 1 ? ' item' : ' items');
-      bottom.appendChild(itemsMeta);
-
-      if (order.delivDate) {
-        const dot1 = document.createElement('span');
-        dot1.className = 'summary-dot';
-        dot1.textContent = '·';
-        const deliv = document.createElement('span');
-        deliv.className = 'order-log-meta';
-        deliv.textContent = '🗓 ' + order.delivDate;
-        bottom.appendChild(dot1);
-        bottom.appendChild(deliv);
-      }
-
-      const dot2 = document.createElement('span');
-      dot2.className = 'summary-dot';
-      dot2.textContent = '·';
-      const tg = document.createElement('span');
-      tg.className = order.hasFailed ? 'tg-fail' : 'tg-ok';
-      tg.textContent = buildTgLabel(order);
-      bottom.appendChild(dot2);
-      bottom.appendChild(tg);
-
-      row.appendChild(top);
-      row.appendChild(bottom);
-      card.appendChild(row);
-    });
-
-    section.appendChild(card);
-    body.appendChild(section);
-  });
-
-  if (!anyActivity) {
-    body.innerHTML = '<div class="summary-no-activity">No orders placed in the last 7 days.</div>';
+function checkPin() {
+  const entered = document.getElementById('pin-input').value;
+  if (entered === MANAGER_PIN) {
+    _managerUnlocked = true;
+    document.getElementById('manager-btn').classList.add('unlocked');
+    closePinOverlay();
+    openDashboard();
+  } else {
+    document.getElementById('pin-error').classList.add('show');
+    document.getElementById('pin-input').value = '';
+    document.getElementById('pin-input').focus();
   }
 }
 
-function buildTgLabel(order) {
-  const parts = [];
-  if (order.prepOk  === true)  parts.push('✅ Prep');
-  if (order.prepOk  === false) parts.push('❌ Prep');
-  if (order.stockOk === true)  parts.push('✅ Stock');
-  if (order.stockOk === false) parts.push('❌ Stock');
-  return parts.length ? parts.join(' | ') : '—';
+function openDashboard() {
+  document.getElementById('dash-overlay').classList.add('show');
+  document.getElementById('dash-overlay').scrollTop = 0;
+  loadDashboard(_dashPeriod);
+}
+
+function closeDashboard() {
+  document.getElementById('dash-overlay').classList.remove('show');
+}
+
+function switchPeriod(days) {
+  _dashPeriod = days;
+  document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + days).classList.add('active');
+  loadDashboard(days);
+}
+
+function loadDashboard(days) {
+  if (_dashLoading) return;
+  _dashLoading = true;
+  document.getElementById('dash-sub').textContent = 'Loading…';
+  document.getElementById('dash-body').innerHTML =
+    '<div class="dash-spinner"><div class="spinner"></div></div>';
+
+  const old = document.getElementById('dash-jsonp');
+  if (old) old.remove();
+
+  window._onDashboardLoaded = function(data) {
+    _dashLoading = false;
+    if (!data || !data.ok) {
+      document.getElementById('dash-body').innerHTML =
+        '<div class="dash-empty">Could not load dashboard — please refresh.</div>';
+      return;
+    }
+    renderDashboard(data);
+  };
+
+  const s = document.createElement('script');
+  s.id  = 'dash-jsonp';
+  s.src = SCRIPT_URL + '?action=dashboard&days=' + days + '&callback=_onDashboardLoaded';
+  s.onerror = () => {
+    _dashLoading = false;
+    document.getElementById('dash-body').innerHTML =
+      '<div class="dash-empty">Connection error — please check your internet.</div>';
+  };
+  document.head.appendChild(s);
+}
+
+function renderDashboard(data) {
+  const label = data.days === 0 ? 'All time' : 'Last ' + data.days + ' days';
+  document.getElementById('dash-sub').textContent = label;
+  const body = document.getElementById('dash-body');
+  body.innerHTML = '';
+
+  // ── Stat cards ──
+  const statsGrid = document.createElement('div');
+  statsGrid.className = 'dash-stats';
+  statsGrid.appendChild(makeStatCard('Orders', data.stats.orders, ''));
+  statsGrid.appendChild(makeStatCard('Items', data.stats.items, ''));
+  statsGrid.appendChild(makeStatCard('Value', '£' + data.stats.value.toLocaleString(), ''));
+  body.appendChild(statsGrid);
+
+  // ── Orders by site ──
+  if (data.bySite && data.bySite.length) {
+    body.appendChild(makeSectionTitle('Orders by Site'));
+    const card = document.createElement('div');
+    card.className = 'dash-card';
+    const maxOrders = data.bySite[0].orders;
+    data.bySite.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'site-row';
+      const name = document.createElement('div');
+      name.className = 'site-name'; name.textContent = s.site;
+      const barWrap = document.createElement('div');
+      barWrap.className = 'site-bar-wrap';
+      const bar = document.createElement('div');
+      bar.className = 'site-bar';
+      bar.style.width = Math.round((s.orders / maxOrders) * 100) + '%';
+      barWrap.appendChild(bar);
+      const count = document.createElement('div');
+      count.className = 'site-count';
+      count.textContent = s.orders + (s.orders === 1 ? ' order' : ' orders') + ' · ' + s.items + ' items';
+      row.appendChild(name); row.appendChild(barWrap); row.appendChild(count);
+      card.appendChild(row);
+    });
+    body.appendChild(card);
+  }
+
+  // ── Recent orders ──
+  body.appendChild(makeSectionTitle('Recent Orders'));
+  const recentCard = document.createElement('div');
+  recentCard.className = 'dash-card';
+  if (data.recent && data.recent.length) {
+    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
+    const table = document.createElement('table'); table.className = 'dash-table';
+    table.innerHTML = '<thead><tr><th>Order</th><th>Site</th><th>Submitted</th><th>Delivery</th><th>Items</th><th>Telegram</th></tr></thead>';
+    const tbody = document.createElement('tbody');
+    data.recent.forEach(o => {
+      const tr = document.createElement('tr');
+      const tg = o.hasFail
+        ? '<span class="dash-tg-fail">' + [o.prepTg, o.stockTg].filter(Boolean).join(' ') + '</span>'
+        : '<span class="dash-tg-ok">✅ Sent</span>';
+      tr.innerHTML = `<td><span class="dash-oid">${o.orderId}</span></td>
+        <td>${o.site}</td><td>${o.submitted}</td>
+        <td>${o.delivDate || '—'}</td><td>${o.items}</td><td>${tg}</td>`;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    recentCard.appendChild(wrap);
+  } else {
+    recentCard.innerHTML = '<div class="dash-empty">No orders in this period.</div>';
+  }
+  body.appendChild(recentCard);
+
+  // ── Telegram failures ──
+  if (data.failures && data.failures.length) {
+    body.appendChild(makeSectionTitle('⚠️ Telegram Failures (' + data.failures.length + ')'));
+    const failCard = document.createElement('div');
+    failCard.className = 'dash-card';
+    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
+    const table = document.createElement('table'); table.className = 'dash-table';
+    table.innerHTML = '<thead><tr><th>Order</th><th>Site</th><th>Submitted</th><th>Prep</th><th>Stock</th></tr></thead>';
+    const tbody = document.createElement('tbody');
+    data.failures.forEach(f => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><span class="dash-oid">${f.orderId}</span></td>
+        <td>${f.site}</td><td>${f.submitted}</td>
+        <td class="${f.prepTg.includes('❌')?'dash-tg-fail':'dash-tg-ok'}">${f.prepTg||'—'}</td>
+        <td class="${f.stockTg.includes('❌')?'dash-tg-fail':'dash-tg-ok'}">${f.stockTg||'—'}</td>`;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    failCard.appendChild(wrap);
+    body.appendChild(failCard);
+  }
+
+  // ── Top items ──
+  if (data.topItems && data.topItems.length) {
+    body.appendChild(makeSectionTitle('Most Ordered Items'));
+    const itemCard = document.createElement('div');
+    itemCard.className = 'dash-card';
+    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
+    const table = document.createElement('table'); table.className = 'dash-table';
+    table.innerHTML = '<thead><tr><th>#</th><th>Item</th><th>Total Qty</th></tr></thead>';
+    const tbody = document.createElement('tbody');
+    data.topItems.forEach((item, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="rank-num">${i + 1}</td><td>${item.name}</td><td><strong>${item.qty}</strong></td>`;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    itemCard.appendChild(wrap);
+    body.appendChild(itemCard);
+  }
+}
+
+function makeStatCard(label, value, sub) {
+  const card = document.createElement('div');
+  card.className = 'stat-card';
+  card.innerHTML = `<div class="stat-label">${label}</div>
+    <div class="stat-value">${value}</div>
+    ${sub ? '<div class="stat-sub">' + sub + '</div>' : ''}`;
+  return card;
+}
+
+function makeSectionTitle(text) {
+  const el = document.createElement('div');
+  el.className = 'dash-section-title';
+  el.textContent = text;
+  return el;
 }
 
 // ── UNIFIED SEARCH — filters both prep and stock at once ─────────
