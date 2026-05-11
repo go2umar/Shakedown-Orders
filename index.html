@@ -892,6 +892,8 @@ body{min-height:100vh}
 }
 .dash-apply-btn:hover{background:#4F46E5}
 .dash-note{font-size:11px;color:var(--text-tertiary);padding:6px 0 0;width:100%}
+.chart-wrap{position:relative;padding:16px;height:280px}
+.chart-wrap-tall{position:relative;padding:16px;height:340px}
 
 /* ── MONTHLY TABLE ───────────────────────────────────── */
 .month-bar-wrap{width:80px;height:5px;background:var(--bg);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:8px}
@@ -1342,7 +1344,10 @@ body{min-height:100vh}
 <script>
 
 const SCRIPT_URL     = "https://script.google.com/macros/s/AKfycbyoQZasT3UeYdz9ABhYj3qVFay1GtcJJadDPBmxBWGS9jPSrCWZR0YfjcHDNUwEYeeI/exec";
-const ALL_SITES_LIST = ['SD Withington','SD Wythenshawe','SD Cheadle','SD Newcastle','SD EH 12','SD EH 15','DC Withington','DC Cheadle','DC Oxford Road'];
+const ALL_SITES_LIST  = ['SD Withington','SD Wythenshawe','SD Cheadle','SD Newcastle','SD EH 12','SD EH 15','DC Withington','DC Cheadle','DC Oxford Road'];
+const DASH_PALETTE    = ['#6366F1','#E63946','#00875A','#0070C9','#F59E0B','#0891B2','#7B2FBE','#EC4899','#D97706'];
+const SITE_COLOR      = {};
+ALL_SITES_LIST.forEach((s,i) => { SITE_COLOR[s] = DASH_PALETTE[i]; });
 let SITE_DATA    = null;
 let orderType    = null;
 let currentSite  = null;
@@ -2928,7 +2933,7 @@ function applyFilters() {
         '<div class="dash-empty">Could not load dashboard. Ensure the Apps Script is deployed and try again.</div>';
       return;
     }
-    renderDashboard(data, site, from, to);
+    loadChartJS().then(() => renderDashboard(data, site, from, to));
   };
 
   const s = document.createElement('script');
@@ -2942,218 +2947,235 @@ function applyFilters() {
   document.head.appendChild(s);
 }
 
+function loadChartJS() {
+  return new Promise((resolve, reject) => {
+    if (window.Chart) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src    = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+    s.onload  = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+let _charts = [];
+function destroyCharts() { _charts.forEach(c => { try { c.destroy(); } catch(e){} }); _charts = []; }
+
+function mkChart(type, canvasId, labels, datasets, opts) {
+  const el = document.getElementById(canvasId);
+  if (!el || !window.Chart) return;
+  const fontFamily = "'Outfit', system-ui, sans-serif";
+  const baseOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: datasets.length > 1,
+        position: 'bottom',
+        labels: { font: { family: fontFamily, size: 11 }, boxWidth: 12, padding: 12 }
+      },
+      tooltip: { titleFont: { family: fontFamily }, bodyFont: { family: fontFamily } }
+    },
+    scales: (type === 'pie' || type === 'doughnut') ? undefined : {
+      x: { ticks: { font: { family: fontFamily, size: 11 } }, grid: { display: false } },
+      y: { ticks: { font: { family: fontFamily, size: 11 } }, grid: { color: '#F4F4F6' },
+           beginAtZero: true }
+    }
+  };
+  const merged = Object.assign({}, baseOpts, opts || {});
+  if (merged.scales && opts && opts.scales) merged.scales = Object.assign({}, baseOpts.scales, opts.scales);
+  const chart = new Chart(el, { type, data: { labels, datasets }, options: merged });
+  _charts.push(chart);
+  return chart;
+}
+
+function mkCard(content) {
+  const d = document.createElement('div');
+  d.className = 'dash-card';
+  if (typeof content === 'string') d.innerHTML = content;
+  else d.appendChild(content);
+  return d;
+}
+
+function mkTable(headers, rows) {
+  const wrap  = document.createElement('div'); wrap.className = 'dash-table-wrap';
+  const table = document.createElement('table'); table.className = 'dash-table';
+  table.innerHTML = '<thead><tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead>';
+  const tbody = document.createElement('tbody');
+  rows.forEach(cells => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = cells.map(c => `<td>${c}</td>`).join('');
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody); wrap.appendChild(table);
+  return wrap;
+}
+
 function renderDashboard(data, siteFilter, from, to) {
-  // Update subtitle
-  let rangeLabel = '';
-  if (from && to)        rangeLabel = from + ' — ' + to;
-  else if (data.days === 0) rangeLabel = 'All time';
-  else                   rangeLabel = 'Last ' + data.days + ' days';
-  const siteLabel = siteFilter || 'All Sites';
-  document.getElementById('dash-sub').textContent = siteLabel + ' · ' + rangeLabel;
+  destroyCharts();
+
+  // ── Subtitle ──────────────────────────────────────────────────
+  let rangeLabel = from && to ? from + ' — ' + to : data.days === 0 ? 'All time' : 'Last ' + data.days + ' days';
+  document.getElementById('dash-sub').textContent = (siteFilter || 'All Sites') + ' · ' + rangeLabel;
 
   const body = document.getElementById('dash-body');
   body.innerHTML = '';
 
-  // ── 4 Stat cards ──────────────────────────────────────────────
-  const statsGrid = document.createElement('div');
-  statsGrid.className = 'dash-stats';
-  statsGrid.appendChild(makeStatCard('Orders',       data.stats.orders, ''));
-  statsGrid.appendChild(makeStatCard('Items',        data.stats.items,  ''));
-  statsGrid.appendChild(makeStatCard('Value',        '£' + data.stats.value.toLocaleString(), ''));
-  statsGrid.appendChild(makeStatCard('Avg / Order',  data.stats.avg,    'items'));
-  body.appendChild(statsGrid);
+  // ── 1. STAT CARDS ─────────────────────────────────────────────
+  const sg = document.createElement('div'); sg.className = 'dash-stats';
+  sg.appendChild(makeStatCard('Orders',       data.stats.orders, ''));
+  sg.appendChild(makeStatCard('Items',        data.stats.items,  ''));
+  sg.appendChild(makeStatCard('Total Value',  '£' + data.stats.value.toLocaleString(), ''));
+  sg.appendChild(makeStatCard('Avg / Order',  data.stats.avg,    'items'));
+  body.appendChild(sg);
 
-  // ── Orders by site (only when showing all sites) ───────────────
-  if (!siteFilter && data.bySite && data.bySite.length) {
-    body.appendChild(makeSectionTitle('Orders by Site'));
-    const card = document.createElement('div');
-    card.className = 'dash-card';
-    const maxOrders = data.bySite[0].orders;
-    data.bySite.forEach(s => {
-      const row = document.createElement('div');
-      row.className = 'site-row';
-      const name = document.createElement('div');
-      name.className = 'site-name'; name.textContent = s.site;
-      const barWrap = document.createElement('div');
-      barWrap.className = 'site-bar-wrap';
-      const bar = document.createElement('div');
-      bar.className = 'site-bar';
-      bar.style.width = Math.round((s.orders / maxOrders) * 100) + '%';
-      barWrap.appendChild(bar);
-      const count = document.createElement('div');
-      count.className = 'site-count';
-      count.textContent = s.orders + ' orders · ' + s.items + ' items · £' + s.value.toLocaleString();
-      row.appendChild(name); row.appendChild(barWrap); row.appendChild(count);
-      card.appendChild(row);
-    });
+  // ── 2. SPEND PER SITE (Section F) ─────────────────────────────
+  if (data.bySite && data.bySite.length) {
+    body.appendChild(makeSectionTitle('Spend per Site'));
+    const card = mkCard('');
+    // Chart
+    const cWrap = document.createElement('div'); cWrap.className = 'chart-wrap';
+    const canvas = document.createElement('canvas'); canvas.id = 'chart-site'; cWrap.appendChild(canvas); card.appendChild(cWrap);
+    // Table
+    card.appendChild(mkTable(
+      ['Site','Orders','Total Spend (£)','Avg per Order (£)','% of Total'],
+      data.bySite.map(s => [`<strong>${s.site}</strong>`, s.orders, '£'+s.value.toLocaleString(), '£'+s.avg.toLocaleString(), s.pct+'%'])
+    ));
     body.appendChild(card);
+    // Draw horizontal bar chart
+    const sorted = data.bySite.slice().sort((a,b) => a.value - b.value);
+    mkChart('bar', 'chart-site', sorted.map(s => s.site), [{
+      label: 'Spend (£)', data: sorted.map(s => s.value),
+      backgroundColor: sorted.map(s => SITE_COLOR[s.site] || '#6366F1'),
+      borderRadius: 4
+    }], { indexAxis:'y', plugins:{ legend:{display:false} },
+          scales:{ x:{ ticks:{callback:v=>'£'+v.toLocaleString()} }, y:{} } });
   }
 
-  // ── Section E: Monthly Spend Trend ────────────────────────────
+  // ── 3. MONTHLY SPEND BY STORE (Section E) ─────────────────────
   if (data.byMonth && data.byMonth.length) {
-    body.appendChild(makeSectionTitle('Section E — Monthly Spend Trend'));
-    const card = document.createElement('div');
-    card.className = 'dash-card';
-    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
-    const table = document.createElement('table'); table.className = 'dash-table';
-    table.innerHTML = '<thead><tr><th>Month</th><th>Orders</th><th>Total Spend (£)</th><th>vs Prior Month</th></tr></thead>';
-    const tbody = document.createElement('tbody');
-    const maxO = Math.max(...data.byMonth.map(m => m.orders), 1);
-    data.byMonth.forEach(m => {
-      const tr = document.createElement('tr');
-      const barW = Math.round((m.orders / maxO) * 70);
-      let vsHtml = '—';
-      if (m.vsPrior !== null && m.vsPrior !== undefined) {
-        const sign = m.vsPrior >= 0 ? '+' : '';
-        const cls  = m.vsPrior >= 0 ? 'vs-up' : 'vs-down';
-        vsHtml = `<span class="${cls}">${sign}£${Math.abs(m.vsPrior).toLocaleString()}</span>`;
-      }
-      tr.innerHTML = `<td><strong>${m.month}</strong></td>
-        <td>${m.orders}<span class="month-bar-wrap"><span class="month-bar" style="width:${barW}px"></span></span></td>
-        <td>£${m.value.toLocaleString()}</td><td>${vsHtml}</td>`;
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody); wrap.appendChild(table); card.appendChild(wrap);
+    body.appendChild(makeSectionTitle('Monthly Spend Trend — by Store'));
+    const card = mkCard('');
+    // Line chart (months oldest→newest on x-axis, one line per site)
+    const cWrap = document.createElement('div'); cWrap.className = 'chart-wrap-tall';
+    const canvas = document.createElement('canvas'); canvas.id = 'chart-monthly'; cWrap.appendChild(canvas); card.appendChild(cWrap);
+    // Table with vs-prior-month
+    card.appendChild(mkTable(
+      ['Month','Orders','Total Spend (£)','vs Prior Month'],
+      data.byMonth.map(m => {
+        let vs = '—';
+        if (m.vsPrior !== null && m.vsPrior !== undefined) {
+          const sign = m.vsPrior >= 0 ? '+' : '';
+          const cls  = m.vsPrior >= 0 ? 'vs-up' : 'vs-down';
+          vs = `<span class="${cls}">${sign}£${Math.abs(m.vsPrior).toLocaleString()}</span>`;
+        }
+        return [`<strong>${m.month}</strong>`, m.orders, '£'+m.value.toLocaleString(), vs];
+      })
+    ));
     body.appendChild(card);
+    // Build chart data
+    const months    = data.byMonth.slice().reverse();
+    const monthLabels = months.map(m => m.month);
+    const mbs       = data.byMonthBySite || {};
+    const activeSites = siteFilter ? [siteFilter]
+      : ALL_SITES_LIST.filter(s => months.some(m => (mbs[m.month]||{})[s] > 0));
+    const lineDatasets = activeSites.map(s => ({
+      label: s,
+      data:  monthLabels.map(m => Math.round(((mbs[m]||{})[s]||0)*100)/100),
+      borderColor: SITE_COLOR[s] || '#6366F1',
+      backgroundColor: (SITE_COLOR[s]||'#6366F1') + '18',
+      tension: 0.3, fill: false, pointRadius: 4, borderWidth: 2
+    }));
+    mkChart('line', 'chart-monthly', monthLabels, lineDatasets, {
+      scales:{ y:{ ticks:{ callback: v => '£'+v.toLocaleString() } } }
+    });
   }
 
-  // ── All orders table ───────────────────────────────────────────
-  const orderCount = data.totalCount || (data.orders && data.orders.length) || 0;
-  const titleText  = 'Orders' + (orderCount > 0 ? ' (' + orderCount + (orderCount >= 150 ? '+' : '') + ')' : '');
-  body.appendChild(makeSectionTitle(titleText));
-  const ordCard = document.createElement('div');
-  ordCard.className = 'dash-card';
+  // ── 4. SPEND BY SUPPLIER (Section D) ──────────────────────────
+  if (data.bySupplier && data.bySupplier.length) {
+    body.appendChild(makeSectionTitle('Spend by Supplier'));
+    const card = mkCard('');
+    const top10 = data.bySupplier.slice(0, 10);
+    const cWrap = document.createElement('div'); cWrap.className = 'chart-wrap';
+    const canvas = document.createElement('canvas'); canvas.id = 'chart-supplier'; cWrap.appendChild(canvas); card.appendChild(cWrap);
+    card.appendChild(mkTable(
+      ['Supplier','Line Items','Total Spend (£)','% of Total'],
+      data.bySupplier.map(s => [`<strong>${s.supplier}</strong>`, s.orders, '£'+s.spend.toLocaleString(), s.pct+'%'])
+    ));
+    body.appendChild(card);
+    const suppSorted = top10.slice().sort((a,b) => a.spend - b.spend);
+    mkChart('bar', 'chart-supplier', suppSorted.map(s => s.supplier), [{
+      label: 'Spend (£)', data: suppSorted.map(s => s.spend),
+      backgroundColor: DASH_PALETTE, borderRadius: 4
+    }], { indexAxis:'y', plugins:{ legend:{display:false} },
+          scales:{ x:{ ticks:{callback:v=>'£'+v.toLocaleString()} }, y:{} } });
+  }
+
+  // ── 5. MOST ORDERED ITEMS ──────────────────────────────────────
+  if (data.topItems && data.topItems.length) {
+    body.appendChild(makeSectionTitle('Most Ordered Items'));
+    const card = mkCard('');
+    const top10 = data.topItems.slice(0, 10);
+    const cWrap = document.createElement('div'); cWrap.className = 'chart-wrap';
+    const canvas = document.createElement('canvas'); canvas.id = 'chart-items'; cWrap.appendChild(canvas); card.appendChild(cWrap);
+    card.appendChild(mkTable(
+      ['#','Item','Total Qty Ordered'],
+      data.topItems.map((it,i) => [i+1, it.name, `<strong>${it.qty}</strong>`])
+    ));
+    body.appendChild(card);
+    const itemsSorted = top10.slice().sort((a,b) => a.qty - b.qty);
+    mkChart('bar', 'chart-items', itemsSorted.map(i => i.name), [{
+      label: 'Qty', data: itemsSorted.map(i => i.qty),
+      backgroundColor: '#6366F1', borderRadius: 4
+    }], { indexAxis:'y', plugins:{ legend:{display:false} } });
+  }
+
+  // ── 6. ALL ORDERS ──────────────────────────────────────────────
+  const orderCount = data.totalCount || 0;
+  body.appendChild(makeSectionTitle('Orders (' + orderCount + (orderCount >= 150 ? '+' : '') + ')'));
+  const ordCard = mkCard('');
   if (data.orders && data.orders.length) {
     if (data.totalCount > 150) {
       const note = document.createElement('div');
-      note.className = 'dash-note';
-      note.style.padding = '8px 14px';
-      note.textContent = 'Showing most recent 150 of ' + data.totalCount + ' orders. Use the date filter to narrow the range.';
+      note.style.cssText = 'font-size:11px;color:var(--text-tertiary);padding:8px 14px';
+      note.textContent = 'Showing most recent 150 of ' + data.totalCount + ' orders. Use the date filter to narrow down.';
       ordCard.appendChild(note);
     }
-    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
-    const table = document.createElement('table'); table.className = 'dash-table';
     const siteTh = siteFilter ? '' : '<th>Site</th>';
-    table.innerHTML = `<thead><tr><th>Order ID</th>${siteTh}<th>Submitted</th><th>Delivery</th><th>Type</th><th>Items</th><th>Value</th><th>Telegram</th></tr></thead>`;
+    const tableWrap = document.createElement('div'); tableWrap.className = 'dash-table-wrap';
+    const tbl = document.createElement('table'); tbl.className = 'dash-table';
+    tbl.innerHTML = `<thead><tr><th>Order ID</th>${siteTh}<th>Submitted</th><th>Delivery</th><th>Type</th><th>Items</th><th>Value</th><th>Telegram</th></tr></thead>`;
     const tbody = document.createElement('tbody');
     data.orders.forEach(o => {
-      const tr  = document.createElement('tr');
-      const tg  = o.hasFail
-        ? `<span class="dash-tg-fail">${[o.prepTg, o.stockTg].filter(x => x.includes('❌')).join(' ')}</span>`
-        : '<span class="dash-tg-ok">✅</span>';
+      const tr = document.createElement('tr');
+      const tg = o.hasFail ? `<span class="dash-tg-fail">❌</span>` : '<span class="dash-tg-ok">✅</span>';
       const siteTd = siteFilter ? '' : `<td>${o.site}</td>`;
-      tr.innerHTML = `<td><span class="dash-oid">${o.orderId}</span></td>${siteTd}
-        <td>${o.submitted}</td><td>${o.delivDate || '—'}</td>
-        <td>${o.type}</td><td>${o.items}</td><td>£${o.value}</td><td>${tg}</td>`;
+      tr.innerHTML = `<td><span class="dash-oid">${o.orderId}</span></td>${siteTd}<td>${o.submitted}</td><td>${o.delivDate||'—'}</td><td>${o.type}</td><td>${o.items}</td><td>£${o.value}</td><td>${tg}</td>`;
       tbody.appendChild(tr);
     });
-    table.appendChild(tbody); wrap.appendChild(table); ordCard.appendChild(wrap);
+    tbl.appendChild(tbody); tableWrap.appendChild(tbl); ordCard.appendChild(tableWrap);
   } else {
-    ordCard.innerHTML = '<div class="dash-empty">No orders found for this filter.</div>';
+    ordCard.innerHTML = '<div class="dash-empty">No orders in this period.</div>';
   }
   body.appendChild(ordCard);
 
-  // ── Telegram failures ──────────────────────────────────────────
+  // ── 7. TELEGRAM FAILURES ──────────────────────────────────────
   if (data.failures && data.failures.length) {
     body.appendChild(makeSectionTitle('⚠️ Telegram Failures (' + data.failures.length + ')'));
-    const failCard = document.createElement('div');
-    failCard.className = 'dash-card';
-    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
-    const table = document.createElement('table'); table.className = 'dash-table';
-    table.innerHTML = '<thead><tr><th>Order</th><th>Site</th><th>Submitted</th><th>Delivery</th><th>Prep</th><th>Stock</th></tr></thead>';
-    const tbody = document.createElement('tbody');
-    data.failures.forEach(f => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td><span class="dash-oid">${f.orderId}</span></td>
-        <td>${f.site}</td><td>${f.submitted}</td><td>${f.delivDate||'—'}</td>
-        <td class="${f.prepTg.includes('❌')?'dash-tg-fail':'dash-tg-ok'}">${f.prepTg||'—'}</td>
-        <td class="${f.stockTg.includes('❌')?'dash-tg-fail':'dash-tg-ok'}">${f.stockTg||'—'}</td>`;
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody); wrap.appendChild(table); failCard.appendChild(wrap);
-    body.appendChild(failCard);
+    const fc = mkCard('');
+    fc.appendChild(mkTable(
+      ['Order','Site','Submitted','Delivery','Prep','Stock'],
+      data.failures.map(f => [
+        `<span class="dash-oid">${f.orderId}</span>`, f.site, f.submitted, f.delivDate||'—',
+        `<span class="${f.prepTg.includes('❌')?'dash-tg-fail':'dash-tg-ok'}">${f.prepTg||'—'}</span>`,
+        `<span class="${f.stockTg.includes('❌')?'dash-tg-fail':'dash-tg-ok'}">${f.stockTg||'—'}</span>`
+      ])
+    ));
+    body.appendChild(fc);
   }
 
-  // ── Top items ──────────────────────────────────────────────────
-  if (data.topItems && data.topItems.length) {
-    body.appendChild(makeSectionTitle('Most Ordered Items'));
-    const itemCard = document.createElement('div');
-    itemCard.className = 'dash-card';
-    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
-    const table = document.createElement('table'); table.className = 'dash-table';
-    table.innerHTML = '<thead><tr><th>#</th><th>Item</th><th>Total Qty Ordered</th></tr></thead>';
-    const tbody = document.createElement('tbody');
-    data.topItems.forEach((item, i) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td class="rank-num">${i+1}</td><td>${item.name}</td><td><strong>${item.qty}</strong></td>`;
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody); wrap.appendChild(table); itemCard.appendChild(wrap);
-    body.appendChild(itemCard);
-  }
-
-  // ── Section D: Spend by Supplier ───────────────────────────────
-  if (data.bySupplier && data.bySupplier.length) {
-    body.appendChild(makeSectionTitle('Section D — Spend by Supplier'));
-    const suppCard = document.createElement('div');
-    suppCard.className = 'dash-card';
-    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
-    const table = document.createElement('table'); table.className = 'dash-table';
-    table.innerHTML = '<thead><tr><th>Supplier</th><th>Total Orders</th><th>Total Spend (£)</th><th>% of Total</th></tr></thead>';
-    const tbody = document.createElement('tbody');
-    data.bySupplier.forEach(s => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td><strong>${s.supplier}</strong></td><td>${s.orders}</td><td>£${s.spend.toLocaleString()}</td><td>${s.pct}%</td>`;
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody); wrap.appendChild(table); suppCard.appendChild(wrap);
-    body.appendChild(suppCard);
-  }
-
-  // ── Section F: All-Time Spend per Site ─────────────────────────
-  if (data.bySite && data.bySite.length) {
-    body.appendChild(makeSectionTitle('Section F — Spend per Site'));
-    const siteCard = document.createElement('div');
-    siteCard.className = 'dash-card';
-    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
-    const table = document.createElement('table'); table.className = 'dash-table';
-    table.innerHTML = '<thead><tr><th>Site</th><th>Total Orders</th><th>Total Spend (£)</th><th>Avg per Order (£)</th><th>% of Total</th></tr></thead>';
-    const tbody = document.createElement('tbody');
-    data.bySite.forEach(s => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td><strong>${s.site}</strong></td><td>${s.orders}</td><td>£${s.value.toLocaleString()}</td><td>£${s.avg.toLocaleString()}</td><td>${s.pct}%</td>`;
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody); wrap.appendChild(table); siteCard.appendChild(wrap);
-    body.appendChild(siteCard);
-  }
-
-  // ── Credits log ────────────────────────────────────────────────
-  body.appendChild(makeSectionTitle('Credits Recorded'));
-  const creditLogCard = document.createElement('div');
-  creditLogCard.className = 'dash-card';
-  if (data.credits && data.credits.length) {
-    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
-    const table = document.createElement('table'); table.className = 'dash-table';
-    table.innerHTML = '<thead><tr><th>Date</th><th>Site</th><th>Order Ref</th><th>Item</th><th>Qty</th><th>Credit (£)</th><th>Reason</th></tr></thead>';
-    const tbody = document.createElement('tbody');
-    data.credits.forEach(c => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${c.time}</td><td>${c.site}</td><td>${c.orderRef||'—'}</td><td>${c.item}</td><td>${c.qty} ${c.unit}</td><td style="color:var(--brand);font-weight:600">-£${c.total}</td><td>${c.reason}</td>`;
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody); wrap.appendChild(table); creditLogCard.appendChild(wrap);
-  } else {
-    creditLogCard.innerHTML = '<div class="dash-empty">No credits recorded yet.</div>';
-  }
-  body.appendChild(creditLogCard);
-
-  // ── Items awaiting pricing ─────────────────────────────────────
-  const unpricedTitle = 'Items Awaiting Pricing' +
-    (data.unpriced && data.unpriced.length ? ' (' + data.unpriced.length + ')' : '');
-  body.appendChild(makeSectionTitle(unpricedTitle));
-  const unpricedCard = document.createElement('div');
-  unpricedCard.className = 'dash-card';
+  // ── 8. ITEMS AWAITING PRICING ─────────────────────────────────
+  body.appendChild(makeSectionTitle('Items Awaiting Pricing' + (data.unpriced && data.unpriced.length ? ' (' + data.unpriced.length + ')' : '')));
+  const unpricedCard = mkCard('');
   if (data.unpriced && data.unpriced.length) {
     const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
     const table = document.createElement('table'); table.className = 'dash-table';
@@ -3162,15 +3184,9 @@ function renderDashboard(data, siteFilter, from, to) {
     data.unpriced.forEach(u => {
       const tr = document.createElement('tr');
       const inputId = 'price-' + u.orderId + '-' + u.item.replace(/\s+/g,'_');
-      tr.innerHTML = `
-        <td><span class="dash-oid">${u.orderId}</span></td>
-        <td>${u.site}</td><td>${u.date}</td>
-        <td><strong>${u.item}</strong></td>
-        <td>${u.qty}</td><td>${u.unit}</td>
-        <td><input type="number" id="${inputId}" step="0.01" min="0" placeholder="0.00"
-             style="width:80px;padding:5px 8px;border:1.5px solid var(--border-strong);border-radius:var(--radius-xs);font-family:var(--font);font-size:13px;outline:none;background:var(--bg)"></td>
-        <td><button onclick="saveItemPrice('${u.orderId}','${u.site}','${u.item.replace(/'/g,'\\\'').replace(/"/g,'&quot;')}','${inputId}')"
-             style="padding:5px 12px;background:#6366F1;color:#fff;border:none;border-radius:var(--radius-xs);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer">Save</button></td>`;
+      tr.innerHTML = `<td><span class="dash-oid">${u.orderId}</span></td><td>${u.site}</td><td>${u.date}</td><td><strong>${u.item}</strong></td><td>${u.qty}</td><td>${u.unit}</td>
+        <td><input type="number" id="${inputId}" step="0.01" min="0" placeholder="0.00" style="width:80px;padding:5px 8px;border:1.5px solid var(--border-strong);border-radius:var(--radius-xs);font-family:var(--font);font-size:13px;outline:none;background:var(--bg)"></td>
+        <td><button onclick="saveItemPrice('${u.orderId}','${u.site}','${u.item.replace(/'/g,"\\'").replace(/"/g,'&quot;')}','${inputId}')" style="padding:5px 12px;background:#6366F1;color:#fff;border:none;border-radius:var(--radius-xs);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer">Save</button></td>`;
       tbody.appendChild(tr);
     });
     table.appendChild(tbody); wrap.appendChild(table); unpricedCard.appendChild(wrap);
@@ -3179,7 +3195,21 @@ function renderDashboard(data, siteFilter, from, to) {
   }
   body.appendChild(unpricedCard);
 
-  // ── Record a Credit ────────────────────────────────────────────
+  // ── 9. CREDITS LOG ────────────────────────────────────────────
+  body.appendChild(makeSectionTitle('Credits Recorded'));
+  const clCard = mkCard('');
+  if (data.credits && data.credits.length) {
+    clCard.appendChild(mkTable(
+      ['Date','Site','Order Ref','Item','Qty','Credit (£)','Reason'],
+      data.credits.map(c => [c.time, c.site, c.orderRef||'—', c.item, c.qty+' '+c.unit,
+        `<span style="color:var(--brand);font-weight:600">-£${c.total}</span>`, c.reason])
+    ));
+  } else {
+    clCard.innerHTML = '<div class="dash-empty">No credits recorded yet.</div>';
+  }
+  body.appendChild(clCard);
+
+  // ── 10. RECORD A CREDIT ────────────────────────────────────────
   body.appendChild(makeSectionTitle('Record a Credit'));
   const creditFormCard = document.createElement('div');
   creditFormCard.className = 'dash-card';

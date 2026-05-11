@@ -141,7 +141,7 @@ function handleDashboardGet(e) {
     let totalOrders = 0, totalItems = 0, totalValue = 0;
     const bySiteMap = {};
     ALL_SITES.forEach(s => { bySiteMap[s] = { orders:0, items:0, value:0 }; });
-    const byMonth = {}, orders = [], failures = [];
+    const byMonth = {}, byMonthBySite = {}, orders = [], failures = [];
 
     for (let i = 1; i < sumData.length; i++) {
       const row     = sumData[i];
@@ -166,6 +166,9 @@ function handleDashboardGet(e) {
       if (bySiteMap[rowSite]) { bySiteMap[rowSite].orders++; bySiteMap[rowSite].items += items; bySiteMap[rowSite].value += value; }
       if (!byMonth[monthYear]) byMonth[monthYear] = { month: monthYear, orders:0, items:0, value:0 };
       byMonth[monthYear].orders++; byMonth[monthYear].items += items; byMonth[monthYear].value += value;
+      // Monthly by site (for per-store trend chart)
+      if (!byMonthBySite[monthYear]) byMonthBySite[monthYear] = {};
+      byMonthBySite[monthYear][rowSite] = Math.round(((byMonthBySite[monthYear][rowSite]||0) + value)*100)/100;
       orders.push({ orderId, site:rowSite, submitted, delivDate, type:orderType, items, value:Math.round(value*100)/100, prepTg, stockTg, hasFail });
       if (hasFail) failures.push({ orderId, site:rowSite, submitted, delivDate, prepTg, stockTg });
     }
@@ -267,7 +270,7 @@ function handleDashboardGet(e) {
               avg: totalOrders ? Math.round((totalItems/totalOrders)*10)/10 : 0 },
       bySite, byMonth:byMonthArr, bySupplier,
       orders:orders.slice(0,150), totalCount:orders.length,
-      failures, topItems, credits, unpriced
+      failures, topItems, credits, unpriced, byMonthBySite
     });
     const cb = params.callback;
     if (cb) return ContentService.createTextOutput(cb+'('+json+')').setMimeType(ContentService.MimeType.JAVASCRIPT);
