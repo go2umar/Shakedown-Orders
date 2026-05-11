@@ -3110,23 +3110,19 @@ function renderDashboard(data, siteFilter, from, to) {
           scales:{ x:{ ticks:{callback:v=>'£'+v.toLocaleString()} }, y:{} } });
   }
 
-  // ── 5. MOST ORDERED ITEMS ──────────────────────────────────────
+  // ── 5. ITEMS RANKED BY ORDER VOLUME ───────────────────────────
   if (data.topItems && data.topItems.length) {
-    body.appendChild(makeSectionTitle('Most Ordered Items'));
+    body.appendChild(makeSectionTitle('Items Ranked by Order Volume'));
     const card = mkCard('');
-    const top10 = data.topItems.slice(0, 10);
-    const cWrap = document.createElement('div'); cWrap.className = 'chart-wrap';
-    const canvas = document.createElement('canvas'); canvas.id = 'chart-items'; cWrap.appendChild(canvas); card.appendChild(cWrap);
     card.appendChild(mkTable(
-      ['#','Item','Total Qty Ordered'],
-      data.topItems.map((it,i) => [i+1, it.name, `<strong>${it.qty}</strong>`])
+      ['Rank','Item','Total Qty Ordered'],
+      data.topItems.map((it, i) => [
+        `<span class="rank-num">${i + 1}</span>`,
+        it.name,
+        `<strong>${it.qty}</strong>`
+      ])
     ));
     body.appendChild(card);
-    const itemsSorted = top10.slice().sort((a,b) => a.qty - b.qty);
-    mkChart('bar', 'chart-items', itemsSorted.map(i => i.name), [{
-      label: 'Qty', data: itemsSorted.map(i => i.qty),
-      backgroundColor: '#6366F1', borderRadius: 4
-    }], { indexAxis:'y', plugins:{ legend:{display:false} } });
   }
 
   // ── 6. ALL ORDERS ──────────────────────────────────────────────

@@ -159,7 +159,10 @@ function handleDashboardGet(e) {
       const value     = parseFloat(row[6]) || 0;
       const prepTg    = (row[7]  || '').toString();
       const stockTg   = (row[8]  || '').toString();
-      const monthYear = (row[11] || '').toString();
+      const rawMonth  = row[11];
+      const monthYear = rawMonth instanceof Date
+        ? Utilities.formatDate(rawMonth, Session.getScriptTimeZone(), 'MMM-yyyy')
+        : (rawMonth || '').toString().trim();
       const hasFail   = prepTg.includes('❌') || stockTg.includes('❌');
 
       totalOrders++; totalItems += items; totalValue += value;
@@ -188,7 +191,7 @@ function handleDashboardGet(e) {
       if (!name || qty <= 0) continue;
       itemTotals[name] = (itemTotals[name] || 0) + qty;
     }
-    const topItems = Object.entries(itemTotals).sort((a,b) => b[1]-a[1]).slice(0,15)
+    const topItems = Object.entries(itemTotals).sort((a,b) => b[1]-a[1]).slice(0,50)
       .map(([name,qty]) => ({ name, qty: Math.round(qty*10)/10 }));
 
     // Supplier breakdown from Order Log
