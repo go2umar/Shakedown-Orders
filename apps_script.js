@@ -636,23 +636,25 @@ function getOrCreateSummarySheet(ss) {
 // ════════════════════════════════════════════════════════════════════
 // TELEGRAM SENDER
 // ════════════════════════════════════════════════════════════════════
-function sendTelegram(chatId, site, items, notes, deliveryDate, orderId, timeStr, label) {
-  let msg  = `${label} ORDER\n`;
-  msg     += `📍 ${site}\n`;
-  msg     += `Ref: ${orderId} | ${timeStr}\n`;
-  if (deliveryDate) msg += `🗓 Delivery: ${deliveryDate}\n`;
-  msg     += `─────────────────────\n`;
-  sorted.forEach(it => {
-    const q   = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
-    // If unit starts with a digit (e.g. "1 box", "2 litre") show as QTY × UNIT
-    // If unit is a measure (e.g. "kg", "box") show as QTY UNIT
-    const qty = /^\d/.test(it.unit) ? q + ' × ' + it.unit : q + ' ' + it.unit;
-    msg += '• ' + it.name + '  —  ' + qty + '\n';
-  });
-  msg     += `─────────────────────`;
-  if (notes) msg += `\nNotes: ${notes}`;
+function pluraliseUnit(unit, qty) {
+  if (!unit) return '';
+  const u = unit.trim();
+  const n = parseFloat(qty) || 0;
+  // Units that never pluralise
+  if (/^(kg|g|ml|cl|l|ltr|ltrs|litre|litres|each|ea|%)$/i.test(u)) return u;
+  // Already plural or qty is exactly 1
+  if (n === 1) return u;
+  const bl = u.toLowerCase();
+  // Words ending in ch, sh, ss, x, z → +es
+  if (/ch$|sh$|ss$|[xz]$/.test(bl)) return u + 'es';
+  // Words ending in consonant+y → remove y, +ies (rarely applies to units but handle it)
+  if (/[^aeiou]y$/i.test(u)) return u.slice(0, -1) + 'ies';
+  // Default: +s
+  return u + 's';
+}
 
-  // Sort: DC sites → Club items first, then alphabetical; all others → alphabetical
+function sendTelegram(chatId, site, items, notes, deliveryDate, orderId, timeStr, label) {
+  // Sort: DC sites → Club items first then alphabetical; all others → alphabetical
   const sorted = items.slice().sort((a, b) => {
     if (site.startsWith('DC')) {
       const aClub = a.name.toLowerCase().startsWith('club');
@@ -661,6 +663,19 @@ function sendTelegram(chatId, site, items, notes, deliveryDate, orderId, timeStr
     }
     return a.name.localeCompare(b.name);
   });
+
+  let msg  = `${label} ORDER\n`;
+  msg     += `📍 ${site}\n`;
+  msg     += `Ref: ${orderId} | ${timeStr}\n`;
+  if (deliveryDate) msg += `🗓 Delivery: ${deliveryDate}\n`;
+  msg     += `─────────────────────\n`;
+  sorted.forEach(it => {
+    const q    = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
+    const unit = pluraliseUnit(it.unit, it.qty);
+    msg += `• ${it.name}  —  ${q} ${unit}\n`;
+  });
+  msg += `─────────────────────`;
+  if (notes) msg += `\nNotes: ${notes}`;
 
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
   try {
