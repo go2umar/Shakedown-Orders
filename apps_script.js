@@ -134,10 +134,9 @@ function handleDashboardGet(e) {
     if (params.from) fromDate = parseFlexDate(params.from);
     if (params.to)   { toDate = parseFlexDate(params.to); if (toDate) toDate.setHours(23,59,59,999); }
     if (!fromDate && days > 0) fromDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-    const ss     = SpreadsheetApp.getActiveSpreadsheet();
-    const sumWs  = ss.getSheetByName('Orders Summary');
-    const logWs  = ss.getSheetByName('Order Log');
-    const now    = new Date();
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sumWs = ss.getSheetByName('Orders Summary');
+    const logWs = ss.getSheetByName('Order Log');
     const sumData = sumWs ? sumWs.getDataRange().getValues() : [];
     let totalOrders = 0, totalItems = 0, totalValue = 0;
     const bySiteMap = {};
