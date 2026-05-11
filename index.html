@@ -1,0 +1,2761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Orders">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiB2aWV3Qm94PSIwIDAgMTkyIDE5MiI+CiAgPHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MiIgZmlsbD0iIzAwMDAwMCIvPgogIDwhLS0gSGFuZGxlIC0tPgogIDxsaW5lIHgxPSIzMCIgeTE9IjU2IiB4Mj0iNTIiIHkyPSI1NiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIxMSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPCEtLSBDYXJ0IGJvZHk6IGhhbmRsZSBjb25uZWN0cywgYm9keSB3aWRlbnMgdG8gYm90dG9tIC0tPgogIDxwb2x5bGluZSBwb2ludHM9IjUyLDU2IDY4LDEyOCAxNDAsMTI4IDE1Niw2OCA3NCw2OCIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIxMSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBmaWxsPSJub25lIi8+CiAgPCEtLSBXaGVlbHMgLS0+CiAgPGNpcmNsZSBjeD0iODYiIGN5PSIxNDYiIHI9IjEwIiBmaWxsPSJ3aGl0ZSIvPgogIDxjaXJjbGUgY3g9IjEzMCIgY3k9IjE0NiIgcj0iMTAiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPg==">
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiUHJlcCAvIFN0b2NrIE9yZGVycyIsInNob3J0X25hbWUiOiJPcmRlcnMiLCJkZXNjcmlwdGlvbiI6IlNoYWtlZG93biBvcmRlciBtYW5hZ2VtZW50IGZvcm0iLCJzdGFydF91cmwiOiIvIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiI0Y1RjVGNyIsInRoZW1lX2NvbG9yIjoiIzAwMDAwMCIsIm9yaWVudGF0aW9uIjoicG9ydHJhaXQiLCJpY29ucyI6W3sic3JjIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCNGJXeHVjejBpYUhSMGNEb3ZMM2QzZHk1M015NXZjbWN2TWpBd01DOXpkbWNpSUhkcFpIUm9QU0l4T1RJaUlHaGxhV2RvZEQwaU1Ua3lJaUIyYVdWM1FtOTRQU0l3SURBZ01Ua3lJREU1TWlJK0NpQWdQSEpsWTNRZ2QybGtkR2c5SWpFNU1pSWdhR1ZwWjJoMFBTSXhPVElpSUhKNFBTSTBNaUlnWm1sc2JEMGlJekF3TURBd01DSXZQZ29nSUR3aExTMGdTR0Z1Wkd4bElDMHRQZ29nSUR4c2FXNWxJSGd4UFNJek1DSWdlVEU5SWpVMklpQjRNajBpTlRJaUlIa3lQU0kxTmlJZ2MzUnliMnRsUFNKM2FHbDBaU0lnYzNSeWIydGxMWGRwWkhSb1BTSXhNU0lnYzNSeWIydGxMV3hwYm1WallYQTlJbkp2ZFc1a0lpOCtDaUFnUENFdExTQkRZWEowSUdKdlpIazZJR2hoYm1Sc1pTQmpiMjV1WldOMGN5d2dZbTlrZVNCM2FXUmxibk1nZEc4Z1ltOTBkRzl0SUMwdFBnb2dJRHh3YjJ4NWJHbHVaU0J3YjJsdWRITTlJalV5TERVMklEWTRMREV5T0NBeE5EQXNNVEk0SURFMU5pdzJPQ0EzTkN3Mk9DSWdjM1J5YjJ0bFBTSjNhR2wwWlNJZ2MzUnliMnRsTFhkcFpIUm9QU0l4TVNJZ2MzUnliMnRsTFd4cGJtVmpZWEE5SW5KdmRXNWtJaUJ6ZEhKdmEyVXRiR2x1WldwdmFXNDlJbkp2ZFc1a0lpQm1hV3hzUFNKdWIyNWxJaTgrQ2lBZ1BDRXRMU0JYYUdWbGJITWdMUzArQ2lBZ1BHTnBjbU5zWlNCamVEMGlPRFlpSUdONVBTSXhORFlpSUhJOUlqRXdJaUJtYVd4c1BTSjNhR2wwWlNJdlBnb2dJRHhqYVhKamJHVWdZM2c5SWpFek1DSWdZM2s5SWpFME5pSWdjajBpTVRBaUlHWnBiR3c5SW5kb2FYUmxJaTgrQ2p3dmMzWm5QZz09Iiwic2l6ZXMiOiIxOTJ4MTkyIiwidHlwZSI6ImltYWdlL3N2Zyt4bWwiLCJwdXJwb3NlIjoiYW55IG1hc2thYmxlIn0seyJzcmMiOiJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFBITjJaeUI0Yld4dWN6MGlhSFIwY0RvdkwzZDNkeTUzTXk1dmNtY3ZNakF3TUM5emRtY2lJSGRwWkhSb1BTSTFNVElpSUdobGFXZG9kRDBpTlRFeUlpQjJhV1YzUW05NFBTSXdJREFnTlRFeUlEVXhNaUkrQ2lBZ1BISmxZM1FnZDJsa2RHZzlJalV4TWlJZ2FHVnBaMmgwUFNJMU1USWlJSEo0UFNJeE1USWlJR1pwYkd3OUlpTXdNREF3TURBaUx6NEtJQ0E4SVMwdElFaGhibVJzWlNBdExUNEtJQ0E4YkdsdVpTQjRNVDBpTnpZaUlIa3hQU0l4TkRnaUlIZ3lQU0l4TXpZaUlIa3lQU0l4TkRnaUlITjBjbTlyWlQwaWQyaHBkR1VpSUhOMGNtOXJaUzEzYVdSMGFEMGlNekFpSUhOMGNtOXJaUzFzYVc1bFkyRndQU0p5YjNWdVpDSXZQZ29nSUR3aExTMGdRMkZ5ZENCaWIyUjVJQzB0UGdvZ0lEeHdiMng1YkdsdVpTQndiMmx1ZEhNOUlqRXpOaXd4TkRnZ01UZ3dMRE0wTUNBek56UXNNelF3SURReE5pd3hPREFnTVRrMkxERTRNQ0lnYzNSeWIydGxQU0ozYUdsMFpTSWdjM1J5YjJ0bExYZHBaSFJvUFNJek1DSWdjM1J5YjJ0bExXeHBibVZqWVhBOUluSnZkVzVrSWlCemRISnZhMlV0YkdsdVpXcHZhVzQ5SW5KdmRXNWtJaUJtYVd4c1BTSnViMjVsSWk4K0NpQWdQQ0V0TFNCWGFHVmxiSE1nTFMwK0NpQWdQR05wY21Oc1pTQmplRDBpTWpJNElpQmplVDBpTXprd0lpQnlQU0l5T0NJZ1ptbHNiRDBpZDJocGRHVWlMejRLSUNBOFkybHlZMnhsSUdONFBTSXpORFlpSUdONVBTSXpPVEFpSUhJOUlqSTRJaUJtYVd4c1BTSjNhR2wwWlNJdlBnbzhMM04yWno0PSIsInNpemVzIjoiNTEyeDUxMiIsInR5cGUiOiJpbWFnZS9zdmcreG1sIiwicHVycG9zZSI6ImFueSBtYXNrYWJsZSJ9XX0=">
+<title>Shakedown Order Form</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  /* Brand */
+  --brand:#E63946;
+  --brand-dark:#C1121F;
+  --brand-light:#FDECEA;
+
+  /* Neutrals */
+  --bg:#F5F5F7;
+  --surface:#FFFFFF;
+  --surface-raised:#FFFFFF;
+  --border:#E4E4E7;
+  --border-strong:#D1D1D6;
+
+  /* Text */
+  --text-primary:#111111;
+  --text-secondary:#6E6E73;
+  --text-tertiary:#AEAEB2;
+
+  /* Prep / Stock */
+  --prep:#00875A;
+  --prep-bg:#E6F5F0;
+  --prep-border:#B8E0D4;
+  --stock:#0070C9;
+  --stock-bg:#E5F2FF;
+  --stock-border:#B3D7F5;
+  --both:#7B2FBE;
+  --both-bg:#F3EAFF;
+  --both-border:#D6B8F5;
+
+  /* States */
+  --selected-bg:#F0FBF5;
+  --selected-border:#00875A;
+  --selected-text:#00875A;
+
+  /* Misc */
+  --shadow-sm:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.04);
+  --shadow-lg:0 12px 32px rgba(0,0,0,.10),0 4px 8px rgba(0,0,0,.05);
+  --radius:12px;
+  --radius-sm:8px;
+  --radius-xs:6px;
+  --font:'Outfit',system-ui,sans-serif;
+}
+
+html{font-family:var(--font);background:var(--bg);color:var(--text-primary);font-size:15px;-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased}
+body{min-height:100vh}
+.app{max-width:640px;margin:0 auto;padding:0 0 60px}
+
+/* ── HEADER ─────────────────────────────────────────── */
+.app-header{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:16px 20px;
+  display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:100;
+  box-shadow:var(--shadow-sm);
+}
+.header-logo{
+  width:36px;height:36px;border-radius:10px;
+  background:var(--brand);
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex-shrink:0;
+  box-shadow:0 2px 8px rgba(230,57,70,.3);
+}
+.header-text h1{font-size:16px;font-weight:700;color:var(--text-primary);letter-spacing:-.3px}
+.header-text p{font-size:12px;color:var(--text-secondary);margin-top:1px}
+.header-badge{
+  margin-left:auto;
+  background:var(--brand-light);
+  color:var(--brand);
+  border-radius:20px;padding:4px 12px;
+  font-size:12px;font-weight:600;
+  flex-shrink:0;
+  transition:all .2s;
+}
+.header-badge.has-items{
+  background:var(--brand);color:#fff;
+}
+
+/* ── STATUS BAR ─────────────────────────────────────── */
+.status-bar{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:8px 20px;
+  display:flex;gap:20px;flex-wrap:wrap;
+}
+.status-pill{font-size:12px;color:var(--text-secondary)}
+.status-pill strong{color:var(--text-primary);font-weight:600}
+
+/* ── SECTIONS ────────────────────────────────────────── */
+.section{padding:20px 16px 0}
+.section-label{
+  font-size:11px;font-weight:700;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--text-tertiary);
+  margin-bottom:10px;
+}
+
+/* ── CARD ────────────────────────────────────────────── */
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+  margin-bottom:12px;
+  box-shadow:var(--shadow-sm);
+}
+.card-head{
+  padding:14px 16px;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface);
+}
+.card-head-icon{
+  width:30px;height:30px;border-radius:var(--radius-xs);
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;
+}
+.card-head-title{font-size:14px;font-weight:600;color:var(--text-primary)}
+
+/* ── FIELDS ──────────────────────────────────────────── */
+.field{padding:14px 16px}
+.field+.field{padding-top:0}
+.field label{
+  display:block;font-size:11px;font-weight:700;
+  letter-spacing:.6px;text-transform:uppercase;
+  color:var(--text-secondary);margin-bottom:7px;
+}
+.field select,.field input[type=text]{
+  width:100%;padding:11px 14px;
+  background:var(--bg);
+  border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-sm);
+  color:var(--text-primary);
+  font-family:var(--font);font-size:15px;font-weight:400;
+  -webkit-appearance:none;appearance:none;
+  transition:border-color .15s,box-shadow .15s;
+  outline:none;
+}
+.field select:focus,.field input[type=text]:focus{
+  border-color:var(--brand);
+  box-shadow:0 0 0 3px rgba(230,57,70,.1);
+  background:var(--surface);
+}
+.field select option,.field select optgroup{color:var(--text-primary)}
+
+/* ── ORDER TYPE BUTTONS ──────────────────────────────── */
+.ot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 16px 16px}
+.ot-btn{
+  padding:14px 8px;
+  border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-sm);
+  background:var(--bg);
+  color:var(--text-secondary);
+  font-family:var(--font);font-size:13px;font-weight:600;
+  cursor:pointer;text-align:center;
+  transition:all .15s;line-height:1.5;
+}
+.ot-btn:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-light)}
+.ot-btn.prep.active{border-color:var(--prep);background:var(--prep-bg);color:var(--prep);box-shadow:0 0 0 3px rgba(0,135,90,.1)}
+.ot-btn.stock.active{border-color:var(--stock);background:var(--stock-bg);color:var(--stock);box-shadow:0 0 0 3px rgba(0,112,201,.1)}
+.ot-btn.both.active{border-color:var(--both);background:var(--both-bg);color:var(--both);box-shadow:0 0 0 3px rgba(123,47,190,.1)}
+
+/* ── ORDER SECTION HEADER ────────────────────────────── */
+.order-section-head{
+  padding:12px 16px 10px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface);
+}
+.order-section-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:20px;
+  font-size:12px;font-weight:700;letter-spacing:.2px;
+}
+.order-section-badge.prep{background:var(--prep-bg);color:var(--prep);border:1px solid var(--prep-border)}
+.order-section-badge.stock{background:var(--stock-bg);color:var(--stock);border:1px solid var(--stock-border)}
+
+/* ── SEARCH ──────────────────────────────────────────── */
+.search-wrap{padding:10px 16px;border-bottom:1px solid var(--border);background:#FAFAFA}
+.search-input{
+  width:100%;padding:9px 13px 9px 36px;
+  background:var(--surface);
+  border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-sm);
+  color:var(--text-primary);
+  font-family:var(--font);font-size:14px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236E6E73' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:12px center;
+  -webkit-appearance:none;appearance:none;outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.search-input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(230,57,70,.1)}
+
+/* ── CATEGORY HEADER ─────────────────────────────────── */
+.cat-hdr{
+  padding:12px 16px;
+  display:flex;align-items:center;gap:10px;
+  cursor:pointer;
+  border-bottom:1px solid var(--border);
+  background:#F4F4F6;
+  transition:background .15s;
+  user-select:none;
+}
+.cat-hdr:hover{background:#EBEBEE}
+.cat-hdr.has-items{background:#EFF7F2}
+.cat-hdr-name{font-size:13px;font-weight:600;color:var(--text-primary);flex:1}
+.cat-hdr-meta{
+  font-size:11px;font-weight:600;
+  color:var(--text-tertiary);
+  background:var(--surface);
+  border:1.5px solid var(--border-strong);
+  border-radius:20px;padding:2px 8px;
+  min-width:40px;text-align:center;
+  transition:all .15s;
+}
+.cat-hdr.has-items .cat-hdr-meta{
+  background:var(--selected-bg);
+  border-color:var(--selected-border);
+  color:var(--selected-text);
+}
+.cat-arrow{
+  color:var(--text-tertiary);font-size:10px;font-weight:700;
+  transition:transform .2s;
+  width:22px;height:22px;
+  background:var(--surface);
+  border:1.5px solid var(--border-strong);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.cat-hdr.closed .cat-arrow{transform:rotate(-90deg)}
+
+/* ── PRODUCT ROW ─────────────────────────────────────── */
+.prod-row{
+  display:flex;align-items:center;
+  padding:11px 16px;gap:12px;
+  border-bottom:1px solid var(--border);
+  transition:background .1s;
+  background:var(--surface);
+}
+.prod-row:last-child{border-bottom:none}
+.prod-row:hover{background:#FAFAFA}
+.prod-row.has-qty{background:var(--selected-bg)}
+.prod-info{flex:1;min-width:0}
+.prod-name{
+  font-size:14px;font-weight:500;
+  color:var(--text-primary);line-height:1.3;
+}
+.prod-unit{
+  font-size:11px;color:var(--text-tertiary);
+  margin-top:2px;font-weight:500;
+}
+
+/* ── QTY CONTROLS ────────────────────────────────────── */
+.qty-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.qty-btn{
+  width:32px;height:32px;
+  border-radius:var(--radius-xs);
+  background:var(--bg);
+  border:1.5px solid var(--border-strong);
+  color:var(--text-secondary);
+  font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .1s;flex-shrink:0;font-weight:400;
+  font-family:var(--font);
+}
+.qty-btn:hover{background:var(--brand-light);border-color:var(--brand);color:var(--brand)}
+.qty-btn:active{transform:scale(.95)}
+.qty-input{
+  width:54px;padding:6px 4px;text-align:center;
+  background:var(--bg);
+  border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-xs);
+  color:var(--text-primary);
+  font-family:var(--font);font-size:14px;font-weight:600;
+  -webkit-appearance:none;appearance:none;
+  outline:none;
+  transition:border-color .15s,background .15s;
+}
+.qty-input:focus{border-color:var(--brand);background:var(--surface);box-shadow:0 0 0 3px rgba(230,57,70,.1)}
+.qty-input.filled{
+  border-color:var(--prep);
+  background:var(--prep-bg);
+  color:var(--prep);
+}
+
+/* ── EMPTY STATE ─────────────────────────────────────── */
+.empty-state{
+  padding:32px 20px;text-align:center;
+  color:var(--text-tertiary);font-size:13px;
+  font-weight:500;
+}
+
+/* ── CUSTOM ITEMS ────────────────────────────────────── */
+.custom-col-hdrs{
+  display:grid;grid-template-columns:1fr 64px 74px 80px;
+  gap:8px;padding:10px 16px 6px;
+  font-size:10px;font-weight:700;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--text-tertiary);
+  border-bottom:1px solid var(--border);
+  background:#FAFAFA;
+}
+.custom-row{
+  display:grid;grid-template-columns:1fr 64px 74px 80px;
+  gap:8px;padding:9px 16px;
+  border-bottom:1px solid var(--border);align-items:center;
+}
+.custom-row:last-child{border-bottom:none}
+.custom-row input,.custom-row select{
+  background:var(--bg);
+  border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-xs);
+  color:var(--text-primary);
+  font-family:var(--font);font-size:13px;
+  padding:7px 9px;
+  -webkit-appearance:none;appearance:none;width:100%;
+  outline:none;transition:border-color .15s;
+}
+.custom-row input:focus,.custom-row select:focus{
+  border-color:var(--brand);
+  box-shadow:0 0 0 3px rgba(230,57,70,.1);
+}
+.add-custom-btn{
+  margin:10px 16px;padding:9px 14px;
+  background:transparent;
+  border:1.5px dashed var(--border-strong);
+  border-radius:var(--radius-sm);
+  color:var(--text-secondary);
+  font-family:var(--font);font-size:13px;font-weight:500;
+  cursor:pointer;width:calc(100% - 32px);
+  transition:all .15s;text-align:left;
+}
+.add-custom-btn:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-light)}
+
+/* ── SUBMIT ──────────────────────────────────────────── */
+.submit-section{padding:20px 16px}
+.submit-btn{
+  width:100%;padding:16px;
+  background:var(--brand);
+  color:#fff;border:none;
+  border-radius:var(--radius);
+  font-family:var(--font);font-size:16px;font-weight:700;
+  cursor:pointer;letter-spacing:-.2px;
+  box-shadow:0 4px 16px rgba(230,57,70,.3);
+  transition:all .15s;
+}
+.submit-btn:not(:disabled):hover{
+  background:var(--brand-dark);
+  box-shadow:0 6px 20px rgba(230,57,70,.4);
+  transform:translateY(-1px);
+}
+.submit-btn:not(:disabled):active{transform:translateY(0);box-shadow:0 2px 8px rgba(230,57,70,.3)}
+.submit-btn:disabled{
+  background:var(--border-strong);color:var(--text-tertiary);
+  box-shadow:none;cursor:not-allowed;
+}
+
+/* ── ERROR BANNER ────────────────────────────────────── */
+.error-banner{
+  background:#FFF5F5;border:1.5px solid #FEC0C0;
+  border-radius:var(--radius-sm);
+  padding:12px 16px;margin:12px 16px;
+  font-size:13px;color:#C1121F;font-weight:500;
+  display:none;align-items:center;gap:10px;
+}
+.error-banner.show{display:flex}
+.retry-btn{
+  margin-left:auto;flex-shrink:0;
+  background:var(--surface);
+  border:1.5px solid #FEC0C0;border-radius:var(--radius-xs);
+  color:var(--brand);padding:5px 12px;
+  font-size:12px;font-weight:600;cursor:pointer;
+  font-family:var(--font);transition:all .15s;
+}
+.retry-btn:hover{background:var(--brand-light)}
+
+/* ── OVERLAYS ────────────────────────────────────────── */
+.overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.45);
+  backdrop-filter:blur(4px);
+  z-index:999;align-items:center;justify-content:center;padding:20px;
+}
+.overlay.show{display:flex}
+.overlay-box{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:36px 28px;text-align:center;
+  max-width:340px;width:100%;
+  box-shadow:var(--shadow-lg);
+}
+.overlay-icon{font-size:52px;margin-bottom:14px}
+.overlay-box h2{font-size:20px;font-weight:700;color:var(--text-primary);margin-bottom:8px}
+.overlay-box p{color:var(--text-secondary);font-size:14px;line-height:1.6;margin-bottom:8px}
+.order-ref{
+  font-size:13px;font-weight:700;
+  color:var(--brand);
+  background:var(--brand-light);
+  border:1px solid #FBBCBC;
+  padding:7px 14px;border-radius:var(--radius-xs);
+  display:inline-block;margin-bottom:18px;
+  letter-spacing:.3px;
+}
+.new-order-btn{
+  background:var(--brand);color:#fff;border:none;
+  border-radius:var(--radius-sm);
+  padding:13px 28px;
+  font-family:var(--font);font-size:15px;font-weight:700;
+  cursor:pointer;width:100%;
+  transition:background .15s;
+}
+.new-order-btn:hover{background:var(--brand-dark)}
+.spinner{
+  width:44px;height:44px;
+  border:3px solid rgba(230,57,70,.2);
+  border-top-color:var(--brand);
+  border-radius:50%;
+  animation:spin .7s linear infinite;margin:0 auto;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{color:var(--text-secondary);font-size:13px;margin-top:14px}
+
+
+/* ── REVIEW OVERLAY ──────────────────────────────────────────── */
+.review-overlay{
+  display:none;position:fixed;inset:0;
+  background:var(--surface);
+  z-index:200;overflow-y:auto;
+}
+.review-overlay.show{display:block}
+.review-header{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:16px 20px;
+  display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:10;
+  box-shadow:var(--shadow-sm);
+}
+.review-back-btn{
+  display:flex;align-items:center;gap:6px;
+  background:var(--bg);border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-sm);padding:8px 14px;
+  font-family:var(--font);font-size:13px;font-weight:600;
+  color:var(--text-secondary);cursor:pointer;
+  transition:all .15s;flex-shrink:0;
+}
+.review-back-btn:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-light)}
+.review-title{font-size:16px;font-weight:700;color:var(--text-primary)}
+.review-subtitle{font-size:12px;color:var(--text-secondary);margin-top:1px}
+.review-body{max-width:640px;margin:0 auto;padding:20px 16px 40px}
+.review-meta{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:16px;margin-bottom:16px;
+  box-shadow:var(--shadow-sm);
+}
+.review-meta-row{
+  display:flex;justify-content:space-between;
+  align-items:center;padding:5px 0;
+  border-bottom:1px solid var(--border);font-size:14px;
+}
+.review-meta-row:last-child{border-bottom:none;padding-bottom:0}
+.review-meta-label{color:var(--text-secondary);font-weight:500}
+.review-meta-value{font-weight:600;color:var(--text-primary)}
+.review-section{margin-bottom:16px}
+.review-section-title{
+  font-size:11px;font-weight:700;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--text-tertiary);
+  margin-bottom:8px;padding-left:2px;
+}
+.review-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;
+  box-shadow:var(--shadow-sm);
+}
+.review-cat-hdr{
+  background:#F4F4F6;border-bottom:1px solid var(--border);
+  padding:9px 16px;font-size:12px;font-weight:700;
+  color:var(--text-secondary);letter-spacing:.3px;
+}
+.review-item{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:11px 16px;border-bottom:1px solid var(--border);
+  font-size:14px;
+}
+.review-item:last-child{border-bottom:none}
+.review-item-name{font-weight:500;color:var(--text-primary);flex:1}
+.review-item-detail{
+  display:flex;gap:16px;align-items:center;flex-shrink:0;
+}
+.review-item-qty{
+  font-weight:700;color:var(--text-primary);
+  font-size:14px;min-width:40px;text-align:right;
+}
+.review-item-unit{
+  font-size:12px;color:var(--text-tertiary);
+  min-width:60px;
+}
+.review-empty{
+  padding:24px;text-align:center;
+  color:var(--text-tertiary);font-size:13px;
+}
+.review-notes{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px 16px;
+  margin-bottom:16px;box-shadow:var(--shadow-sm);
+  font-size:14px;color:var(--text-secondary);
+}
+.review-notes strong{color:var(--text-primary);display:block;margin-bottom:4px;font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+.confirm-section{
+  background:var(--surface);border:1.5px solid var(--border-strong);
+  border-radius:var(--radius);padding:16px;margin-bottom:16px;
+  box-shadow:var(--shadow-sm);transition:border-color .2s,background .2s;
+}
+.confirm-section.confirmed{
+  border-color:var(--prep);background:var(--prep-bg);
+}
+.confirm-label{
+  display:flex;align-items:flex-start;gap:12px;cursor:pointer;
+}
+.confirm-checkbox{
+  width:20px;height:20px;flex-shrink:0;margin-top:1px;
+  accent-color:var(--prep);cursor:pointer;
+}
+.confirm-text{
+  font-size:14px;font-weight:500;color:var(--text-primary);line-height:1.5;
+}
+.confirm-sub{
+  font-size:12px;color:var(--text-secondary);margin-top:3px;line-height:1.4;
+}
+.review-submit-btn{
+  width:100%;padding:16px;
+  background:var(--brand);color:#fff;border:none;
+  border-radius:var(--radius);font-family:var(--font);
+  font-size:16px;font-weight:700;cursor:pointer;
+  box-shadow:0 4px 16px rgba(230,57,70,.3);
+  transition:all .15s;opacity:.4;pointer-events:none;
+}
+.review-submit-btn.ready{
+  opacity:1;pointer-events:auto;
+}
+.review-submit-btn.ready:hover{
+  background:var(--brand-dark);
+  box-shadow:0 6px 20px rgba(230,57,70,.4);
+  transform:translateY(-1px);
+}
+
+/* ── SEARCH QTY INPUT (search results — not submitted directly) ── */
+.search-qty{
+  width:54px;padding:6px 4px;text-align:center;
+  background:var(--bg);border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-xs);color:var(--text-primary);
+  font-family:var(--font);font-size:14px;font-weight:600;
+  -webkit-appearance:none;appearance:none;outline:none;
+  transition:border-color .15s,background .15s;
+}
+.search-qty:focus{border-color:var(--brand);background:var(--surface);box-shadow:0 0 0 3px rgba(230,57,70,.1)}
+.search-qty.filled{border-color:var(--prep);background:var(--prep-bg);color:var(--prep)}
+
+/* ── ORDER LIST (items added so far) ─────────────────── */
+.order-list-label{
+  font-size:11px;font-weight:700;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--text-tertiary);
+  margin:16px 0 8px;padding-left:2px;
+}
+
+/* ── BASKET FAB ──────────────────────────────────────── */
+.basket-fab{
+  position:fixed;bottom:24px;right:20px;z-index:150;
+  background:var(--brand);color:#fff;border:none;
+  border-radius:28px;padding:13px 20px;
+  font-family:var(--font);font-size:14px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;gap:7px;
+  box-shadow:0 4px 20px rgba(230,57,70,.4);
+  transition:all .15s;
+}
+.basket-fab:hover{background:var(--brand-dark);transform:translateY(-2px);box-shadow:0 6px 24px rgba(230,57,70,.5)}
+.basket-fab-count{
+  background:rgba(255,255,255,.25);
+  border-radius:20px;padding:1px 8px;font-size:13px;
+}
+
+/* ── BASKET OVERLAY ──────────────────────────────────── */
+.basket-overlay{
+  display:none;position:fixed;inset:0;
+  background:var(--surface);z-index:200;overflow-y:auto;
+}
+.basket-overlay.show{display:block}
+.basket-empty{
+  padding:40px 20px;text-align:center;
+  color:var(--text-tertiary);font-size:14px;font-weight:500;
+}
+
+/* ── SCAN COMBOBOX ───────────────────────────────────── */
+.scan-combobox{position:relative;margin-top:4px}
+.scan-combobox-input{
+  width:100%;padding:8px 10px;
+  background:var(--bg);border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-xs);color:var(--text-primary);
+  font-family:var(--font);font-size:13px;
+  outline:none;transition:border-color .15s;
+}
+.scan-combobox-input:focus{border-color:var(--brand);background:var(--surface);box-shadow:0 0 0 3px rgba(230,57,70,.08)}
+.scan-combobox-input.matched{border-color:var(--prep);background:var(--prep-bg);color:var(--prep)}
+.scan-combobox-dropdown{
+  position:fixed;
+  background:var(--surface);
+  border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-sm);
+  box-shadow:var(--shadow-md);
+  z-index:400;max-height:200px;overflow-y:auto;
+}
+.scan-combobox-option{
+  padding:10px 12px;font-size:13px;font-weight:500;
+  color:var(--text-primary);cursor:pointer;
+  border-bottom:1px solid var(--border);transition:background .1s;
+}
+.scan-combobox-option:last-child{border-bottom:none}
+.scan-combobox-option:hover{background:var(--selected-bg);color:var(--selected-text)}
+
+/* ── SCAN TRIGGER ────────────────────────────────────── */
+.scan-trigger-btn{
+  width:100%;padding:14px 16px;
+  background:var(--surface);
+  border:1.5px dashed var(--border-strong);
+  border-radius:var(--radius);
+  color:var(--text-secondary);
+  font-family:var(--font);font-size:14px;font-weight:500;
+  cursor:pointer;display:flex;align-items:center;gap:12px;
+  transition:all .15s;box-shadow:var(--shadow-sm);
+}
+.scan-trigger-btn:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-light)}
+.scan-trigger-inner{display:flex;flex-direction:column;align-items:flex-start;flex:1;gap:1px}
+.scan-trigger-inner strong{font-size:14px;font-weight:600;color:inherit}
+.scan-trigger-inner em{font-size:12px;color:var(--text-tertiary);font-style:normal}
+
+/* ── SCAN OVERLAY ────────────────────────────────────── */
+.scan-overlay{display:none;position:fixed;inset:0;background:var(--surface);z-index:200;overflow-y:auto}
+.scan-overlay.show{display:block}
+.scan-upload-area{
+  border:2px dashed var(--border-strong);border-radius:var(--radius);
+  padding:36px 20px;text-align:center;cursor:pointer;
+  transition:all .15s;background:var(--bg);margin-bottom:16px;
+}
+.scan-upload-area:hover{border-color:var(--brand);background:var(--brand-light)}
+.scan-upload-icon{font-size:40px;margin-bottom:12px}
+.scan-upload-label{font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:6px}
+.scan-upload-sub{font-size:12px;color:var(--text-tertiary)}
+.scan-preview-img{
+  width:100%;max-height:200px;object-fit:cover;
+  border-radius:var(--radius-sm);border:1.5px solid var(--border-strong);
+  display:block;margin-bottom:8px;
+}
+.scan-preview-name{font-size:12px;color:var(--text-tertiary);text-align:center;margin-bottom:12px}
+.scan-confirm-card{margin-bottom:4px}
+.scan-item-row{
+  display:flex;align-items:flex-start;padding:11px 16px;gap:10px;
+  border-bottom:1px solid var(--border);background:var(--surface);
+  transition:background .15s,opacity .15s;
+}
+.scan-item-row:last-child{border-bottom:none}
+.scan-item-row.scan-excluded{opacity:.35;background:var(--bg)}
+.scan-item-name-wrap{flex:1;min-width:0}
+.scan-item-name{font-size:14px;font-weight:500;color:var(--text-primary);line-height:1.3}
+.scan-item-raw{font-size:11px;color:var(--text-tertiary);margin-top:2px;font-style:italic}
+.scan-conf-badge{
+  display:inline-block;font-size:10px;font-weight:700;
+  letter-spacing:.3px;padding:2px 6px;border-radius:20px;margin-top:4px;
+}
+.scan-conf-high{background:var(--prep-bg);color:var(--prep);border:1px solid var(--prep-border)}
+.scan-conf-low{background:#FFF8E7;color:#B45309;border:1px solid #F5D58A}
+.scan-item-controls{display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+.scan-qty-input{
+  width:52px;padding:6px 4px;text-align:center;
+  background:var(--bg);border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-xs);color:var(--text-primary);
+  font-family:var(--font);font-size:14px;font-weight:600;
+  outline:none;transition:border-color .15s;
+}
+.scan-qty-input:focus{border-color:var(--brand);background:var(--surface)}
+.scan-item-unit{font-size:11px;color:var(--text-tertiary);font-weight:500;min-width:24px}
+.scan-name-input{
+  width:100%;padding:7px 10px;margin-bottom:4px;
+  background:var(--bg);border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-xs);color:var(--text-primary);
+  font-family:var(--font);font-size:13px;outline:none;transition:border-color .15s;
+}
+.scan-name-input:focus{border-color:var(--brand);background:var(--surface)}
+.scan-type-select{
+  padding:6px 8px;background:var(--bg);border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-xs);color:var(--text-primary);
+  font-family:var(--font);font-size:12px;
+  outline:none;-webkit-appearance:none;appearance:none;transition:border-color .15s;
+}
+.scan-type-select:focus{border-color:var(--brand)}
+.scan-toggle-btn{
+  padding:5px 10px;border-radius:var(--radius-xs);
+  font-family:var(--font);font-size:11px;font-weight:700;
+  cursor:pointer;border:1.5px solid;transition:all .15s;flex-shrink:0;
+}
+.scan-include{background:var(--prep-bg);color:var(--prep);border-color:var(--prep-border)}
+.scan-include:hover{background:var(--prep);color:#fff}
+.scan-exclude{background:var(--bg);color:var(--text-tertiary);border-color:var(--border-strong)}
+.scan-exclude:hover{background:var(--brand-light);color:var(--brand);border-color:var(--brand)}
+.scan-unreadable-note{font-size:12px;color:var(--text-tertiary);padding:10px 16px;line-height:1.5}
+.scan-rescan-btn{
+  background:var(--bg);border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-sm);padding:8px 14px;
+  font-family:var(--font);font-size:13px;font-weight:600;
+  color:var(--text-secondary);cursor:pointer;transition:all .15s;margin-left:auto;
+}
+.scan-rescan-btn:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-light)}
+
+/* ── SUMMARY BUTTON ──────────────────────────────────── */
+.summary-btn{
+  width:34px;height:34px;
+  border-radius:var(--radius-xs);
+  background:var(--bg);
+  border:1.5px solid var(--border-strong);
+  color:var(--text-secondary);
+  font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;flex-shrink:0;margin-left:6px;
+}
+.summary-btn:hover{background:var(--brand-light);border-color:var(--brand);color:var(--brand)}
+
+/* ── SUMMARY OVERLAY ─────────────────────────────────── */
+.summary-overlay{
+  display:none;position:fixed;inset:0;
+  background:var(--surface);z-index:200;overflow-y:auto;
+}
+.summary-overlay.show{display:block}
+.order-log-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;
+  box-shadow:var(--shadow-sm);margin-bottom:8px;
+}
+.order-log-row{padding:11px 16px;border-bottom:1px solid var(--border);font-size:13px}
+.order-log-row:last-child{border-bottom:none}
+.order-log-top{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}
+.order-log-ref{
+  font-weight:700;color:var(--brand);background:var(--brand-light);
+  border:1px solid #FBBCBC;padding:2px 8px;border-radius:var(--radius-xs);
+  font-size:11px;letter-spacing:.3px;flex-shrink:0;
+}
+.order-log-time{font-size:12px;color:var(--text-tertiary);font-weight:500}
+.order-log-bottom{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.order-log-meta{font-size:12px;color:var(--text-secondary)}
+.tg-ok{color:var(--prep);font-weight:600;font-size:12px}
+.tg-fail{color:var(--brand-dark);font-weight:600;font-size:12px}
+.summary-dot{color:var(--border-strong);font-size:10px}
+.summary-no-activity{
+  padding:32px 20px;text-align:center;
+  color:var(--text-tertiary);font-size:13px;font-weight:500;
+}
+.summary-refresh-btn{
+  background:var(--bg);border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-sm);padding:8px 14px;
+  font-family:var(--font);font-size:13px;font-weight:600;
+  color:var(--text-secondary);cursor:pointer;
+  transition:all .15s;flex-shrink:0;margin-left:auto;
+}
+.summary-refresh-btn:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-light)}
+
+/* ── RESPONSIVE ──────────────────────────────────────── */
+@media(min-width:600px){
+  .app-header,.status-bar{padding-left:24px;padding-right:24px}
+  .section{padding:24px 20px 0}
+  .submit-section{padding:24px 20px}
+  .field{padding:16px 20px}
+  .ot-grid{padding:0 20px 18px}
+  .card-head,.cat-hdr,.prod-row,.order-section-head,.search-wrap{padding-left:20px;padding-right:20px}
+  .custom-col-hdrs,.custom-row{padding-left:20px;padding-right:20px}
+  .add-custom-btn{margin:10px 20px;width:calc(100% - 40px)}
+  .error-banner{margin:12px 20px}
+  .prod-name{white-space:normal}
+}
+@media(min-width:640px){.app{padding:0 0 80px}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header class="app-header">
+  <div class="header-logo" style="padding:0;overflow:hidden">
+    <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiB2aWV3Qm94PSIwIDAgMTkyIDE5MiI+CiAgPHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MiIgZmlsbD0iIzAwMDAwMCIvPgogIDwhLS0gSGFuZGxlIC0tPgogIDxsaW5lIHgxPSIzMCIgeTE9IjU2IiB4Mj0iNTIiIHkyPSI1NiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIxMSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPCEtLSBDYXJ0IGJvZHk6IGhhbmRsZSBjb25uZWN0cywgYm9keSB3aWRlbnMgdG8gYm90dG9tIC0tPgogIDxwb2x5bGluZSBwb2ludHM9IjUyLDU2IDY4LDEyOCAxNDAsMTI4IDE1Niw2OCA3NCw2OCIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIxMSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBmaWxsPSJub25lIi8+CiAgPCEtLSBXaGVlbHMgLS0+CiAgPGNpcmNsZSBjeD0iODYiIGN5PSIxNDYiIHI9IjEwIiBmaWxsPSJ3aGl0ZSIvPgogIDxjaXJjbGUgY3g9IjEzMCIgY3k9IjE0NiIgcj0iMTAiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPg==" width="36" height="36" style="display:block;border-radius:10px" alt="Orders">
+  </div>
+  <div class="header-text">
+    <h1>Prep / Stock Orders</h1>
+    <p id="header-sub">Loading products…</p>
+  </div>
+  <div class="header-badge" id="hdr-badge">0 items</div>
+  <button class="summary-btn" onclick="openSummary()" title="Weekly Summary">📊</button>
+</header>
+
+<div class="status-bar">
+  <div class="status-pill">Site: <strong id="st-site">—</strong></div>
+  <div class="status-pill">Type: <strong id="st-type">—</strong></div>
+  <div class="status-pill">Items: <strong id="st-items">0</strong></div>
+</div>
+
+<div class="section">
+  <div class="section-label">Order Details</div>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-icon">📋</div>
+      <div class="card-head-title">Step 1 — Select your site &amp; order type</div>
+    </div>
+    <div class="field">
+      <label>Your Site</label>
+      <select id="site" onchange="onSiteChange()">
+        <option value="">— Select your site —</option>
+        <optgroup label="SD Sites">
+          <option>SD Withington</option>
+          <option>SD Wythenshawe</option>
+          <option>SD Cheadle</option>
+          <option>SD Newcastle</option>
+          <option>SD EH 12</option>
+          <option>SD EH 15</option>
+        </optgroup>
+        <optgroup label="DC Sites">
+          <option>DC Withington</option>
+          <option>DC Cheadle</option>
+          <option>DC Oxford Road</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="field"><label>Order Type</label></div>
+    <div class="ot-grid">
+      <button class="ot-btn prep"  onclick="setType('prep')">Prep</button>
+      <button class="ot-btn stock" onclick="setType('stock')">Stock</button>
+      <button class="ot-btn both"  onclick="setType('both')">Both</button>
+    </div>
+    <div class="field" style="padding-bottom:16px">
+      <label>Notes (optional)</label>
+      <input type="text" id="notes" placeholder="e.g. urgent, deliver before 10am…">
+    </div>
+  </div>
+</div>
+
+<div id="error-banner" class="error-banner" style="display:none">
+  <span id="error-msg"></span>
+  <button class="retry-btn" id="retry-btn" onclick="loadProducts()" style="display:none">Retry</button>
+</div>
+
+<!-- Quick-add search — replaces category browsing as the primary item entry -->
+<div class="section" id="quick-add-section" style="display:none">
+  <div class="section-label">Add Items</div>
+  <div class="card" style="margin-bottom:0">
+    <div class="search-wrap">
+      <input type="text" class="search-input" id="item-search"
+             placeholder="Type an item name…"
+             oninput="onItemSearch(this.value)"
+             autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div id="item-search-results"></div>
+  </div>
+  <div id="order-items-wrap" style="display:none">
+    <div class="order-list-label">In Your Order</div>
+    <div class="review-card" id="order-items-list"></div>
+  </div>
+</div>
+
+
+
+<!-- Unified search bar — shown only when Both is selected -->
+<div class="section" id="unified-search-section" style="display:none">
+  <div class="card" style="margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0">
+    <div class="search-wrap" style="border-bottom:none">
+      <input type="text" class="search-input" id="unified-search" placeholder="Search all items…" oninput="filterBoth(this)">
+    </div>
+  </div>
+</div>
+
+<div class="section" id="prep-section" style="display:none">
+  <div class="section-label" id="prep-section-label">Prep Order</div>
+  <div class="card">
+    <div class="order-section-head">
+      <span class="order-section-badge prep">Prep Items</span>
+    </div>
+    <div id="prep-cats"></div>
+  </div>
+</div>
+
+<div class="section" id="stock-section" style="display:none">
+  <div class="section-label" id="stock-section-label">Stock Order</div>
+  <div class="card">
+    <div class="order-section-head">
+      <span class="order-section-badge stock">Stock Items</span>
+    </div>
+    <div id="stock-cats"></div>
+  </div>
+</div>
+
+<!-- Scan order image — sits below categories, above custom items -->
+<div class="section" id="scan-section" style="display:none">
+  <button class="scan-trigger-btn" onclick="openScan()">
+    <span style="font-size:22px;flex-shrink:0">📷</span>
+    <span class="scan-trigger-inner">
+      <strong>Scan an order image</strong>
+      <em>Upload a photo to auto-fill items from your order list</em>
+    </span>
+    <span style="color:var(--text-tertiary);font-size:13px">→</span>
+  </button>
+</div>
+
+<div class="section" id="custom-section" style="display:none">
+  <div class="section-label">Items Not on the List</div>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-icon">✏️</div>
+      <div class="card-head-title">Add unlisted items</div>
+    </div>
+    <div class="custom-col-hdrs">
+      <span>Item Name</span><span>Qty</span><span>Unit</span><span>Type</span>
+    </div>
+    <div class="custom-rows-wrap" id="custom-rows"></div>
+    <button class="add-custom-btn" onclick="addCustomRow()">+ Add another item</button>
+  </div>
+</div>
+
+<div class="submit-section" id="submit-section" style="display:none">
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-head">
+      <div class="card-head-icon">📅</div>
+      <div class="card-head-title">Delivery Date</div>
+    </div>
+    <div class="field" style="padding-bottom:16px">
+      <label>Requested Delivery Date <span style="color:var(--brand);font-weight:700">*</span></label>
+      <input type="date" id="delivery-date" onchange="updateStatus()"
+        style="width:100%;padding:11px 14px;background:var(--bg);border:1.5px solid var(--border-strong);border-radius:var(--radius-sm);color:var(--text-primary);font-family:var(--font);font-size:15px;-webkit-appearance:none;appearance:none;outline:none;transition:border-color .15s,box-shadow .15s">
+      <p style="font-size:12px;color:var(--text-tertiary);margin-top:6px">This will be included in the Telegram notification sent to the team.</p>
+    </div>
+  </div>
+  <button class="submit-btn" id="submit-btn" onclick="openReview()" disabled>Review Order →</button>
+</div>
+
+
+</div><!-- .app -->
+
+<!-- REVIEW OVERLAY -->
+<div class="review-overlay" id="review-overlay">
+  <div class="review-header">
+    <button class="review-back-btn" onclick="closeReview()">← Back to Edit</button>
+    <div>
+      <div class="review-title">Review Your Order</div>
+      <div class="review-subtitle" id="review-subtitle">Check everything before submitting</div>
+    </div>
+  </div>
+  <div class="review-body">
+    <div class="review-meta" id="review-meta"></div>
+    <div id="review-sections"></div>
+    <div class="review-notes" id="review-notes" style="display:none">
+      <strong>Notes</strong>
+      <span id="review-notes-text"></span>
+    </div>
+    <div class="confirm-section" id="confirm-section">
+      <label class="confirm-label">
+        <input type="checkbox" class="confirm-checkbox" id="confirm-check" onchange="onConfirmChange()">
+        <div>
+          <div class="confirm-text">I confirm all items and quantities are correct</div>
+          <div class="confirm-sub">Once submitted, the order will be sent to the team via Telegram and cannot be recalled.</div>
+        </div>
+      </label>
+    </div>
+    <button class="review-submit-btn" id="review-submit-btn" onclick="submitOrder()">Submit Order</button>
+  </div>
+</div>
+
+
+<div class="overlay" id="success-overlay">
+  <div class="overlay-box">
+    <div class="overlay-icon">✅</div>
+    <h2>Order Submitted!</h2>
+    <p>Your order has been logged and the team has been notified via Telegram.</p>
+    <p style="font-size:13px;color:var(--text-tertiary);margin-bottom:5px">Your order reference:</p>
+    <div class="order-ref" id="success-ref">ORD-000000</div>
+    <button class="new-order-btn" onclick="resetForm()">Submit Another Order</button>
+  </div>
+</div>
+
+<!-- BASKET OVERLAY -->
+<div class="basket-overlay" id="basket-overlay">
+  <div class="review-header">
+    <button class="review-back-btn" onclick="closeBasket()">← Back</button>
+    <div>
+      <div class="review-title">Your Order</div>
+      <div class="review-subtitle" id="basket-subtitle">—</div>
+    </div>
+  </div>
+  <div class="review-body" id="basket-body"></div>
+</div>
+
+<!-- BASKET FAB — fixed floating button -->
+<button class="basket-fab" id="basket-fab" style="display:none" onclick="openBasket()">
+  🛒 <span class="basket-fab-count" id="basket-count">0</span>
+</button>
+
+<!-- SCAN ORDER IMAGE OVERLAY -->
+<div class="scan-overlay" id="scan-overlay">
+  <div class="review-header">
+    <button class="review-back-btn" onclick="closeScan()">← Back</button>
+    <div>
+      <div class="review-title">Scan Order Image</div>
+      <div class="review-subtitle" id="scan-subtitle">Upload a photo of your order list</div>
+    </div>
+    <button class="scan-rescan-btn" id="scan-rescan-btn" onclick="resetScanPhases()" style="display:none">↩ Re-scan</button>
+  </div>
+  <div class="review-body">
+
+    <!-- Phase 1: Upload -->
+    <div id="scan-upload-phase">
+      <div class="scan-upload-area" onclick="document.getElementById('scan-file-input').click()">
+        <div class="scan-upload-icon">📷</div>
+        <div class="scan-upload-label">Tap to upload or take a photo</div>
+        <div class="scan-upload-sub">Handwritten lists, printed forms, whiteboards — all work</div>
+        <input type="file" id="scan-file-input" accept="image/*" capture="environment"
+               style="display:none" onchange="handleImageSelect(this)">
+      </div>
+      <div id="scan-preview-wrap" style="display:none">
+        <img id="scan-preview-img" class="scan-preview-img" alt="Order preview">
+        <div id="scan-preview-name" class="scan-preview-name"></div>
+        <button class="submit-btn" onclick="scanImage()">Scan Image →</button>
+      </div>
+    </div>
+
+    <!-- Phase 2: Processing (Tesseract runs locally — no network call) -->
+    <div id="scan-processing-phase" style="display:none;text-align:center;padding:40px 20px">
+      <div class="spinner"></div>
+      <div class="loading-msg" id="scan-loading-msg">Loading text recognition…</div>
+      <div style="font-size:12px;color:var(--text-tertiary);margin-top:8px">Runs on your device — nothing is uploaded</div>
+    </div>
+
+    <!-- Phase 3: Results -->
+    <div id="scan-results-phase" style="display:none">
+      <div id="scan-matched-section"></div>
+      <div id="scan-unmatched-section"></div>
+      <div id="scan-unreadable-section"></div>
+      <div style="padding:12px 0 4px">
+        <button class="add-custom-btn" style="width:100%" onclick="addScanExtraRow()">+ Add an item not detected</button>
+      </div>
+      <div style="padding:4px 0 20px">
+        <button class="submit-btn" onclick="addScannedToOrder()">Add confirmed items to order →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- WEEKLY SUMMARY OVERLAY -->
+<div class="summary-overlay" id="summary-overlay">
+  <div class="review-header">
+    <button class="review-back-btn" onclick="closeSummary()">← Back</button>
+    <div>
+      <div class="review-title">Weekly Summary</div>
+      <div class="review-subtitle" id="summary-period">Last 7 days</div>
+    </div>
+    <button class="summary-refresh-btn" onclick="loadSummary()">↻ Refresh</button>
+  </div>
+  <div class="review-body" id="summary-body">
+    <div style="text-align:center;padding:40px">
+      <div class="spinner"></div>
+      <div class="loading-msg">Loading summary…</div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="loading-overlay">
+  <div class="overlay-box" style="background:transparent;border:none;box-shadow:none;padding:40px">
+    <div class="spinner"></div>
+    <div class="loading-msg">Submitting order…</div>
+  </div>
+</div>
+
+<script>
+
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyoQZasT3UeYdz9ABhYj3qVFay1GtcJJadDPBmxBWGS9jPSrCWZR0YfjcHDNUwEYeeI/exec";
+let SITE_DATA    = null;
+let orderType    = null;
+let currentSite  = null;
+let customRowCount = 1;
+
+// ── LOAD PRODUCTS via JSONP (avoids CORS entirely) ───────────────
+let loadTimeout = null;
+
+function loadProducts() {
+  hideError();
+  document.getElementById('header-sub').textContent = 'Loading products…';
+  document.getElementById('retry-btn').style.display = 'none';
+
+  // Remove any existing JSONP script
+  const old = document.getElementById('jsonp-script');
+  if (old) old.remove();
+
+  // Set timeout for slow cold starts
+  clearTimeout(loadTimeout);
+  loadTimeout = setTimeout(() => {
+    document.getElementById('header-sub').textContent = 'Taking longer than usual — Apps Script may be waking up…';
+  }, 5000);
+
+  // JSONP request — bypasses CORS completely
+  window._onProductsLoaded = function(data) {
+    clearTimeout(loadTimeout);
+    if (data && data.ok && data.data) {
+      SITE_DATA = data.data;
+      document.getElementById('header-sub').textContent = 'Select quantities — leave blank to skip';
+      hideError();
+      updateStatus();
+      // If user already selected site and type before data loaded, rebuild now
+      if (currentSite && orderType) rebuildProductLists();
+    } else {
+      showError('Could not load product list — you can still add unlisted items below, or tap Retry.', true);
+    }
+  };
+
+  const script = document.createElement('script');
+  script.id  = 'jsonp-script';
+  script.src = SCRIPT_URL + '?callback=_onProductsLoaded';
+  script.onerror = () => {
+    clearTimeout(loadTimeout);
+    showError('Could not load product list — you can still add unlisted items below, or tap Retry.', true);
+  };
+  document.head.appendChild(script);
+}
+
+loadProducts();
+
+// ── BUILD CATEGORY SECTIONS ──────────────────────────────────────
+function buildCats(containerId, productsObj, section) {
+  const wrap = document.getElementById(containerId);
+  wrap.innerHTML = '';
+  if (!productsObj || !Object.keys(productsObj).length) {
+    const es = document.createElement('div');
+    es.className = 'empty-state';
+    es.textContent = 'No items available for this site and order type.';
+    wrap.appendChild(es);
+    return;
+  }
+  for (const [cat, items] of Object.entries(productsObj)) {
+    if (!items || !items.length) continue;
+
+    // ── Category header — built with DOM API (XSS-safe) ──
+    const hdr = document.createElement('div');
+    hdr.className = 'cat-hdr';
+    hdr.dataset.cat = cat;
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'cat-hdr-name';
+    nameSpan.textContent = cat;  // textContent is XSS-safe
+
+    const metaSpan = document.createElement('span');
+    metaSpan.className = 'cat-hdr-meta';
+    metaSpan.id = 'meta-' + section + '-' + cat.replace(/[^a-z0-9]/gi,'_');
+    metaSpan.textContent = '0 / ' + items.length;
+
+    const arrow = document.createElement('span');
+    arrow.className = 'cat-arrow';
+    arrow.textContent = '▾';
+
+    hdr.appendChild(nameSpan);
+    hdr.appendChild(metaSpan);
+    hdr.appendChild(arrow);
+
+    const body = document.createElement('div');
+    body.className = 'cat-body';
+    hdr.onclick = () => {
+      hdr.classList.toggle('closed');
+      body.style.display = hdr.classList.contains('closed') ? 'none' : 'block';
+    };
+
+    items.forEach(p => {
+      // ── Product row — built with DOM API (XSS-safe) ──
+      const row = document.createElement('div');
+      row.className = 'prod-row';
+      row.dataset.search  = p.name.toLowerCase();
+      row.dataset.cat     = cat;
+      row.dataset.section = section;
+
+      // Product info
+      const info = document.createElement('div');
+      info.className = 'prod-info';
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'prod-name';
+      nameDiv.textContent = p.name;  // XSS-safe
+      const unitDiv = document.createElement('div');
+      unitDiv.className = 'prod-unit';
+      unitDiv.textContent = p.unit;  // XSS-safe
+      info.appendChild(nameDiv);
+      info.appendChild(unitDiv);
+
+      // Qty wrap
+      const qtyWrap = document.createElement('div');
+      qtyWrap.className = 'qty-wrap';
+
+      const minusBtn = document.createElement('button');
+      minusBtn.className = 'qty-btn';
+      minusBtn.textContent = '−';
+      minusBtn.setAttribute('tabindex', '-1');
+      minusBtn.onclick = () => adj(minusBtn, -0.5);
+
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.className = 'qty-input';
+      input.min = '0';
+      input.max = '999';
+      input.step = '0.5';
+      input.placeholder = '0';
+      input.dataset.name    = p.name;  // stored in dataset, not HTML attribute
+      input.dataset.unit    = p.unit;
+      input.dataset.section = section;
+      input.dataset.cat     = cat;
+      input.oninput  = () => onQtyInput(input);
+      input.onfocus  = () => input.select();
+
+      const plusBtn = document.createElement('button');
+      plusBtn.className = 'qty-btn';
+      plusBtn.textContent = '+';
+      plusBtn.setAttribute('tabindex', '-1');
+      plusBtn.onclick = () => adj(plusBtn, 0.5);
+
+      qtyWrap.appendChild(minusBtn);
+      qtyWrap.appendChild(input);
+      qtyWrap.appendChild(plusBtn);
+
+      row.appendChild(info);
+      row.appendChild(qtyWrap);
+      body.appendChild(row);
+    });
+
+    wrap.appendChild(hdr);
+    wrap.appendChild(body);
+  }
+}
+
+// ── CUSTOM ROWS — start with 1, add on demand ────────────────────
+function addCustomRow() {
+  if (customRowCount >= 10) return;
+  customRowCount++;
+  const wrap = document.getElementById('custom-rows');
+  const row = document.createElement('div');
+  row.className = 'custom-row';
+  row.innerHTML = `
+    <input type="text"   class="custom-name" placeholder="Item name">
+    <input type="number" class="custom-qty"  placeholder="0" min="0" max="999" step="0.5" oninput="updateStatus()">
+    <input type="text"   class="custom-unit" placeholder="kg/box">
+    <select class="custom-type">
+      <option value="stock">Stock</option>
+      <option value="prep">Prep</option>
+    </select>`;
+  wrap.appendChild(row);
+  if (customRowCount >= 10) document.querySelector('.add-custom-btn').style.display='none';
+}
+
+function initCustomRows() {
+  customRowCount = 0;
+  document.getElementById('custom-rows').innerHTML = '';
+  document.querySelector('.add-custom-btn').style.display='block';
+  addCustomRow();
+}
+initCustomRows();
+
+// ── SITE & TYPE SELECTION ────────────────────────────────────────
+function onSiteChange() {
+  const newSite = document.getElementById('site').value;
+  const hasItems = document.querySelectorAll('.qty-input.filled').length > 0;
+  if (hasItems && newSite && newSite !== currentSite) {
+    if (!confirm('Changing site will clear your current order. Continue?')) {
+      document.getElementById('site').value = currentSite || '';
+      return;
+    }
+    clearAllQtys();
+  }
+  currentSite = newSite;
+  document.getElementById('st-site').textContent = currentSite || '—';
+  // Reset the built sections so they rebuild fresh for the new site
+  document.getElementById('prep-cats').innerHTML = '';
+  document.getElementById('stock-cats').innerHTML = '';
+  if (currentSite && orderType) rebuildProductLists();
+  updateStatus();
+}
+
+function setType(type) {
+  // Do NOT clear basket when switching type — staff may switch from Prep to Stock
+  // while building a combined order. Items stay in the basket throughout.
+  orderType = type;
+  document.querySelectorAll('.ot-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.ot-btn.' + (type==='both'?'both':type)).classList.add('active');
+  document.getElementById('prep-section').style.display  = (type==='prep'||type==='both') ? 'block':'none';
+  document.getElementById('stock-section').style.display = (type==='stock'||type==='both') ? 'block':'none';
+  document.getElementById('unified-search-section').style.display = 'none';
+  document.getElementById('quick-add-section').style.display = 'block';
+  document.getElementById('custom-section').style.display = 'block';
+  document.getElementById('submit-section').style.display = 'block';
+  document.getElementById('scan-section').style.display   = 'block';
+  document.getElementById('st-type').textContent = {prep:'Prep',stock:'Stock',both:'Prep + Stock'}[type];
+  clearQuickAdd();
+
+  if (currentSite) rebuildProductLists();
+  updateStatus();
+}
+
+function rebuildProductLists() {
+  if (!SITE_DATA) { showError('Products not loaded — please refresh.', true); return; }
+  if (!SITE_DATA[currentSite]) { showError('No products found for ' + currentSite, false); return; }
+  hideError();
+  const siteProds = SITE_DATA[currentSite];
+  // Only build a section if it hasn't been built yet for this site
+  // This preserves any quantities already entered when switching type
+  const prepBuilt  = document.getElementById('prep-cats').children.length > 0 &&
+                     !document.getElementById('prep-cats').innerHTML.includes('Loading items');
+  const stockBuilt = document.getElementById('stock-cats').children.length > 0 &&
+                     !document.getElementById('stock-cats').innerHTML.includes('Loading items');
+
+  // Always build both category lists — they're hidden but their inputs are needed for submission and scanning
+  requestAnimationFrame(() => {
+    if (!prepBuilt) {
+      requestAnimationFrame(() => buildCats('prep-cats', siteProds.prep, 'prep'));
+    }
+    if (!stockBuilt) {
+      requestAnimationFrame(() => buildCats('stock-cats', siteProds.stock, 'stock'));
+    }
+    buildSearchIndex();
+  });
+}
+
+// ── QTY CONTROLS ────────────────────────────────────────────────
+function adj(btn, delta) {
+  const input = btn.parentElement.querySelector('.qty-input');
+  const current = parseFloat(input.value) || 0;
+  const newVal = Math.min(999, Math.max(0, Math.round((current + delta) * 10) / 10));
+  input.value = newVal > 0 ? newVal : '';
+  onQtyInput(input);
+}
+
+function onQtyInput(input) {
+  const v  = parseFloat(input.value);
+  const ok = v > 0 && v <= 999;
+  if (v > 999) { input.value = 999; }
+  input.classList.toggle('filled', ok && v > 0);
+  input.closest('.prod-row')?.classList.toggle('has-qty', ok && v > 0);
+  if (!ok || v <= 0) input.value = '';
+  updateCatMeta(input);
+  updateStatus();
+}
+
+function updateCatMeta(input) {
+  const cat     = input.dataset.cat;
+  const section = input.dataset.section;
+  if (!cat || !section) return;
+  const catId   = `meta-${section}-${cat.replace(/[^a-z0-9]/gi,'_')}`;
+  const metaEl  = document.getElementById(catId);
+  if (!metaEl) return;
+  const total    = document.querySelectorAll(`.qty-input[data-cat="${cat}"][data-section="${section}"]`).length;
+  const selected = document.querySelectorAll(`.qty-input[data-cat="${cat}"][data-section="${section}"].filled`).length;
+  metaEl.textContent = selected > 0 ? `${selected} / ${total}` : `0 / ${total}`;
+  const hdr = metaEl.closest('.cat-hdr');
+  if (hdr) hdr.classList.toggle('has-items', selected > 0);
+}
+
+function clearAllQtys() {
+  document.querySelectorAll('.qty-input').forEach(i => {
+    i.value=''; i.classList.remove('filled');
+    i.closest('.prod-row')?.classList.remove('has-qty');
+  });
+  document.querySelectorAll('.cat-hdr-meta[id^="meta-"]').forEach(m => {
+    const parts = m.id.split('-');
+    const total = document.querySelectorAll(`.qty-input[data-section="${parts[1]}"]`).length;
+    m.textContent = `0 / ${total}`;
+    m.closest('.cat-hdr')?.classList.remove('has-items');
+  });
+}
+
+function updateStatus() {
+  const listed = document.querySelectorAll('.qty-input.filled').length;
+  const custom = [...document.querySelectorAll('.custom-qty')]
+    .filter(i => parseFloat(i.value)>0 && i.closest('.custom-row').querySelector('.custom-name').value.trim()).length;
+  const total = listed + custom;
+  document.getElementById('st-items').textContent  = total;
+  document.getElementById('hdr-badge').textContent = total + (total===1?' item':' items');
+  const site     = document.getElementById('site').value;
+  const delDate  = document.getElementById('delivery-date') ? document.getElementById('delivery-date').value : '';
+  // SITE_DATA not required — manager can submit unlisted items even if product list failed to load
+  document.getElementById('submit-btn').disabled = !(site && orderType && total > 0 && delDate);
+  // Drive the basket FAB — show when items exist and an order type is active
+  const fab = document.getElementById('basket-fab');
+  if (fab) {
+    fab.style.display = (total > 0 && orderType) ? 'flex' : 'none';
+    const countEl = document.getElementById('basket-count');
+    if (countEl) countEl.textContent = total + (total === 1 ? ' item' : ' items');
+  }
+}
+
+// ── SEARCH ───────────────────────────────────────────────────────
+function filterProducts(input, containerId) {
+  const q    = input.value.toLowerCase().trim();
+  const wrap = document.getElementById(containerId);
+  wrap.querySelectorAll('.prod-row').forEach(row => {
+    row.style.display = (!q || row.dataset.search.includes(q)) ? '' : 'none';
+  });
+  if (q) {
+    wrap.querySelectorAll('.cat-hdr').forEach(hdr => {
+      hdr.classList.remove('closed');
+      if (hdr.nextElementSibling) hdr.nextElementSibling.style.display='block';
+    });
+  }
+}
+
+// ── SUBMIT — sends as URL-encoded to avoid CORS preflight ────────
+async function submitOrder() {
+  // Disable immediately to prevent double-submit
+  const submitBtn = document.getElementById('submit-btn');
+  submitBtn.disabled = true;
+  const site  = document.getElementById('site').value;
+  const notes = document.getElementById('notes').value.trim();
+  if (!site || !orderType) { showError('Please select your site and order type before submitting.', false); window.scrollTo(0,0); submitBtn.disabled=false; return; }
+  // Allow submission even if SITE_DATA failed — unlisted items can still be submitted
+  if (!SITE_DATA && items.length === 0) { showError('Products not loaded and no unlisted items added. Please refresh or add items manually.', true); submitBtn.disabled=false; return; }
+
+  const items = [];
+  document.querySelectorAll('.qty-input.filled').forEach(inp => {
+    const qty = parseFloat(inp.value);
+    if (qty > 0 && qty <= 999) {
+      items.push({ name:inp.dataset.name, unit:inp.dataset.unit, qty, section:inp.dataset.section });
+    }
+  });
+  document.querySelectorAll('.custom-row').forEach(row => {
+    const name = row.querySelector('.custom-name').value.trim();
+    const qty  = parseFloat(row.querySelector('.custom-qty').value) || 0;
+    const unit = row.querySelector('.custom-unit').value.trim() || '—';
+    const sec  = row.querySelector('.custom-type').value;
+    if (name && qty > 0 && qty <= 999) items.push({ name, unit, qty, section:sec, custom:true });
+  });
+  if (!items.length) { showError('Please add at least one item — either from the list above or in the \'Items Not on the List\' section.', false); window.scrollTo(0,0); submitBtn.disabled=false; return; }
+
+  document.getElementById('loading-overlay').classList.add('show');
+  // Show reassuring message if taking longer than 20s
+  const slowTimer = setTimeout(() => {
+    const lm = document.querySelector('.loading-msg');
+    if (lm && document.getElementById('loading-overlay').classList.contains('show')) {
+      lm.textContent = 'Still processing — please wait, large orders take a moment…';
+    }
+  }, 20000);
+
+  const deliveryDate = document.getElementById('delivery-date').value;
+  const payload = { site, orderType, notes, deliveryDate, items };
+
+  // AbortController — 120s timeout (large orders need time to log rows + send Telegram)
+  const controller = new AbortController();
+  const timeout    = setTimeout(() => controller.abort(), 120000);
+
+  try {
+    // Send as URL-encoded to avoid CORS preflight OPTIONS request
+    const res  = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/x-www-form-urlencoded'},
+      body: 'data=' + encodeURIComponent(JSON.stringify(payload)),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    clearTimeout(slowTimer);
+    const json = await res.json();
+    document.getElementById('loading-overlay').classList.remove('show');
+    if (json.ok) {
+      document.getElementById('success-ref').textContent = json.orderId || 'ORD-??????';
+      document.getElementById('review-overlay').classList.remove('show');
+      document.getElementById('success-overlay').classList.add('show');
+      window.scrollTo(0,0);
+    } else {
+      showError('Order failed: ' + (json.error || 'Please try again.'), false);
+      document.getElementById('submit-btn').disabled = false;
+      window.scrollTo(0,0);
+    }
+  } catch(err) {
+    clearTimeout(timeout);
+    clearTimeout(slowTimer);
+    document.getElementById('loading-overlay').classList.remove('show');
+    const msg = err.name === 'AbortError'
+      ? 'This is taking longer than usual — your order may still have been submitted. Please check the Order Log before trying again.'
+      : 'Connection error. Please check your internet and try again.';
+    showError(msg, false);
+    document.getElementById('submit-btn').disabled = false;
+    window.scrollTo(0,0);  // Scroll to top so error banner is visible
+  }
+}
+
+// ── ERROR HANDLING ───────────────────────────────────────────────
+function showError(msg, showRetry) {
+  const banner = document.getElementById('error-banner');
+  document.getElementById('error-msg').textContent = msg;
+  document.getElementById('retry-btn').style.display = showRetry ? 'block' : 'none';
+  banner.classList.add('show');
+  banner.style.display = 'flex';
+  document.getElementById('header-sub').textContent = 'Add items below or tap Retry';
+}
+function hideError() {
+  const banner = document.getElementById('error-banner');
+  banner.classList.remove('show');
+  banner.style.display = 'none';
+}
+
+// ── RESET ────────────────────────────────────────────────────────
+function resetForm() {
+  document.getElementById('success-overlay').classList.remove('show');
+  document.getElementById('site').value  = '';
+  document.getElementById('notes').value = '';
+  const dd = document.getElementById('delivery-date');
+  if (dd) dd.value = '';
+  clearAllQtys();
+  initCustomRows();
+  // Clear search fields and restore full product lists
+  document.querySelectorAll('.search-input').forEach(inp => {
+    inp.value = '';
+    if (inp.id === 'unified-search') { filterBoth(inp); }
+    else {
+      const containerId = inp.id === 'prep-search' ? 'prep-cats' : 'stock-cats';
+      filterProducts(inp, containerId);
+    }
+  });
+  // Hide unified search section on reset
+  const us = document.getElementById('unified-search-section');
+  if (us) us.style.display = 'none';
+  orderType = null; currentSite = null;
+  document.querySelectorAll('.ot-btn').forEach(b => b.classList.remove('active'));
+  ['prep-section','stock-section','custom-section','submit-section','scan-section','quick-add-section']
+    .forEach(id => document.getElementById(id).style.display='none');
+  clearQuickAdd();
+  closeScan();
+  closeBasket();
+  document.getElementById('st-site').textContent  = '—';
+  document.getElementById('st-type').textContent  = '—';
+  document.getElementById('st-items').textContent = '0';
+  document.getElementById('hdr-badge').textContent= '0 items';
+  document.getElementById('submit-btn').disabled  = true;
+  hideError();
+  window.scrollTo(0,0);
+  document.getElementById('review-overlay').classList.remove('show');
+  const cc = document.getElementById('confirm-check'); if(cc) cc.checked=false;
+}
+
+
+// ── REVIEW ORDER ─────────────────────────────────────────────────
+function openReview() {
+  const site       = document.getElementById('site').value;
+  const notes      = document.getElementById('notes').value.trim();
+  const delivDate  = document.getElementById('delivery-date').value;
+  const typeLabel  = {prep:'Prep',stock:'Stock',both:'Prep + Stock'}[orderType] || orderType;
+
+  // Format delivery date
+  const dp = delivDate.split('-');
+  const delivFormatted = dp.length===3 ? dp[2]+'/'+dp[1]+'/'+dp[0] : delivDate;
+
+  // Build meta summary
+  document.getElementById('review-meta').innerHTML = `
+    <div class="review-meta-row">
+      <span class="review-meta-label">Site</span>
+      <span class="review-meta-value">${site}</span>
+    </div>
+    <div class="review-meta-row">
+      <span class="review-meta-label">Order Type</span>
+      <span class="review-meta-value">${typeLabel}</span>
+    </div>
+    <div class="review-meta-row">
+      <span class="review-meta-label">Delivery Date</span>
+      <span class="review-meta-value">${delivFormatted}</span>
+    </div>`;
+
+  document.getElementById('review-subtitle').textContent =
+    `${site} — ${typeLabel} — Delivery ${delivFormatted}`;
+
+  // Build items by section and category
+  const sections = document.getElementById('review-sections');
+  sections.innerHTML = '';
+
+  // Gather all listed items grouped by section→category
+  const grouped = {};  // {section: {cat: [{name,unit,qty}]}}
+  document.querySelectorAll('.qty-input.filled').forEach(inp => {
+    const sec = inp.dataset.section || 'prep';
+    const cat = inp.dataset.cat     || 'Other';
+    const name= inp.dataset.name;
+    const unit= inp.dataset.unit;
+    const qty = parseFloat(inp.value);
+    if (!grouped[sec]) grouped[sec] = {};
+    if (!grouped[sec][cat]) grouped[sec][cat] = [];
+    grouped[sec][cat].push({name, unit, qty});
+  });
+
+  // Gather custom items
+  const customItems = [];
+  document.querySelectorAll('.custom-row').forEach(row => {
+    const name = row.querySelector('.custom-name').value.trim();
+    const qty  = parseFloat(row.querySelector('.custom-qty').value)||0;
+    const unit = row.querySelector('.custom-unit').value.trim()||'—';
+    const sec  = row.querySelector('.custom-type').value;
+    if (name && qty>0) customItems.push({name, unit, qty, sec});
+  });
+
+  // Render listed items
+  const sectionOrder = ['prep','stock'];
+  const sectionLabel = {prep:'Prep Items', stock:'Stock Items'};
+  let totalItems = 0;
+
+  sectionOrder.forEach(sec => {
+    if (!grouped[sec] || !Object.keys(grouped[sec]).length) return;
+    const secDiv = document.createElement('div');
+    secDiv.className = 'review-section';
+    const title = document.createElement('div');
+    title.className = 'review-section-title';
+    title.textContent = sectionLabel[sec];
+    secDiv.appendChild(title);
+    const card = document.createElement('div');
+    card.className = 'review-card';
+
+    Object.entries(grouped[sec]).forEach(([cat, items]) => {
+      const catHdr = document.createElement('div');
+      catHdr.className = 'review-cat-hdr';
+      catHdr.textContent = cat;
+      card.appendChild(catHdr);
+      items.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'review-item';
+        const nameEl = document.createElement('div');
+        nameEl.className = 'review-item-name';
+        nameEl.textContent = item.name;
+        const detail = document.createElement('div');
+        detail.className = 'review-item-detail';
+        const qty = document.createElement('div');
+        qty.className = 'review-item-qty';
+        qty.textContent = item.qty + 'x';
+        const unit = document.createElement('div');
+        unit.className = 'review-item-unit';
+        unit.textContent = item.unit;
+        detail.appendChild(qty);
+        detail.appendChild(unit);
+        row.appendChild(nameEl);
+        row.appendChild(detail);
+        card.appendChild(row);
+        totalItems++;
+      });
+    });
+    secDiv.appendChild(card);
+    sections.appendChild(secDiv);
+  });
+
+  // Render custom items
+  if (customItems.length > 0) {
+    const secDiv = document.createElement('div');
+    secDiv.className = 'review-section';
+    const title = document.createElement('div');
+    title.className = 'review-section-title';
+    title.textContent = 'Unlisted Items';
+    secDiv.appendChild(title);
+    const card = document.createElement('div');
+    card.className = 'review-card';
+    customItems.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'review-item';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'review-item-name';
+      nameEl.textContent = item.name;
+      const detail = document.createElement('div');
+      detail.className = 'review-item-detail';
+      const qty = document.createElement('div');
+      qty.className = 'review-item-qty';
+      qty.textContent = item.qty + 'x';
+      const unit = document.createElement('div');
+      unit.className = 'review-item-unit';
+      unit.textContent = item.unit;
+      detail.appendChild(qty);
+      detail.appendChild(unit);
+      row.appendChild(nameEl);
+      row.appendChild(detail);
+      card.appendChild(row);
+      totalItems++;
+    });
+    secDiv.appendChild(card);
+    sections.appendChild(secDiv);
+  }
+
+  // Notes
+  if (notes) {
+    document.getElementById('review-notes').style.display = 'block';
+    document.getElementById('review-notes-text').textContent = notes;
+  } else {
+    document.getElementById('review-notes').style.display = 'none';
+  }
+
+  // Reset confirmation checkbox
+  document.getElementById('confirm-check').checked = false;
+  document.getElementById('confirm-section').classList.remove('confirmed');
+  document.getElementById('review-submit-btn').classList.remove('ready');
+
+  // Show overlay
+  document.getElementById('review-overlay').classList.add('show');
+  document.getElementById('review-overlay').scrollTop = 0;
+}
+
+function closeReview() {
+  document.getElementById('review-overlay').classList.remove('show');
+}
+
+function onConfirmChange() {
+  const checked = document.getElementById('confirm-check').checked;
+  document.getElementById('confirm-section').classList.toggle('confirmed', checked);
+  document.getElementById('review-submit-btn').classList.toggle('ready', checked);
+}
+
+
+// ── ITEM SEARCH ───────────────────────────────────────────────────
+// Flat product index for the current site + order type.
+// Hidden category inputs remain the source of truth for submission.
+let _searchIndex = [];
+
+function buildSearchIndex() {
+  _searchIndex = [];
+  if (!SITE_DATA || !currentSite || !SITE_DATA[currentSite]) return;
+  const siteProds = SITE_DATA[currentSite];
+  const sections  = orderType === 'prep'  ? ['prep']
+                  : orderType === 'stock' ? ['stock']
+                  : ['prep', 'stock'];
+  const seen = new Set();
+  sections.forEach(sec => {
+    Object.entries(siteProds[sec] || {}).forEach(([cat, items]) => {
+      (items || []).forEach(p => {
+        if (!seen.has(p.name)) {
+          seen.add(p.name);
+          _searchIndex.push({ name: p.name, unit: p.unit, section: sec, cat });
+        }
+      });
+    });
+  });
+}
+
+function onItemSearch(val) {
+  const q = val.toLowerCase().trim();
+  const resultsEl = document.getElementById('item-search-results');
+  resultsEl.innerHTML = '';
+  if (!q) return;
+
+  // Exact start-of-word matches first, then other contains matches
+  const starts   = _searchIndex.filter(p => p.name.toLowerCase().startsWith(q));
+  const contains = _searchIndex.filter(p =>
+    !p.name.toLowerCase().startsWith(q) && p.name.toLowerCase().includes(q)
+  );
+  const matches = [...starts, ...contains].slice(0, 40);
+
+  if (!matches.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'No items match "' + val + '"';
+    resultsEl.appendChild(empty);
+    return;
+  }
+
+  matches.forEach(item => buildSearchResultRow(item, resultsEl));
+}
+
+function buildSearchResultRow(item, container) {
+  // Hidden category input is the source of truth — read current qty from it
+  const hiddenInp = document.querySelector(
+    `#prep-cats .qty-input[data-name="${CSS.escape(item.name)}"],` +
+    `#stock-cats .qty-input[data-name="${CSS.escape(item.name)}"]`
+  );
+  const currentQty = hiddenInp ? (parseFloat(hiddenInp.value) || 0) : 0;
+
+  const row = document.createElement('div');
+  row.className = 'prod-row' + (currentQty > 0 ? ' has-qty' : '');
+
+  const info = document.createElement('div');
+  info.className = 'prod-info';
+  const nameEl = document.createElement('div');
+  nameEl.className = 'prod-name'; nameEl.textContent = item.name;
+  const unitEl = document.createElement('div');
+  unitEl.className = 'prod-unit'; unitEl.textContent = item.unit;
+  info.appendChild(nameEl); info.appendChild(unitEl);
+
+  const qtyWrap = document.createElement('div');
+  qtyWrap.className = 'qty-wrap';
+
+  const minus = document.createElement('button');
+  minus.className = 'qty-btn'; minus.textContent = '−';
+  minus.setAttribute('tabindex', '-1');
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.className = 'search-qty' + (currentQty > 0 ? ' filled' : '');
+  input.min = '0'; input.max = '999'; input.step = '0.5';
+  input.placeholder = '0';
+  input.value = currentQty > 0 ? currentQty : '';
+  input.dataset.name = item.name;
+  input.onfocus = () => input.select();
+
+  const plus = document.createElement('button');
+  plus.className = 'qty-btn'; plus.textContent = '+';
+  plus.setAttribute('tabindex', '-1');
+
+  const sync = (v) => {
+    v = Math.min(999, Math.max(0, Math.round(v * 10) / 10));
+    input.value = v > 0 ? v : '';
+    input.classList.toggle('filled', v > 0);
+    row.classList.toggle('has-qty', v > 0);
+    // Push value into the hidden category input (submission reads from there)
+    if (hiddenInp) {
+      hiddenInp.value = v > 0 ? v : '';
+      onQtyInput(hiddenInp);
+    } else {
+      updateStatus();
+    }
+    updateOrderList();
+  };
+
+  input.oninput = () => sync(parseFloat(input.value) || 0);
+  minus.onclick  = () => sync((parseFloat(input.value) || 0) - 0.5);
+  plus.onclick   = () => sync((parseFloat(input.value) || 0) + 0.5);
+
+  qtyWrap.appendChild(minus); qtyWrap.appendChild(input); qtyWrap.appendChild(plus);
+  row.appendChild(info); row.appendChild(qtyWrap);
+  container.appendChild(row);
+}
+
+function updateOrderList() {
+  const wrap   = document.getElementById('order-items-wrap');
+  const listEl = document.getElementById('order-items-list');
+  if (!wrap || !listEl) return;
+
+  // Source of truth: hidden category inputs that are filled
+  const filled = document.querySelectorAll(
+    '#prep-cats .qty-input.filled, #stock-cats .qty-input.filled'
+  );
+
+  if (!filled.length) { wrap.style.display = 'none'; return; }
+
+  wrap.style.display = 'block';
+  listEl.innerHTML = '';
+
+  filled.forEach(inp => {
+    const qty = parseFloat(inp.value) || 0;
+    if (qty <= 0) return;
+
+    const row = document.createElement('div');
+    row.className = 'review-item';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'review-item-name'; nameEl.textContent = inp.dataset.name;
+
+    const detail = document.createElement('div');
+    detail.className = 'review-item-detail';
+
+    const qtyEl = document.createElement('div');
+    qtyEl.className = 'review-item-qty'; qtyEl.textContent = qty + 'x';
+
+    const unitEl = document.createElement('div');
+    unitEl.className = 'review-item-unit'; unitEl.textContent = inp.dataset.unit;
+
+    const rm = document.createElement('button');
+    rm.style.cssText = 'background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:20px;padding:0 0 0 6px;line-height:1;flex-shrink:0';
+    rm.textContent = '×';
+    rm.title = 'Remove';
+    rm.onclick = () => {
+      inp.value = '';
+      onQtyInput(inp);
+      // Also clear if visible in current search results
+      const srInp = document.querySelector(
+        `#item-search-results .search-qty[data-name="${CSS.escape(inp.dataset.name)}"]`
+      );
+      if (srInp) {
+        srInp.value = '';
+        srInp.classList.remove('filled');
+        srInp.closest('.prod-row')?.classList.remove('has-qty');
+      }
+      updateOrderList();
+    };
+
+    detail.appendChild(qtyEl); detail.appendChild(unitEl); detail.appendChild(rm);
+    row.appendChild(nameEl); row.appendChild(detail);
+    listEl.appendChild(row);
+  });
+}
+
+function clearQuickAdd() {
+  _searchIndex = [];
+  const si = document.getElementById('item-search');      if (si) si.value = '';
+  const sr = document.getElementById('item-search-results'); if (sr) sr.innerHTML = '';
+  const w  = document.getElementById('order-items-wrap'); if (w)  w.style.display = 'none';
+}
+
+// ── BASKET ────────────────────────────────────────────────────────
+function openBasket() {
+  renderBasket();
+  document.getElementById('basket-overlay').classList.add('show');
+  document.getElementById('basket-overlay').scrollTop = 0;
+}
+
+function closeBasket() {
+  document.getElementById('basket-overlay').classList.remove('show');
+}
+
+function renderBasket() {
+  const body = document.getElementById('basket-body');
+  body.innerHTML = '';
+
+  // Listed items from hidden category inputs
+  const listedInputs = [...document.querySelectorAll(
+    '#prep-cats .qty-input.filled, #stock-cats .qty-input.filled'
+  )];
+
+  if (listedInputs.length) {
+    const title = document.createElement('div');
+    title.className = 'review-section-title';
+    title.textContent = 'Items';
+    body.appendChild(title);
+    const card = document.createElement('div');
+    card.className = 'review-card';
+    listedInputs.forEach(inp => {
+      const qty = parseFloat(inp.value) || 0;
+      if (qty <= 0) return;
+      card.appendChild(buildBasketRow(inp.dataset.name, inp.dataset.unit, qty, () => {
+        inp.value = '';
+        onQtyInput(inp);
+        const sr = document.querySelector(`#item-search-results .search-qty[data-name="${CSS.escape(inp.dataset.name)}"]`);
+        if (sr) { sr.value = ''; sr.classList.remove('filled'); sr.closest('.prod-row')?.classList.remove('has-qty'); }
+        updateOrderList();
+        renderBasket();
+      }));
+    });
+    body.appendChild(card);
+  }
+
+  // Custom items
+  const customRows = [...document.querySelectorAll('.custom-row')].filter(row => {
+    const name = row.querySelector('.custom-name').value.trim();
+    const qty  = parseFloat(row.querySelector('.custom-qty').value) || 0;
+    return name && qty > 0;
+  });
+
+  if (customRows.length) {
+    const title = document.createElement('div');
+    title.className = 'review-section-title';
+    title.style.marginTop = '16px';
+    title.textContent = 'Custom Items';
+    body.appendChild(title);
+    const card = document.createElement('div');
+    card.className = 'review-card';
+    customRows.forEach(row => {
+      const name = row.querySelector('.custom-name').value.trim();
+      const qty  = parseFloat(row.querySelector('.custom-qty').value) || 0;
+      const unit = row.querySelector('.custom-unit').value.trim() || '—';
+      card.appendChild(buildBasketRow(name, unit, qty, () => {
+        row.remove();
+        updateStatus();
+        renderBasket();
+      }));
+    });
+    body.appendChild(card);
+  }
+
+  const total = listedInputs.filter(i => parseFloat(i.value) > 0).length + customRows.length;
+  document.getElementById('basket-subtitle').textContent =
+    total > 0 ? total + (total === 1 ? ' item' : ' items') + ' in your order' : 'Nothing added yet';
+
+  if (!total) {
+    body.innerHTML = '<div class="basket-empty">Your order is empty.</div>';
+  }
+}
+
+function buildBasketRow(name, unit, qty, onRemove) {
+  const row = document.createElement('div');
+  row.className = 'review-item';
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'review-item-name'; nameEl.textContent = name;
+
+  const detail = document.createElement('div');
+  detail.className = 'review-item-detail';
+
+  const qtyEl = document.createElement('div');
+  qtyEl.className = 'review-item-qty'; qtyEl.textContent = qty + 'x';
+
+  const unitEl = document.createElement('div');
+  unitEl.className = 'review-item-unit'; unitEl.textContent = unit;
+
+  const rm = document.createElement('button');
+  rm.style.cssText = 'background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:20px;padding:0 0 0 8px;line-height:1;flex-shrink:0';
+  rm.textContent = '×'; rm.title = 'Remove';
+  rm.onclick = onRemove;
+
+  detail.appendChild(qtyEl); detail.appendChild(unitEl); detail.appendChild(rm);
+  row.appendChild(nameEl); row.appendChild(detail);
+  return row;
+}
+
+// ── IMAGE SCAN ────────────────────────────────────────────────────
+let _scanFile    = null;
+let _scanResults = null;
+
+function openScan() {
+  if (!currentSite || !orderType) {
+    showError('Please select your site and order type before scanning.', false);
+    return;
+  }
+  resetScanPhases();
+  document.getElementById('scan-overlay').classList.add('show');
+  document.getElementById('scan-overlay').scrollTop = 0;
+}
+
+function closeScan() {
+  document.getElementById('scan-overlay').classList.remove('show');
+}
+
+function resetScanPhases() {
+  document.getElementById('scan-upload-phase').style.display    = 'block';
+  document.getElementById('scan-processing-phase').style.display = 'none';
+  document.getElementById('scan-results-phase').style.display   = 'none';
+  document.getElementById('scan-preview-wrap').style.display    = 'none';
+  document.getElementById('scan-rescan-btn').style.display      = 'none';
+  document.getElementById('scan-subtitle').textContent = 'Upload a photo of your order list';
+  const fi = document.getElementById('scan-file-input');
+  if (fi) fi.value = '';
+  _scanFile = null; _scanResults = null;
+}
+
+function handleImageSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  _scanFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('scan-preview-img').src = e.target.result;
+    document.getElementById('scan-preview-name').textContent = file.name || 'Photo selected';
+    document.getElementById('scan-preview-wrap').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+// Lazy-loads Tesseract.js from CDN the first time it is needed
+function loadTesseract() {
+  return new Promise((resolve, reject) => {
+    if (window.Tesseract) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src    = 'https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js';
+    s.onload  = resolve;
+    s.onerror = () => reject(new Error('Could not load OCR engine — check your internet connection.'));
+    document.head.appendChild(s);
+  });
+}
+
+async function scanImage() {
+  if (!_scanFile) return;
+
+  document.getElementById('scan-upload-phase').style.display     = 'none';
+  document.getElementById('scan-processing-phase').style.display = 'block';
+  document.getElementById('scan-subtitle').textContent = 'Reading image…';
+
+  const loadingMsg = document.getElementById('scan-loading-msg');
+
+  try {
+    loadingMsg.textContent = 'Loading text recognition…';
+    await loadTesseract();
+
+    loadingMsg.textContent = 'Reading text from image…';
+    const { data: { text } } = await Tesseract.recognize(_scanFile, 'eng', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          loadingMsg.textContent = 'Reading text… ' + Math.round(m.progress * 100) + '%';
+        }
+      }
+    });
+
+    document.getElementById('scan-processing-phase').style.display = 'none';
+
+    const parsed = parseOcrText(text);
+    _scanResults  = parsed;
+    renderScanResults(parsed);
+    document.getElementById('scan-results-phase').style.display = 'block';
+    document.getElementById('scan-rescan-btn').style.display    = 'block';
+    document.getElementById('scan-subtitle').textContent = 'Review items — confirm or skip each one';
+
+  } catch(err) {
+    document.getElementById('scan-processing-phase').style.display = 'none';
+    document.getElementById('scan-upload-phase').style.display     = 'block';
+    document.getElementById('scan-subtitle').textContent = 'Scan failed — try again';
+    showError(err.message || 'Could not read the image. Try a clearer photo with better contrast.', false);
+  }
+}
+
+// Matches OCR text against the product list already loaded in SITE_DATA.
+// No network calls — runs entirely in the browser.
+function parseOcrText(ocrText) {
+  if (!SITE_DATA || !SITE_DATA[currentSite]) {
+    return { items: [], unreadable: ['Product list not loaded — please refresh and try again.'] };
+  }
+
+  // Build flat product list for the active site + order type
+  const siteProds  = SITE_DATA[currentSite];
+  const sections   = orderType === 'prep'  ? ['prep']
+                   : orderType === 'stock' ? ['stock']
+                   : ['prep', 'stock'];
+  const allProducts = [];
+  const seen = new Set();
+  sections.forEach(sec => {
+    Object.values(siteProds[sec] || {}).forEach(items => {
+      (items || []).forEach(p => {
+        if (!seen.has(p.name)) {
+          seen.add(p.name);
+          allProducts.push({ name: p.name, unit: p.unit, section: sec });
+        }
+      });
+    });
+  });
+
+  // Split into lines; skip blank or purely numeric lines
+  const lines = ocrText
+    .split(/\n+/)
+    .map(l => l.trim())
+    .filter(l => l.length > 2 && /[a-zA-Z]{2,}/.test(l));
+
+  const matched   = [];
+  const unmatched = [];
+  const usedProds = new Set();
+
+  lines.forEach(line => {
+    // Extract quantity — try common formats: "5x", "x5", "5kg", bare number
+    let qty = 1;
+    for (const pat of [
+      /\b(\d+(?:\.\d+)?)\s*x\b/i,
+      /\bx\s*(\d+(?:\.\d+)?)\b/i,
+      /\b(\d+(?:\.\d+)?)\s*(?:kg|ltrs?|boxes?|cases?|bags?|packs?|units?|each)\b/i,
+      /\b(\d+(?:\.\d+)?)\b/
+    ]) {
+      const m = line.match(pat);
+      if (m) { qty = parseFloat(m[1]); break; }
+    }
+    if (!qty || qty <= 0 || qty > 999) qty = 1;
+
+    // Clean line for word matching (strip digits and punctuation)
+    const cleanLine = line.toLowerCase()
+      .replace(/\d+(?:\.\d+)?/g, '')
+      .replace(/[^a-z\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (cleanLine.length < 2) return;
+
+    // Score each product: proportion of its name-words found in this line
+    let bestMatch = null;
+    let bestScore = 0;
+
+    allProducts.forEach(product => {
+      if (usedProds.has(product.name)) return;
+      const nameWords = product.name.toLowerCase()
+        .replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(w => w.length > 1);
+      const lineWords = cleanLine.split(/\s+/);
+
+      const hits = nameWords.filter(nw =>
+        lineWords.some(lw => lw === nw || lw.startsWith(nw) || nw.startsWith(lw))
+      ).length;
+
+      const score = nameWords.length ? hits / nameWords.length : 0;
+      if (score >= 0.5 && hits >= 1 && score > bestScore) {
+        bestScore = score; bestMatch = product;
+      }
+    });
+
+    if (bestMatch) {
+      usedProds.add(bestMatch.name);
+      matched.push({
+        name: bestMatch.name, unit: bestMatch.unit,
+        raw: line, qty,
+        confidence: bestScore >= 0.85 ? 'high' : 'low',
+        matched: true
+      });
+    } else {
+      unmatched.push({
+        name: line, raw: line, qty,
+        unit: '', confidence: 'low', matched: false
+      });
+    }
+  });
+
+  return { items: [...matched, ...unmatched], unreadable: [] };
+}
+
+function renderScanResults(data) {
+  const items      = data.items      || [];
+  const unreadable = data.unreadable || [];
+  const matched    = items.filter(i => i.matched);
+  const unmatched  = items.filter(i => !i.matched);
+
+  // ── Matched items ─────────────────────────────────────────────
+  const matchedSec = document.getElementById('scan-matched-section');
+  matchedSec.innerHTML = '';
+
+  if (matched.length) {
+    const title = document.createElement('div');
+    title.className   = 'review-section-title';
+    title.textContent = 'Found in your order — ' + matched.length + (matched.length === 1 ? ' item' : ' items');
+    matchedSec.appendChild(title);
+
+    const note = document.createElement('div');
+    note.style.cssText = 'font-size:12px;color:var(--text-tertiary);margin-bottom:8px;padding-left:2px';
+    note.textContent = 'All items are included by default. Tap "Skip" on anything that\'s wrong.';
+    matchedSec.appendChild(note);
+
+    const card = document.createElement('div');
+    card.className = 'review-card scan-confirm-card';
+    matched.forEach((item, idx) => card.appendChild(buildScanItemRow(item, 'matched', idx)));
+    matchedSec.appendChild(card);
+  }
+
+  // ── Unmatched items ───────────────────────────────────────────
+  const unmatchedSec = document.getElementById('scan-unmatched-section');
+  unmatchedSec.innerHTML = '';
+
+  if (unmatched.length) {
+    const title = document.createElement('div');
+    title.className = 'review-section-title';
+    title.style.marginTop = '16px';
+    title.textContent = 'Not in product list — ' + unmatched.length + (unmatched.length === 1 ? ' item' : ' items');
+    unmatchedSec.appendChild(title);
+
+    const note = document.createElement('div');
+    note.style.cssText = 'font-size:12px;color:var(--text-tertiary);margin-bottom:8px;padding-left:2px';
+    note.textContent = 'These were read from the image but not matched to a known product. Edit the name and set the type before adding.';
+    unmatchedSec.appendChild(note);
+
+    const card = document.createElement('div');
+    card.className = 'review-card scan-confirm-card';
+    unmatched.forEach((item, idx) => card.appendChild(buildScanItemRow(item, 'unmatched', idx)));
+    unmatchedSec.appendChild(card);
+  }
+
+  // ── Unreadable parts ──────────────────────────────────────────
+  const unreadableSec = document.getElementById('scan-unreadable-section');
+  unreadableSec.innerHTML = '';
+
+  if (unreadable.length) {
+    const title = document.createElement('div');
+    title.className = 'review-section-title';
+    title.style.marginTop = '16px';
+    title.textContent = 'Couldn\'t read (' + unreadable.length + ')';
+    unreadableSec.appendChild(title);
+
+    const card = document.createElement('div');
+    card.className = 'review-card';
+
+    unreadable.forEach(text => {
+      const p = document.createElement('div');
+      p.className   = 'scan-unreadable-note';
+      p.style.borderBottom = '1px solid var(--border)';
+      p.textContent = '⚠️ ' + text;
+      card.appendChild(p);
+    });
+    if (card.lastChild) card.lastChild.style.borderBottom = 'none';
+    unreadableSec.appendChild(card);
+
+    const hint = document.createElement('div');
+    hint.style.cssText = 'font-size:12px;color:var(--text-tertiary);margin-top:6px;padding-left:2px';
+    hint.textContent = 'Add these manually using the "Items Not on the List" section after closing this panel.';
+    unreadableSec.appendChild(hint);
+  }
+
+  if (!matched.length && !unmatched.length) {
+    matchedSec.innerHTML = '<div class="summary-no-activity">No items could be extracted. Try a clearer photo with better lighting.</div>';
+  }
+}
+
+function buildScanItemRow(item, type, idx) {
+  const isMatched = type === 'matched';
+  const row = document.createElement('div');
+  row.className = 'scan-item-row';
+  row.dataset.scanIdx  = idx;
+  row.dataset.scanType = type;
+  row.dataset.included = 'true';
+
+  // Left: name / raw / confidence
+  const nameWrap = document.createElement('div');
+  nameWrap.className = 'scan-item-name-wrap';
+
+  if (isMatched) {
+    const nameEl = document.createElement('div');
+    nameEl.className   = 'scan-item-name';
+    nameEl.textContent = item.name;
+    nameWrap.appendChild(nameEl);
+
+    if (item.raw && item.raw.toLowerCase() !== item.name.toLowerCase()) {
+      const rawEl = document.createElement('div');
+      rawEl.className   = 'scan-item-raw';
+      rawEl.textContent = 'Read as: "' + item.raw + '"';
+      nameWrap.appendChild(rawEl);
+    }
+
+    const badge = document.createElement('span');
+    badge.className   = 'scan-conf-badge ' + (item.confidence === 'high' ? 'scan-conf-high' : 'scan-conf-low');
+    badge.textContent = item.confidence === 'high' ? '✅ Clear' : '⚠️ Unclear — check qty';
+    nameWrap.appendChild(badge);
+
+  } else {
+    // What OCR read — shown as reference (hidden for manually-added rows)
+    if (item.raw) {
+      const rawLabel = document.createElement('div');
+      rawLabel.className   = 'scan-item-raw';
+      rawLabel.style.marginBottom = '4px';
+      rawLabel.textContent = 'Read as: "' + item.raw + '"';
+      nameWrap.appendChild(rawLabel);
+    }
+
+    // Searchable combobox — type to filter products, or leave as custom
+    nameWrap.appendChild(buildScanCombobox(item.raw || ''));
+  }
+
+  // Right: qty + unit (or type selector) + add/skip toggle
+  const controls = document.createElement('div');
+  controls.className = 'scan-item-controls';
+
+  const qtyInput = document.createElement('input');
+  qtyInput.type        = 'number';
+  qtyInput.className   = 'scan-qty-input';
+  qtyInput.value       = item.qty || 1;
+  qtyInput.min = '0'; qtyInput.max = '999'; qtyInput.step = '0.5';
+  qtyInput.placeholder = '0';
+  controls.appendChild(qtyInput);
+
+  if (isMatched && item.unit) {
+    const unitEl = document.createElement('span');
+    unitEl.className   = 'scan-item-unit';
+    unitEl.textContent = item.unit;
+    controls.appendChild(unitEl);
+  }
+
+  if (!isMatched) {
+    const typeSelect = document.createElement('select');
+    typeSelect.className = 'scan-type-select';
+    ['stock', 'prep'].forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t; opt.textContent = t === 'stock' ? 'Stock' : 'Prep';
+      typeSelect.appendChild(opt);
+    });
+    controls.appendChild(typeSelect);
+  }
+
+  const toggleBtn = document.createElement('button');
+  toggleBtn.className   = 'scan-toggle-btn scan-include';
+  toggleBtn.textContent = 'Add';
+  toggleBtn.onclick = () => toggleScanItem(row, toggleBtn);
+  controls.appendChild(toggleBtn);
+
+  row.appendChild(nameWrap);
+  row.appendChild(controls);
+  return row;
+}
+
+function buildScanCombobox(prefill) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'scan-combobox';
+
+  const input = document.createElement('input');
+  input.type        = 'text';
+  input.className   = 'scan-combobox-input';
+  input.placeholder = 'Type to search products, or enter custom name…';
+  input.value       = prefill || '';
+  input.dataset.selectedProduct = '';
+
+  // Dropdown is appended to body so overflow:hidden on parent cards can't clip it
+  const dropdown = document.createElement('div');
+  dropdown.className = 'scan-combobox-dropdown';
+  dropdown.style.display = 'none';
+  document.body.appendChild(dropdown);
+
+  const positionDropdown = () => {
+    const r = input.getBoundingClientRect();
+    dropdown.style.top   = (r.bottom + 4) + 'px';
+    dropdown.style.left  = r.left + 'px';
+    dropdown.style.width = r.width + 'px';
+  };
+
+  const showDropdown = (q) => {
+    dropdown.innerHTML = '';
+    const matches = _searchIndex
+      .filter(p => p.name.toLowerCase().includes(q.toLowerCase()))
+      .slice(0, 25);
+    if (!matches.length) { dropdown.style.display = 'none'; return; }
+    matches.forEach(p => {
+      const opt = document.createElement('div');
+      opt.className   = 'scan-combobox-option';
+      opt.textContent = p.name + (p.unit ? '  (' + p.unit + ')' : '');
+      opt.onmousedown = (e) => {
+        e.preventDefault();
+        input.value = p.name;
+        input.dataset.selectedProduct = p.name;
+        input.classList.add('matched');
+        dropdown.style.display = 'none';
+      };
+      dropdown.appendChild(opt);
+    });
+    positionDropdown();
+    dropdown.style.display = 'block';
+  };
+
+  const hideDropdown = () => { dropdown.style.display = 'none'; };
+
+  input.oninput = () => {
+    input.dataset.selectedProduct = '';
+    input.classList.remove('matched');
+    const q = input.value.trim();
+    q.length > 0 ? showDropdown(q) : hideDropdown();
+  };
+
+  input.onfocus = () => {
+    const q = input.value.trim();
+    if (q.length > 0) showDropdown(q);
+  };
+
+  input.onblur = () => { setTimeout(hideDropdown, 160); };
+
+  // Reposition on scroll so the dropdown tracks the input
+  const overlay = document.getElementById('scan-overlay');
+  if (overlay) overlay.addEventListener('scroll', positionDropdown, { passive: true });
+
+  // Auto-match OCR prefill to closest known product
+  if (prefill && prefill.trim()) {
+    const autoMatch = _searchIndex.find(p =>
+      p.name.toLowerCase().split(' ').some(w => w.length > 2 && prefill.toLowerCase().includes(w))
+    );
+    if (autoMatch) {
+      input.value = autoMatch.name;
+      input.dataset.selectedProduct = autoMatch.name;
+      input.classList.add('matched');
+    }
+  }
+
+  wrapper.appendChild(input);
+  // dropdown lives in body — not appended to wrapper
+  return wrapper;
+}
+
+// Adds a blank row to the unmatched section so staff can add items OCR missed
+function addScanExtraRow() {
+  let section = document.getElementById('scan-unmatched-section');
+  let card = section.querySelector('.scan-confirm-card');
+
+  if (!card) {
+    section.innerHTML = '';
+    const title = document.createElement('div');
+    title.className   = 'review-section-title';
+    title.style.marginTop = '16px';
+    title.textContent = 'Additional items';
+    section.appendChild(title);
+    card = document.createElement('div');
+    card.className = 'review-card scan-confirm-card';
+    section.appendChild(card);
+  }
+
+  const idx = card.querySelectorAll('.scan-item-row').length;
+  card.appendChild(buildScanItemRow({ raw: '', name: '', qty: 1, unit: '', confidence: 'low', matched: false }, 'unmatched', idx));
+}
+
+function toggleScanItem(row, btn) {
+  const wasIncluded = row.dataset.included === 'true';
+  row.dataset.included = wasIncluded ? 'false' : 'true';
+  row.classList.toggle('scan-excluded', wasIncluded);
+  btn.textContent = wasIncluded ? 'Skipped' : 'Add';
+  btn.className   = 'scan-toggle-btn ' + (wasIncluded ? 'scan-exclude' : 'scan-include');
+}
+
+function addScannedToOrder() {
+  if (!_scanResults) return;
+
+  const items     = _scanResults.items || [];
+  const matched   = items.filter(i => i.matched);
+  const unmatched = items.filter(i => !i.matched);
+  let   addedCount = 0;
+
+  // ── Add matched items into the product list ───────────────────
+  const matchedCard = document.querySelector('#scan-matched-section .scan-confirm-card');
+  if (matchedCard) {
+    matchedCard.querySelectorAll('.scan-item-row').forEach(row => {
+      if (row.dataset.included !== 'true') return;
+      const item   = matched[parseInt(row.dataset.scanIdx)];
+      if (!item) return;
+      const qtyVal = parseFloat(row.querySelector('.scan-qty-input').value) || 0;
+      if (qtyVal <= 0) return;
+
+      // Find matching qty inputs in the product list and fill them
+      const inputs = document.querySelectorAll('.qty-input[data-name="' + CSS.escape(item.name) + '"]');
+      inputs.forEach(inp => {
+        inp.value = qtyVal;
+        onQtyInput(inp);
+        // Expand the category so the filled item is visible
+        const catBody = inp.closest('.cat-body');
+        const catHdr  = catBody && catBody.previousElementSibling;
+        if (catHdr && catHdr.classList.contains('closed')) {
+          catHdr.classList.remove('closed');
+          catBody.style.display = 'block';
+        }
+      });
+      if (inputs.length) addedCount++;
+    });
+  }
+
+  // ── Add unmatched items — matched to product list OR added as custom ──
+  const unmatchedCard = document.querySelector('#scan-unmatched-section .scan-confirm-card');
+  if (unmatchedCard) {
+    const wrap = document.getElementById('custom-rows');
+    unmatchedCard.querySelectorAll('.scan-item-row').forEach(row => {
+      if (row.dataset.included !== 'true') return;
+      const comboInput = row.querySelector('.scan-combobox-input');
+      const qtyVal     = parseFloat(row.querySelector('.scan-qty-input').value) || 0;
+      if (!comboInput || qtyVal <= 0) return;
+
+      // Use the explicitly selected product, or fall back to typed text as custom
+      const selectedProduct = comboInput.dataset.selectedProduct || '__custom__';
+      const customName      = comboInput.value.trim();
+
+      if (selectedProduct !== '__custom__') {
+        // Staff matched it to a known product — fill the hidden input
+        const hiddenInputs = document.querySelectorAll(
+          `#prep-cats .qty-input[data-name="${CSS.escape(selectedProduct)}"],` +
+          `#stock-cats .qty-input[data-name="${CSS.escape(selectedProduct)}"]`
+        );
+        hiddenInputs.forEach(inp => {
+          inp.value = qtyVal;
+          onQtyInput(inp);
+          const catBody = inp.closest('.cat-body');
+          const catHdr  = catBody && catBody.previousElementSibling;
+          if (catHdr && catHdr.classList.contains('closed')) {
+            catHdr.classList.remove('closed');
+            catBody.style.display = 'block';
+          }
+        });
+        if (hiddenInputs.length) addedCount++;
+      } else {
+        // Genuinely not on the list — add as a custom row
+        const customRow = document.createElement('div');
+        customRow.className = 'custom-row';
+
+        if (!customName) return; // skip empty rows
+        const ni = document.createElement('input');
+        ni.type = 'text'; ni.className = 'custom-name'; ni.placeholder = 'Item name';
+        ni.value = customName;
+
+        const qi = document.createElement('input');
+        qi.type = 'number'; qi.className = 'custom-qty'; qi.placeholder = '0';
+        qi.min = '0'; qi.max = '999'; qi.step = '0.5'; qi.value = qtyVal;
+        qi.oninput = updateStatus;
+
+        const ui = document.createElement('input');
+        ui.type = 'text'; ui.className = 'custom-unit'; ui.placeholder = 'kg/box';
+
+        const ts = document.createElement('select');
+        ts.className = 'custom-type';
+        ['stock','prep'].forEach(t => {
+          const o = document.createElement('option');
+          o.value = t; o.textContent = t === 'stock' ? 'Stock' : 'Prep';
+          ts.appendChild(o);
+        });
+
+        customRow.appendChild(ni); customRow.appendChild(qi);
+        customRow.appendChild(ui); customRow.appendChild(ts);
+        wrap.appendChild(customRow);
+        customRowCount++;
+        addedCount++;
+      }
+    });
+    updateStatus();
+  }
+
+  closeScan();
+  updateOrderList();
+  if (addedCount > 0) window.scrollTo(0, 0);
+}
+
+// ── WEEKLY SUMMARY ────────────────────────────────────────────────
+function openSummary() {
+  document.getElementById('summary-overlay').classList.add('show');
+  document.getElementById('summary-overlay').scrollTop = 0;
+  loadSummary();
+}
+
+function closeSummary() {
+  document.getElementById('summary-overlay').classList.remove('show');
+}
+
+let _summaryLoading = false;
+function loadSummary() {
+  if (_summaryLoading) return;
+  _summaryLoading = true;
+
+  document.getElementById('summary-period').textContent = 'Loading…';
+  document.getElementById('summary-body').innerHTML =
+    '<div style="text-align:center;padding:40px"><div class="spinner"></div><div class="loading-msg">Loading summary…</div></div>';
+
+  const old = document.getElementById('summary-jsonp');
+  if (old) old.remove();
+
+  window._onSummaryLoaded = function(data) {
+    _summaryLoading = false;
+    if (!data || !data.ok) {
+      document.getElementById('summary-body').innerHTML =
+        '<div class="summary-no-activity">Could not load summary — please tap Refresh.</div>';
+      return;
+    }
+    renderSummary(data);
+  };
+
+  const script = document.createElement('script');
+  script.id  = 'summary-jsonp';
+  script.src = SCRIPT_URL + '?action=summary&callback=_onSummaryLoaded';
+  script.onerror = () => {
+    _summaryLoading = false;
+    document.getElementById('summary-body').innerHTML =
+      '<div class="summary-no-activity">Connection error — check your internet and tap Refresh.</div>';
+  };
+  document.head.appendChild(script);
+}
+
+function renderSummary(data) {
+  document.getElementById('summary-period').textContent = 'Last 7 days: ' + data.period;
+
+  const body = document.getElementById('summary-body');
+  body.innerHTML = '';
+
+  const SITE_ORDER = [
+    'SD Withington','SD Wythenshawe','SD Cheadle','SD Newcastle',
+    'SD EH 12','SD EH 15','DC Withington','DC Cheadle','DC Oxford Road'
+  ];
+
+  let anyActivity = false;
+  SITE_ORDER.forEach(site => {
+    const orders = (data.sites || {})[site];
+    if (!orders || !orders.length) return;
+    anyActivity = true;
+
+    const section = document.createElement('div');
+    section.className = 'review-section';
+
+    const title = document.createElement('div');
+    title.className = 'review-section-title';
+    title.textContent = site + ' — ' + orders.length + (orders.length === 1 ? ' order' : ' orders');
+    section.appendChild(title);
+
+    const card = document.createElement('div');
+    card.className = 'order-log-card';
+
+    orders.forEach(order => {
+      const row = document.createElement('div');
+      row.className = 'order-log-row';
+
+      const top = document.createElement('div');
+      top.className = 'order-log-top';
+      const ref = document.createElement('span');
+      ref.className = 'order-log-ref';
+      ref.textContent = order.orderId;
+      const time = document.createElement('span');
+      time.className = 'order-log-time';
+      time.textContent = order.time;
+      top.appendChild(ref);
+      top.appendChild(time);
+
+      const bottom = document.createElement('div');
+      bottom.className = 'order-log-bottom';
+
+      const itemsMeta = document.createElement('span');
+      itemsMeta.className = 'order-log-meta';
+      itemsMeta.textContent = order.items + (order.items === 1 ? ' item' : ' items');
+      bottom.appendChild(itemsMeta);
+
+      if (order.delivDate) {
+        const dot1 = document.createElement('span');
+        dot1.className = 'summary-dot';
+        dot1.textContent = '·';
+        const deliv = document.createElement('span');
+        deliv.className = 'order-log-meta';
+        deliv.textContent = '🗓 ' + order.delivDate;
+        bottom.appendChild(dot1);
+        bottom.appendChild(deliv);
+      }
+
+      const dot2 = document.createElement('span');
+      dot2.className = 'summary-dot';
+      dot2.textContent = '·';
+      const tg = document.createElement('span');
+      tg.className = order.hasFailed ? 'tg-fail' : 'tg-ok';
+      tg.textContent = buildTgLabel(order);
+      bottom.appendChild(dot2);
+      bottom.appendChild(tg);
+
+      row.appendChild(top);
+      row.appendChild(bottom);
+      card.appendChild(row);
+    });
+
+    section.appendChild(card);
+    body.appendChild(section);
+  });
+
+  if (!anyActivity) {
+    body.innerHTML = '<div class="summary-no-activity">No orders placed in the last 7 days.</div>';
+  }
+}
+
+function buildTgLabel(order) {
+  const parts = [];
+  if (order.prepOk  === true)  parts.push('✅ Prep');
+  if (order.prepOk  === false) parts.push('❌ Prep');
+  if (order.stockOk === true)  parts.push('✅ Stock');
+  if (order.stockOk === false) parts.push('❌ Stock');
+  return parts.length ? parts.join(' | ') : '—';
+}
+
+// ── UNIFIED SEARCH — filters both prep and stock at once ─────────
+function filterBoth(input) {
+  const q = input.value.toLowerCase().trim();
+  // Filter prep
+  const prepWrap = document.getElementById('prep-cats');
+  if (prepWrap) {
+    prepWrap.querySelectorAll('.prod-row').forEach(row => {
+      row.style.display = (!q || row.dataset.search.includes(q)) ? '' : 'none';
+    });
+    if (q) {
+      prepWrap.querySelectorAll('.cat-hdr').forEach(hdr => {
+        hdr.classList.remove('closed');
+        if (hdr.nextElementSibling) hdr.nextElementSibling.style.display = 'block';
+      });
+    }
+  }
+  // Filter stock
+  const stockWrap = document.getElementById('stock-cats');
+  if (stockWrap) {
+    stockWrap.querySelectorAll('.prod-row').forEach(row => {
+      row.style.display = (!q || row.dataset.search.includes(q)) ? '' : 'none';
+    });
+    if (q) {
+      stockWrap.querySelectorAll('.cat-hdr').forEach(hdr => {
+        hdr.classList.remove('closed');
+        if (hdr.nextElementSibling) hdr.nextElementSibling.style.display = 'block';
+      });
+    }
+  }
+}
+
+</script>
+</body>
+</html>
