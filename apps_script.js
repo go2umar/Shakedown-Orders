@@ -773,6 +773,139 @@ function jsonResponse(obj) {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// MIGRATE HISTORICAL DATA
+//
+// Run this ONCE from the Apps Script editor to backfill:
+//   • Orders Summary  — one row per order
+//   • Store sheets    — one tab per site with that site's order rows
+//
+// It reads entirely from the Order Log (source of truth) and
+// rebuilds both destinations from scratch. Safe to re-run.
+// ════════════════════════════════════════════════════════════════════
+function migrateHistoricalData() {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const logWs = ss.getSheetByName('Order Log');
+  if (!logWs) { Logger.log('Order Log not found.'); return; }
+
+  const logData = logWs.getDataRange().getValues();
+  if (logData.length < 2) { Logger.log('Order Log is empty.'); return; }
+
+  // Helper: safely format any cell that might be a Date object
+  function safeDate(val, fmt) {
+    if (!val) return '';
+    if (val instanceof Date) return Utilities.formatDate(val, Session.getScriptTimeZone(), fmt);
+    return val.toString().trim();
+  }
+
+  // Group Order Log rows by Order ID
+  const orderMap = {};  // orderId → order summary object
+  const siteRows = {};  // site    → array of log rows
+
+  for (let i = 1; i < logData.length; i++) {
+    const row = logData[i];
+    const orderId   = safeDate(row[11], 'dd/MM/yyyy'); // Col L — Order ID (text, not date)
+    // Order ID is not a date — use toString directly
+    const orderIdStr = (row[11] || '').toString().trim();
+    if (!orderIdStr) continue;
+
+    const site      = (row[1]  || '').toString().trim();
+    const itemName  = (row[2]  || '').toString().trim();
+    const unit      = (row[3]  || '').toString().trim();
+    const qty       = parseFloat(row[4])  || 0;
+    const supplier  = (row[5]  || '').toString().trim();
+    const price     = parseFloat(row[6])  || 0;
+    const total     = parseFloat(row[7])  || 0;
+    const notes     = (row[8]  || '').toString().trim();
+    const delivDate = safeDate(row[9],  'dd/MM/yyyy');
+    const tgStatus  = (row[10] || '').toString().trim();
+    const timeStr   = safeDate(row[0],  'dd/MM/yyyy HH:mm');
+    const dateOnly  = safeDate(row[12], 'dd/MM/yyyy');
+    const monthYear = safeDate(row[13], 'MMM-yyyy');
+
+    if (!itemName) continue;
+
+    // Build order summary
+    if (!orderMap[orderIdStr]) {
+      orderMap[orderIdStr] = {
+        orderId: orderIdStr, site, submitted: timeStr,
+        delivDate, notes, date: dateOnly, monthYear,
+        prepTg: '', stockTg: '', items: 0, totalValue: 0
+      };
+    }
+    const ord = orderMap[orderIdStr];
+    ord.items++;
+    ord.totalValue += total;
+    if (tgStatus.includes('Prep')) {
+      if (tgStatus.includes('❌')) ord.prepTg = '❌ Failed';
+      else if (!ord.prepTg.includes('❌')) ord.prepTg = '✅ Sent';
+    }
+    if (tgStatus.includes('Stock')) {
+      if (tgStatus.includes('❌')) ord.stockTg = '❌ Failed';
+      else if (!ord.stockTg.includes('❌')) ord.stockTg = '✅ Sent';
+    }
+
+    // Collect site rows
+    if (!siteRows[site]) siteRows[site] = [];
+    siteRows[site].push([timeStr, site, itemName, unit, qty, supplier, price, total, notes, delivDate, tgStatus, orderIdStr, dateOnly, monthYear]);
+  }
+
+  // ── Rebuild Orders Summary ──────────────────────────────────────
+  let sumWs = ss.getSheetByName('Orders Summary');
+  if (!sumWs) {
+    sumWs = ss.insertSheet('Orders Summary');
+  } else {
+    const lr = sumWs.getLastRow();
+    if (lr > 1) sumWs.getRange(2, 1, lr - 1, SUMMARY_HEADERS.length).clearContent();
+  }
+  // Ensure headers
+  sumWs.getRange(1, 1, 1, SUMMARY_HEADERS.length).setValues([SUMMARY_HEADERS]).setFontWeight('bold').setBackground('#e8f0fe');
+  sumWs.setFrozenRows(1);
+
+  const summaryRows = Object.values(orderMap).map(ord => {
+    const hasPrep  = ord.prepTg  !== '';
+    const hasStock = ord.stockTg !== '';
+    const type = hasPrep && hasStock ? 'both' : hasPrep ? 'prep' : 'stock';
+    return [
+      ord.orderId, ord.site, type, ord.submitted, ord.delivDate,
+      ord.items, Math.round(ord.totalValue * 100) / 100,
+      ord.prepTg  || '—', ord.stockTg || '—',
+      ord.notes, ord.date, ord.monthYear
+    ];
+  });
+  summaryRows.sort((a, b) => a[3].localeCompare(b[3]));
+
+  if (summaryRows.length > 0) {
+    sumWs.getRange(2, 1, summaryRows.length, SUMMARY_HEADERS.length).setValues(summaryRows);
+    sumWs.autoResizeColumns(1, SUMMARY_HEADERS.length);
+  }
+  Logger.log('Orders Summary: ' + summaryRows.length + ' orders written.');
+
+  // ── Rebuild site-specific sheets ────────────────────────────────
+  ALL_SITES.forEach(site => {
+    const rows = siteRows[site];
+    let sheet  = ss.getSheetByName(site);
+    if (!sheet) {
+      sheet = ss.insertSheet(site);
+    } else {
+      const lr = sheet.getLastRow();
+      if (lr > 1) sheet.getRange(2, 1, lr - 1, LOG_HEADERS.length).clearContent();
+    }
+    sheet.getRange(1, 1, 1, LOG_HEADERS.length).setValues([LOG_HEADERS]).setFontWeight('bold').setBackground('#f3f3f3');
+    sheet.setFrozenRows(1);
+
+    if (rows && rows.length > 0) {
+      sheet.getRange(2, 1, rows.length, LOG_HEADERS.length).setValues(rows);
+      sheet.autoResizeColumns(1, LOG_HEADERS.length);
+      Logger.log(site + ': ' + rows.length + ' rows written.');
+    } else {
+      Logger.log(site + ': no orders found.');
+    }
+  });
+
+  Logger.log('Migration complete.');
+}
+
+// ════════════════════════════════════════════════════════════════════
 // SETUP — run ONCE after pasting this script and deploying as Web App
 // ════════════════════════════════════════════════════════════════════
 function setupTrigger() {
