@@ -234,6 +234,23 @@ function handleDashboardGet(e) {
       byMonthArr[i].vsPrior = prev != null ? Math.round((byMonthArr[i].value - prev.value)*100)/100 : null;
     }
 
+    // Unpriced items — Order Log rows where Price = 0 and name is not empty
+    const unpriced = [];
+    for (let i = 1; i < logData.length; i++) {
+      const row      = logData[i];
+      const rowSite  = (row[1] || '').toString().trim();
+      if (site && rowSite !== site) continue;
+      const itemName = (row[2] || '').toString().trim();
+      const price    = parseFloat(row[6]) || 0;
+      const ordId    = (row[11] || '').toString().trim();
+      if (!itemName || price > 0) continue;
+      // Only include items with no supplier (indicates custom/unlisted)
+      const supplier = (row[5] || '').toString().trim();
+      if (supplier) continue;
+      unpriced.push({ orderId: ordId, site: rowSite, date: (row[12]||'').toString(),
+                      item: itemName, qty: parseFloat(row[4])||0, unit: (row[3]||'').toString() });
+    }
+
     // Recent credits
     const credWs2   = ss.getSheetByName('Credits');
     const credData  = credWs2 ? credWs2.getDataRange().getValues() : [];
@@ -250,7 +267,7 @@ function handleDashboardGet(e) {
               avg: totalOrders ? Math.round((totalItems/totalOrders)*10)/10 : 0 },
       bySite, byMonth:byMonthArr, bySupplier,
       orders:orders.slice(0,150), totalCount:orders.length,
-      failures, topItems, credits
+      failures, topItems, credits, unpriced
     });
     const cb = params.callback;
     if (cb) return ContentService.createTextOutput(cb+'('+json+')').setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -371,7 +388,8 @@ function doPost(e) {
       payload = JSON.parse(e.postData.contents);
     }
 
-    if ((payload.action || '') === 'record_credit') return handleCreditPost(payload);
+    if ((payload.action || '') === 'record_credit')  return handleCreditPost(payload);
+    if ((payload.action || '') === 'set_item_price') return handleSetItemPrice(payload);
 
     const site      = (payload.site      || '').trim();
     const orderType = (payload.orderType || '').trim();
@@ -588,6 +606,64 @@ function createMonthlyArchives() {
   });
 
   Logger.log('Monthly archives created for ' + monthLabel);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SET ITEM PRICE — manager sets price for a custom/unpriced item
+// Finds the row(s) in Order Log by Order ID + Item Name and updates
+// Price (£) and Total (£) in place.
+// ════════════════════════════════════════════════════════════════════
+function handleSetItemPrice(payload) {
+  try {
+    const orderId  = (payload.orderId  || '').trim();
+    const itemName = (payload.itemName || '').trim();
+    const price    = parseFloat(payload.price) || 0;
+
+    if (!orderId || !itemName) {
+      return jsonResponse({ ok: false, error: 'Missing orderId or itemName.' });
+    }
+
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const logWs = ss.getSheetByName('Order Log');
+    const data  = logWs.getDataRange().getValues();
+    let updated = 0;
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if ((row[11] || '').toString().trim() === orderId &&
+          (row[2]  || '').toString().trim() === itemName) {
+        const qty   = parseFloat(row[4]) || 0;
+        const total = Math.round(price * qty * 100) / 100;
+        logWs.getRange(i + 1, 7).setValue(price); // Col G = Price (£)
+        logWs.getRange(i + 1, 8).setValue(total); // Col H = Total (£)
+        updated++;
+      }
+    }
+
+    // Update the site-specific sheet too
+    if (updated > 0) {
+      const siteSheet = ss.getSheetByName(payload.site || '');
+      if (siteSheet) {
+        const sData = siteSheet.getDataRange().getValues();
+        for (let i = 1; i < sData.length; i++) {
+          const row = sData[i];
+          if ((row[11] || '').toString().trim() === orderId &&
+              (row[2]  || '').toString().trim() === itemName) {
+            const qty   = parseFloat(row[4]) || 0;
+            const total = Math.round(price * qty * 100) / 100;
+            siteSheet.getRange(i + 1, 7).setValue(price);
+            siteSheet.getRange(i + 1, 8).setValue(total);
+          }
+        }
+      }
+    }
+
+    return jsonResponse({ ok: true, updated });
+
+  } catch(err) {
+    Logger.log('handleSetItemPrice error: ' + err);
+    return jsonResponse({ ok: false, error: err.toString() });
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════

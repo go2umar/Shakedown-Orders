@@ -312,7 +312,7 @@ body{min-height:100vh}
 
 /* ── CUSTOM ITEMS ────────────────────────────────────── */
 .custom-col-hdrs{
-  display:grid;grid-template-columns:1fr 56px 64px 68px 72px;
+  display:grid;grid-template-columns:1fr 64px 74px 80px;
   gap:8px;padding:10px 16px 6px;
   font-size:10px;font-weight:700;letter-spacing:.6px;
   text-transform:uppercase;color:var(--text-tertiary);
@@ -320,7 +320,7 @@ body{min-height:100vh}
   background:#FAFAFA;
 }
 .custom-row{
-  display:grid;grid-template-columns:1fr 56px 64px 68px 72px;
+  display:grid;grid-template-columns:1fr 64px 74px 80px;
   gap:8px;padding:9px 16px;
   border-bottom:1px solid var(--border);align-items:center;
 }
@@ -1125,7 +1125,7 @@ body{min-height:100vh}
       <div class="card-head-title">Add unlisted items</div>
     </div>
     <div class="custom-col-hdrs">
-      <span>Item Name</span><span>Qty</span><span>Unit</span><span>Price (£)</span><span>Type</span>
+      <span>Item Name</span><span>Qty</span><span>Unit</span><span>Type</span>
     </div>
     <div class="custom-rows-wrap" id="custom-rows"></div>
     <button class="add-custom-btn" onclick="addCustomRow()">+ Add another item</button>
@@ -1508,10 +1508,9 @@ function addCustomRow() {
   const row = document.createElement('div');
   row.className = 'custom-row';
   row.innerHTML = `
-    <input type="text"   class="custom-name"  placeholder="Item name">
-    <input type="number" class="custom-qty"   placeholder="0" min="0" max="999" step="0.5" oninput="updateStatus()">
-    <input type="text"   class="custom-unit"  placeholder="kg/box">
-    <input type="number" class="custom-price" placeholder="0.00" min="0" step="0.01">
+    <input type="text"   class="custom-name" placeholder="Item name">
+    <input type="number" class="custom-qty"  placeholder="0" min="0" max="999" step="0.5" oninput="updateStatus()">
+    <input type="text"   class="custom-unit" placeholder="kg/box">
     <select class="custom-type">
       <option value="stock">Stock</option>
       <option value="prep">Prep</option>
@@ -1693,12 +1692,11 @@ async function submitOrder() {
     }
   });
   document.querySelectorAll('.custom-row').forEach(row => {
-    const name  = row.querySelector('.custom-name').value.trim();
-    const qty   = parseFloat(row.querySelector('.custom-qty').value)   || 0;
-    const unit  = row.querySelector('.custom-unit').value.trim()       || '—';
-    const price = parseFloat(row.querySelector('.custom-price').value) || 0;
-    const sec   = row.querySelector('.custom-type').value;
-    if (name && qty > 0 && qty <= 999) items.push({ name, unit, qty, price, section:sec, custom:true });
+    const name = row.querySelector('.custom-name').value.trim();
+    const qty  = parseFloat(row.querySelector('.custom-qty').value) || 0;
+    const unit = row.querySelector('.custom-unit').value.trim()     || '—';
+    const sec  = row.querySelector('.custom-type').value;
+    if (name && qty > 0 && qty <= 999) items.push({ name, unit, qty, section:sec, custom:true });
   });
   if (!items.length) { showError('Please add at least one item — either from the list above or in the \'Items Not on the List\' section.', false); window.scrollTo(0,0); submitBtn.disabled=false; return; }
 
@@ -3150,6 +3148,37 @@ function renderDashboard(data, siteFilter, from, to) {
   }
   body.appendChild(creditLogCard);
 
+  // ── Items awaiting pricing ─────────────────────────────────────
+  const unpricedTitle = 'Items Awaiting Pricing' +
+    (data.unpriced && data.unpriced.length ? ' (' + data.unpriced.length + ')' : '');
+  body.appendChild(makeSectionTitle(unpricedTitle));
+  const unpricedCard = document.createElement('div');
+  unpricedCard.className = 'dash-card';
+  if (data.unpriced && data.unpriced.length) {
+    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
+    const table = document.createElement('table'); table.className = 'dash-table';
+    table.innerHTML = '<thead><tr><th>Order</th><th>Site</th><th>Date</th><th>Item</th><th>Qty</th><th>Unit</th><th>Price (£)</th><th></th></tr></thead>';
+    const tbody = document.createElement('tbody');
+    data.unpriced.forEach(u => {
+      const tr = document.createElement('tr');
+      const inputId = 'price-' + u.orderId + '-' + u.item.replace(/\s+/g,'_');
+      tr.innerHTML = `
+        <td><span class="dash-oid">${u.orderId}</span></td>
+        <td>${u.site}</td><td>${u.date}</td>
+        <td><strong>${u.item}</strong></td>
+        <td>${u.qty}</td><td>${u.unit}</td>
+        <td><input type="number" id="${inputId}" step="0.01" min="0" placeholder="0.00"
+             style="width:80px;padding:5px 8px;border:1.5px solid var(--border-strong);border-radius:var(--radius-xs);font-family:var(--font);font-size:13px;outline:none;background:var(--bg)"></td>
+        <td><button onclick="saveItemPrice('${u.orderId}','${u.site}','${u.item.replace(/'/g,'\\\'').replace(/"/g,'&quot;')}','${inputId}')"
+             style="padding:5px 12px;background:#6366F1;color:#fff;border:none;border-radius:var(--radius-xs);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer">Save</button></td>`;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody); wrap.appendChild(table); unpricedCard.appendChild(wrap);
+  } else {
+    unpricedCard.innerHTML = '<div class="dash-empty">All custom items have been priced. ✅</div>';
+  }
+  body.appendChild(unpricedCard);
+
   // ── Record a Credit ────────────────────────────────────────────
   body.appendChild(makeSectionTitle('Record a Credit'));
   const creditFormCard = document.createElement('div');
@@ -3197,6 +3226,34 @@ function renderDashboard(data, siteFilter, from, to) {
     <div class="credit-success" id="cr-success">✅ Credit recorded successfully</div>
     <button class="credit-submit-btn" onclick="submitCredit()">Record Credit</button>`;
   body.appendChild(creditFormCard);
+}
+
+async function saveItemPrice(orderId, site, itemName, inputId) {
+  const input = document.getElementById(inputId);
+  const price = parseFloat(input.value) || 0;
+  if (price <= 0) { input.focus(); input.style.borderColor = 'var(--brand)'; return; }
+
+  input.disabled = true;
+  try {
+    const res  = await fetch(SCRIPT_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    'data=' + encodeURIComponent(JSON.stringify({ action:'set_item_price', orderId, site, itemName, price }))
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const row = input.closest('tr');
+      row.style.opacity = '.4';
+      row.querySelector('button').textContent = '✓ Saved';
+      row.querySelector('button').disabled = true;
+    } else {
+      alert('Error: ' + (data.error || 'Could not save price.'));
+      input.disabled = false;
+    }
+  } catch(err) {
+    alert('Connection error — please try again.');
+    input.disabled = false;
+  }
 }
 
 async function submitCredit() {
