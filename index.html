@@ -1346,7 +1346,7 @@ body{min-height:100vh}
   <div class="orders-search-bar">
     <div class="orders-mode-tabs">
       <button class="orders-mode-tab active" id="lookup-tab-id"   onclick="setLookupMode('id')">By Order ID</button>
-      <button class="orders-mode-tab"        id="lookup-tab-date" onclick="setLookupMode('date')">By Site &amp; Date</button>
+      <button class="orders-mode-tab"        id="lookup-tab-date" onclick="setLookupMode('date')">By Site &amp; Delivery Date</button>
     </div>
 
     <!-- Search by Order ID -->
@@ -1366,7 +1366,7 @@ body{min-height:100vh}
         <option>DC Withington</option><option>DC Cheadle</option>
         <option>DC Oxford Road</option>
       </select>
-      <input type="date" class="dash-date-input" id="lookup-date" style="width:150px">
+      <input type="date" class="dash-date-input" id="lookup-date" style="width:160px" title="Filter by delivery date">
       <button class="orders-search-btn" onclick="runLookup()">Search</button>
     </div>
   </div>

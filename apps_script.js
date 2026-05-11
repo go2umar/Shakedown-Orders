@@ -360,13 +360,14 @@ function handleGetOrders(e) {
     const orders  = [];
     for (let i = 1; i < sumData.length; i++) {
       const row     = sumData[i];
-      const rowSite = (row[1]||'').toString().trim();
-      const rawD10  = row[10];
-      const rowDate = rawD10 instanceof Date
-        ? Utilities.formatDate(rawD10, Session.getScriptTimeZone(), 'dd/MM/yyyy')
-        : (rawD10||'').toString().trim();
+      const rowSite     = (row[1]||'').toString().trim();
+      // Filter by delivery date (col E, index 4) — not the submission date
+      const rawDelivDate = row[4];
+      const rowDelivDate = rawDelivDate instanceof Date
+        ? Utilities.formatDate(rawDelivDate, Session.getScriptTimeZone(), 'dd/MM/yyyy')
+        : (rawDelivDate||'').toString().trim();
       if (site && rowSite !== site) continue;
-      if (date && rowDate !== date) continue;
+      if (date && rowDelivDate !== date) continue;
       orders.push({
         orderId:   (row[0]||'').toString().trim(),
         site:      rowSite,
