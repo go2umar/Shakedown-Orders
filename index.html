@@ -858,6 +858,50 @@ body{min-height:100vh}
 .dash-spinner{text-align:center;padding:40px}
 .rank-num{color:var(--text-tertiary);font-weight:700;font-size:12px;min-width:24px}
 
+/* ── FILTER BAR ──────────────────────────────────────── */
+.dash-filter-bar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  position:sticky;top:57px;z-index:9;
+}
+.dash-filter-select{
+  padding:7px 10px;background:var(--bg);border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-sm);font-family:var(--font);font-size:13px;
+  font-weight:500;color:var(--text-primary);outline:none;flex-shrink:0;
+  -webkit-appearance:none;appearance:none;
+}
+.dash-quick-wrap{display:flex;gap:4px;flex-wrap:wrap}
+.dash-quick-btn{
+  padding:6px 12px;border-radius:20px;border:1.5px solid var(--border-strong);
+  background:var(--bg);font-family:var(--font);font-size:12px;font-weight:600;
+  color:var(--text-secondary);cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.dash-quick-btn.active{background:#6366F1;border-color:#6366F1;color:#fff}
+.dash-quick-btn:hover:not(.active){background:var(--brand-light);border-color:var(--brand);color:var(--brand)}
+.dash-custom-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dash-date-input{
+  padding:6px 10px;background:var(--bg);border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-sm);font-family:var(--font);font-size:12px;
+  color:var(--text-primary);outline:none;width:130px;
+}
+.dash-range-sep{color:var(--text-tertiary);font-size:13px}
+.dash-apply-btn{
+  padding:6px 14px;background:#6366F1;color:#fff;border:none;
+  border-radius:20px;font-family:var(--font);font-size:12px;
+  font-weight:600;cursor:pointer;white-space:nowrap;
+}
+.dash-apply-btn:hover{background:#4F46E5}
+.dash-note{font-size:11px;color:var(--text-tertiary);padding:6px 0 0;width:100%}
+
+/* ── MONTHLY TABLE ───────────────────────────────────── */
+.month-bar-wrap{width:80px;height:5px;background:var(--bg);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:8px}
+.month-bar{height:100%;background:#6366F1;border-radius:3px}
+@media(max-width:480px){
+  .dash-filter-bar{top:53px}
+  .dash-custom-wrap{width:100%}
+  .dash-date-input{width:calc(50% - 20px)}
+}
+
 /* ── SUMMARY BUTTON ──────────────────────────────────── */
 .summary-btn{
   width:34px;height:34px;
@@ -1148,12 +1192,33 @@ body{min-height:100vh}
       <div class="dash-title">Manager Dashboard</div>
       <div class="dash-sub" id="dash-sub">Loading…</div>
     </div>
-    <div class="period-tabs">
-      <button class="period-tab active" id="tab-7"  onclick="switchPeriod(7)">7d</button>
-      <button class="period-tab"        id="tab-30" onclick="switchPeriod(30)">30d</button>
-      <button class="period-tab"        id="tab-0"  onclick="switchPeriod(0)">All</button>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="dash-filter-bar">
+    <select class="dash-filter-select" id="dash-site-sel">
+      <option value="">All Sites</option>
+      <option>SD Withington</option><option>SD Wythenshawe</option>
+      <option>SD Cheadle</option><option>SD Newcastle</option>
+      <option>SD EH 12</option><option>SD EH 15</option>
+      <option>DC Withington</option><option>DC Cheadle</option>
+      <option>DC Oxford Road</option>
+    </select>
+    <div class="dash-quick-wrap">
+      <button class="dash-quick-btn active" data-days="7"   onclick="quickFilter(7)">7d</button>
+      <button class="dash-quick-btn"        data-days="30"  onclick="quickFilter(30)">30d</button>
+      <button class="dash-quick-btn"        data-days="90"  onclick="quickFilter(90)">3m</button>
+      <button class="dash-quick-btn"        data-days="180" onclick="quickFilter(180)">6m</button>
+      <button class="dash-quick-btn"        data-days="0"   onclick="quickFilter(0)">All</button>
+    </div>
+    <div class="dash-custom-wrap">
+      <input type="date" class="dash-date-input" id="dash-from-date">
+      <span class="dash-range-sep">—</span>
+      <input type="date" class="dash-date-input" id="dash-to-date">
+      <button class="dash-apply-btn" onclick="applyCustomRange()">Apply</button>
     </div>
   </div>
+
   <div class="dash-body" id="dash-body">
     <div class="dash-spinner"><div class="spinner"></div></div>
   </div>
@@ -2784,24 +2849,49 @@ function checkPin() {
 function openDashboard() {
   document.getElementById('dash-overlay').classList.add('show');
   document.getElementById('dash-overlay').scrollTop = 0;
-  loadDashboard(_dashPeriod);
+  applyFilters();
 }
 
 function closeDashboard() {
   document.getElementById('dash-overlay').classList.remove('show');
 }
 
-function switchPeriod(days) {
+function quickFilter(days) {
   _dashPeriod = days;
-  document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + days).classList.add('active');
-  loadDashboard(days);
+  document.querySelectorAll('.dash-quick-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.dash-quick-btn[data-days="' + days + '"]').classList.add('active');
+  document.getElementById('dash-from-date').value = '';
+  document.getElementById('dash-to-date').value   = '';
+  applyFilters();
 }
 
-function loadDashboard(days) {
+function applyCustomRange() {
+  const from = document.getElementById('dash-from-date').value;
+  const to   = document.getElementById('dash-to-date').value;
+  if (!from && !to) return;
+  document.querySelectorAll('.dash-quick-btn').forEach(b => b.classList.remove('active'));
+  _dashPeriod = -1; // custom
+  applyFilters();
+}
+
+function applyFilters() {
   if (_dashLoading) return;
   _dashLoading = true;
-  document.getElementById('dash-sub').textContent = 'Loading…';
+
+  const site = document.getElementById('dash-site-sel').value;
+  const from = document.getElementById('dash-from-date').value;
+  const to   = document.getElementById('dash-to-date').value;
+
+  let params = 'action=dashboard';
+  if (site) params += '&site=' + encodeURIComponent(site);
+  if (from && to) {
+    params += '&from=' + from + '&to=' + to;
+  } else {
+    params += '&days=' + (_dashPeriod >= 0 ? _dashPeriod : 7);
+  }
+
+  const siteLabel = site || 'All Sites';
+  document.getElementById('dash-sub').textContent = siteLabel + ' — Loading…';
   document.getElementById('dash-body').innerHTML =
     '<div class="dash-spinner"><div class="spinner"></div></div>';
 
@@ -2812,15 +2902,15 @@ function loadDashboard(days) {
     _dashLoading = false;
     if (!data || !data.ok) {
       document.getElementById('dash-body').innerHTML =
-        '<div class="dash-empty">Could not load dashboard — please refresh.</div>';
+        '<div class="dash-empty">Could not load dashboard. Ensure the Apps Script is deployed and try again.</div>';
       return;
     }
-    renderDashboard(data);
+    renderDashboard(data, site, from, to);
   };
 
   const s = document.createElement('script');
-  s.id  = 'dash-jsonp';
-  s.src = SCRIPT_URL + '?action=dashboard&days=' + days + '&callback=_onDashboardLoaded';
+  s.id      = 'dash-jsonp';
+  s.src     = SCRIPT_URL + '?' + params + '&callback=_onDashboardLoaded';
   s.onerror = () => {
     _dashLoading = false;
     document.getElementById('dash-body').innerHTML =
@@ -2829,22 +2919,29 @@ function loadDashboard(days) {
   document.head.appendChild(s);
 }
 
-function renderDashboard(data) {
-  const label = data.days === 0 ? 'All time' : 'Last ' + data.days + ' days';
-  document.getElementById('dash-sub').textContent = label;
+function renderDashboard(data, siteFilter, from, to) {
+  // Update subtitle
+  let rangeLabel = '';
+  if (from && to)        rangeLabel = from + ' — ' + to;
+  else if (data.days === 0) rangeLabel = 'All time';
+  else                   rangeLabel = 'Last ' + data.days + ' days';
+  const siteLabel = siteFilter || 'All Sites';
+  document.getElementById('dash-sub').textContent = siteLabel + ' · ' + rangeLabel;
+
   const body = document.getElementById('dash-body');
   body.innerHTML = '';
 
-  // ── Stat cards ──
+  // ── 4 Stat cards ──────────────────────────────────────────────
   const statsGrid = document.createElement('div');
   statsGrid.className = 'dash-stats';
-  statsGrid.appendChild(makeStatCard('Orders', data.stats.orders, ''));
-  statsGrid.appendChild(makeStatCard('Items', data.stats.items, ''));
-  statsGrid.appendChild(makeStatCard('Value', '£' + data.stats.value.toLocaleString(), ''));
+  statsGrid.appendChild(makeStatCard('Orders',       data.stats.orders, ''));
+  statsGrid.appendChild(makeStatCard('Items',        data.stats.items,  ''));
+  statsGrid.appendChild(makeStatCard('Value',        '£' + data.stats.value.toLocaleString(), ''));
+  statsGrid.appendChild(makeStatCard('Avg / Order',  data.stats.avg,    'items'));
   body.appendChild(statsGrid);
 
-  // ── Orders by site ──
-  if (data.bySite && data.bySite.length) {
+  // ── Orders by site (only when showing all sites) ───────────────
+  if (!siteFilter && data.bySite && data.bySite.length) {
     body.appendChild(makeSectionTitle('Orders by Site'));
     const card = document.createElement('div');
     card.className = 'dash-card';
@@ -2862,80 +2959,108 @@ function renderDashboard(data) {
       barWrap.appendChild(bar);
       const count = document.createElement('div');
       count.className = 'site-count';
-      count.textContent = s.orders + (s.orders === 1 ? ' order' : ' orders') + ' · ' + s.items + ' items';
+      count.textContent = s.orders + ' orders · ' + s.items + ' items · £' + s.value.toLocaleString();
       row.appendChild(name); row.appendChild(barWrap); row.appendChild(count);
       card.appendChild(row);
     });
     body.appendChild(card);
   }
 
-  // ── Recent orders ──
-  body.appendChild(makeSectionTitle('Recent Orders'));
-  const recentCard = document.createElement('div');
-  recentCard.className = 'dash-card';
-  if (data.recent && data.recent.length) {
+  // ── Monthly breakdown ──────────────────────────────────────────
+  if (data.byMonth && data.byMonth.length) {
+    body.appendChild(makeSectionTitle('Monthly Breakdown'));
+    const card = document.createElement('div');
+    card.className = 'dash-card';
     const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
     const table = document.createElement('table'); table.className = 'dash-table';
-    table.innerHTML = '<thead><tr><th>Order</th><th>Site</th><th>Submitted</th><th>Delivery</th><th>Items</th><th>Telegram</th></tr></thead>';
+    table.innerHTML = '<thead><tr><th>Month</th><th>Orders</th><th>Items</th><th>Value (£)</th></tr></thead>';
     const tbody = document.createElement('tbody');
-    data.recent.forEach(o => {
+    const maxO = Math.max(...data.byMonth.map(m => m.orders), 1);
+    data.byMonth.forEach(m => {
       const tr = document.createElement('tr');
-      const tg = o.hasFail
-        ? '<span class="dash-tg-fail">' + [o.prepTg, o.stockTg].filter(Boolean).join(' ') + '</span>'
-        : '<span class="dash-tg-ok">✅ Sent</span>';
-      tr.innerHTML = `<td><span class="dash-oid">${o.orderId}</span></td>
-        <td>${o.site}</td><td>${o.submitted}</td>
-        <td>${o.delivDate || '—'}</td><td>${o.items}</td><td>${tg}</td>`;
+      const barW = Math.round((m.orders / maxO) * 80);
+      tr.innerHTML = `<td><strong>${m.month}</strong></td>
+        <td>${m.orders} <span class="month-bar-wrap"><span class="month-bar" style="width:${barW}px"></span></span></td>
+        <td>${m.items}</td>
+        <td>£${m.value.toLocaleString()}</td>`;
       tbody.appendChild(tr);
     });
-    table.appendChild(tbody);
-    wrap.appendChild(table);
-    recentCard.appendChild(wrap);
-  } else {
-    recentCard.innerHTML = '<div class="dash-empty">No orders in this period.</div>';
+    table.appendChild(tbody); wrap.appendChild(table); card.appendChild(wrap);
+    body.appendChild(card);
   }
-  body.appendChild(recentCard);
 
-  // ── Telegram failures ──
+  // ── All orders table ───────────────────────────────────────────
+  const orderCount = data.totalCount || (data.orders && data.orders.length) || 0;
+  const titleText  = 'Orders' + (orderCount > 0 ? ' (' + orderCount + (orderCount >= 150 ? '+' : '') + ')' : '');
+  body.appendChild(makeSectionTitle(titleText));
+  const ordCard = document.createElement('div');
+  ordCard.className = 'dash-card';
+  if (data.orders && data.orders.length) {
+    if (data.totalCount > 150) {
+      const note = document.createElement('div');
+      note.className = 'dash-note';
+      note.style.padding = '8px 14px';
+      note.textContent = 'Showing most recent 150 of ' + data.totalCount + ' orders. Use the date filter to narrow the range.';
+      ordCard.appendChild(note);
+    }
+    const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
+    const table = document.createElement('table'); table.className = 'dash-table';
+    const siteTh = siteFilter ? '' : '<th>Site</th>';
+    table.innerHTML = `<thead><tr><th>Order ID</th>${siteTh}<th>Submitted</th><th>Delivery</th><th>Type</th><th>Items</th><th>Value</th><th>Telegram</th></tr></thead>`;
+    const tbody = document.createElement('tbody');
+    data.orders.forEach(o => {
+      const tr  = document.createElement('tr');
+      const tg  = o.hasFail
+        ? `<span class="dash-tg-fail">${[o.prepTg, o.stockTg].filter(x => x.includes('❌')).join(' ')}</span>`
+        : '<span class="dash-tg-ok">✅</span>';
+      const siteTd = siteFilter ? '' : `<td>${o.site}</td>`;
+      tr.innerHTML = `<td><span class="dash-oid">${o.orderId}</span></td>${siteTd}
+        <td>${o.submitted}</td><td>${o.delivDate || '—'}</td>
+        <td>${o.type}</td><td>${o.items}</td><td>£${o.value}</td><td>${tg}</td>`;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody); wrap.appendChild(table); ordCard.appendChild(wrap);
+  } else {
+    ordCard.innerHTML = '<div class="dash-empty">No orders found for this filter.</div>';
+  }
+  body.appendChild(ordCard);
+
+  // ── Telegram failures ──────────────────────────────────────────
   if (data.failures && data.failures.length) {
     body.appendChild(makeSectionTitle('⚠️ Telegram Failures (' + data.failures.length + ')'));
     const failCard = document.createElement('div');
     failCard.className = 'dash-card';
     const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
     const table = document.createElement('table'); table.className = 'dash-table';
-    table.innerHTML = '<thead><tr><th>Order</th><th>Site</th><th>Submitted</th><th>Prep</th><th>Stock</th></tr></thead>';
+    table.innerHTML = '<thead><tr><th>Order</th><th>Site</th><th>Submitted</th><th>Delivery</th><th>Prep</th><th>Stock</th></tr></thead>';
     const tbody = document.createElement('tbody');
     data.failures.forEach(f => {
       const tr = document.createElement('tr');
       tr.innerHTML = `<td><span class="dash-oid">${f.orderId}</span></td>
-        <td>${f.site}</td><td>${f.submitted}</td>
+        <td>${f.site}</td><td>${f.submitted}</td><td>${f.delivDate||'—'}</td>
         <td class="${f.prepTg.includes('❌')?'dash-tg-fail':'dash-tg-ok'}">${f.prepTg||'—'}</td>
         <td class="${f.stockTg.includes('❌')?'dash-tg-fail':'dash-tg-ok'}">${f.stockTg||'—'}</td>`;
       tbody.appendChild(tr);
     });
-    table.appendChild(tbody);
-    wrap.appendChild(table);
-    failCard.appendChild(wrap);
+    table.appendChild(tbody); wrap.appendChild(table); failCard.appendChild(wrap);
     body.appendChild(failCard);
   }
 
-  // ── Top items ──
+  // ── Top items ──────────────────────────────────────────────────
   if (data.topItems && data.topItems.length) {
     body.appendChild(makeSectionTitle('Most Ordered Items'));
     const itemCard = document.createElement('div');
     itemCard.className = 'dash-card';
     const wrap = document.createElement('div'); wrap.className = 'dash-table-wrap';
     const table = document.createElement('table'); table.className = 'dash-table';
-    table.innerHTML = '<thead><tr><th>#</th><th>Item</th><th>Total Qty</th></tr></thead>';
+    table.innerHTML = '<thead><tr><th>#</th><th>Item</th><th>Total Qty Ordered</th></tr></thead>';
     const tbody = document.createElement('tbody');
     data.topItems.forEach((item, i) => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td class="rank-num">${i + 1}</td><td>${item.name}</td><td><strong>${item.qty}</strong></td>`;
+      tr.innerHTML = `<td class="rank-num">${i+1}</td><td>${item.name}</td><td><strong>${item.qty}</strong></td>`;
       tbody.appendChild(tr);
     });
-    table.appendChild(tbody);
-    wrap.appendChild(table);
-    itemCard.appendChild(wrap);
+    table.appendChild(tbody); wrap.appendChild(table); itemCard.appendChild(wrap);
     body.appendChild(itemCard);
   }
 }

@@ -123,87 +123,107 @@ function handleProductsGet(e) {
   }
 }
 
-// ── Dashboard handler — full stats for the manager view ─────────────
+// ── Dashboard handler — per-site, custom date range, full history ────
 function handleDashboardGet(e) {
   try {
-    const days   = parseInt((e && e.parameter && e.parameter.days) || '7', 10);
+    const params = (e && e.parameter) || {};
+    const days   = parseInt(params.days || '7', 10);
+    const site   = (params.site || '').trim();
+    const now    = new Date();
+    let fromDate = null, toDate = null;
+    if (params.from) fromDate = parseFlexDate(params.from);
+    if (params.to)   { toDate = parseFlexDate(params.to); if (toDate) toDate.setHours(23,59,59,999); }
+    if (!fromDate && days > 0) fromDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     const ss     = SpreadsheetApp.getActiveSpreadsheet();
     const sumWs  = ss.getSheetByName('Orders Summary');
     const logWs  = ss.getSheetByName('Order Log');
     const now    = new Date();
-    const cutoff = days > 0 ? new Date(now.getTime() - days * 24 * 60 * 60 * 1000) : null;
-
-    // ── Orders Summary (one row per order) ──
     const sumData = sumWs ? sumWs.getDataRange().getValues() : [];
     let totalOrders = 0, totalItems = 0, totalValue = 0;
     const bySiteMap = {};
-    ALL_SITES.forEach(s => { bySiteMap[s] = { orders: 0, items: 0 }; });
-    const recent = [], failures = [];
+    ALL_SITES.forEach(s => { bySiteMap[s] = { orders:0, items:0, value:0 }; });
+    const byMonth = {}, orders = [], failures = [];
 
     for (let i = 1; i < sumData.length; i++) {
       const row     = sumData[i];
+      const rowSite = (row[1] || '').toString().trim();
+      if (site && rowSite !== site) continue;
       const rowDate = parseDDMMYYYY((row[10] || '').toString());
-      if (cutoff && (!rowDate || rowDate < cutoff)) continue;
+      if (fromDate && rowDate && rowDate < fromDate) continue;
+      if (toDate   && rowDate && rowDate > toDate)   continue;
 
-      const orderId   = (row[0] || '').toString();
-      const site      = (row[1] || '').toString().trim();
-      const orderType = (row[2] || '').toString();
-      const submitted = (row[3] || '').toString();
-      const delivDate = (row[4] || '').toString();
+      const orderId   = (row[0]  || '').toString();
+      const orderType = (row[2]  || '').toString();
+      const submitted = (row[3]  || '').toString();
+      const delivDate = (row[4]  || '').toString();
       const items     = parseInt(row[5])   || 0;
       const value     = parseFloat(row[6]) || 0;
-      const prepTg    = (row[7] || '').toString();
-      const stockTg   = (row[8] || '').toString();
+      const prepTg    = (row[7]  || '').toString();
+      const stockTg   = (row[8]  || '').toString();
+      const monthYear = (row[11] || '').toString();
       const hasFail   = prepTg.includes('❌') || stockTg.includes('❌');
 
       totalOrders++; totalItems += items; totalValue += value;
-      if (bySiteMap[site]) { bySiteMap[site].orders++; bySiteMap[site].items += items; }
-
-      recent.push({ orderId, site, submitted, delivDate, type: orderType, items,
-                    value: Math.round(value * 100) / 100, prepTg, stockTg, hasFail });
-      if (hasFail) failures.push({ orderId, site, submitted, prepTg, stockTg });
+      if (bySiteMap[rowSite]) { bySiteMap[rowSite].orders++; bySiteMap[rowSite].items += items; bySiteMap[rowSite].value += value; }
+      if (!byMonth[monthYear]) byMonth[monthYear] = { month: monthYear, orders:0, items:0, value:0 };
+      byMonth[monthYear].orders++; byMonth[monthYear].items += items; byMonth[monthYear].value += value;
+      orders.push({ orderId, site:rowSite, submitted, delivDate, type:orderType, items, value:Math.round(value*100)/100, prepTg, stockTg, hasFail });
+      if (hasFail) failures.push({ orderId, site:rowSite, submitted, delivDate, prepTg, stockTg });
     }
+    orders.sort((a,b) => b.submitted.localeCompare(a.submitted));
 
-    recent.sort((a, b) => b.submitted.localeCompare(a.submitted));
-
-    // ── Order Log (one row per item — for top items) ──
-    const logData    = logWs ? logWs.getDataRange().getValues() : [];
+    const logData = logWs ? logWs.getDataRange().getValues() : [];
     const itemTotals = {};
     for (let i = 1; i < logData.length; i++) {
       const row     = logData[i];
+      const rowSite = (row[1] || '').toString().trim();
+      if (site && rowSite !== site) continue;
       const rowDate = parseDDMMYYYY((row[12] || '').toString());
-      if (cutoff && (!rowDate || rowDate < cutoff)) continue;
+      if (fromDate && rowDate && rowDate < fromDate) continue;
+      if (toDate   && rowDate && rowDate > toDate)   continue;
       const name = (row[2] || '').toString().trim();
       const qty  = parseFloat(row[4]) || 0;
       if (!name || qty <= 0) continue;
       itemTotals[name] = (itemTotals[name] || 0) + qty;
     }
+    const topItems = Object.entries(itemTotals).sort((a,b) => b[1]-a[1]).slice(0,15)
+      .map(([name,qty]) => ({ name, qty: Math.round(qty*10)/10 }));
 
-    const topItems = Object.entries(itemTotals)
-      .sort((a, b) => b[1] - a[1]).slice(0, 15)
-      .map(([name, qty]) => ({ name, qty: Math.round(qty * 10) / 10 }));
+    const bySite = ALL_SITES.filter(s => bySiteMap[s].orders > 0)
+      .map(s => ({ site:s, orders:bySiteMap[s].orders, items:bySiteMap[s].items, value:Math.round(bySiteMap[s].value*100)/100 }))
+      .sort((a,b) => b.orders-a.orders);
 
-    const bySite = ALL_SITES
-      .filter(s => bySiteMap[s].orders > 0)
-      .map(s => ({ site: s, orders: bySiteMap[s].orders, items: bySiteMap[s].items }))
-      .sort((a, b) => b.orders - a.orders);
+    const mOrd = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const mParse = m => { const p = m.split('-'); return parseInt(p[1])*12 + mOrd.indexOf(p[0]); };
+    const byMonthArr = Object.values(byMonth).sort((a,b) => mParse(b.month)-mParse(a.month))
+      .map(m => ({ ...m, value:Math.round(m.value*100)/100 }));
 
     const json = JSON.stringify({
-      ok: true, days,
-      stats: { orders: totalOrders, items: totalItems, value: Math.round(totalValue * 100) / 100 },
-      bySite, recent: recent.slice(0, 30), failures, topItems
+      ok:true, site:site||'all', days,
+      stats:{ orders:totalOrders, items:totalItems, value:Math.round(totalValue*100)/100,
+              avg: totalOrders ? Math.round((totalItems/totalOrders)*10)/10 : 0 },
+      bySite, byMonth:byMonthArr, orders:orders.slice(0,150), totalCount:orders.length, failures, topItems
     });
-
-    const cb = e && e.parameter && e.parameter.callback;
-    if (cb) return ContentService.createTextOutput(`${cb}(${json})`).setMimeType(ContentService.MimeType.JAVASCRIPT);
+    const cb = params.callback;
+    if (cb) return ContentService.createTextOutput(cb+'('+json+')').setMimeType(ContentService.MimeType.JAVASCRIPT);
     return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
 
   } catch(err) {
-    const json = JSON.stringify({ ok: false, error: err.toString() });
+    const json = JSON.stringify({ ok:false, error:err.toString() });
     const cb   = e && e.parameter && e.parameter.callback;
-    if (cb) return ContentService.createTextOutput(`${cb}(${json})`).setMimeType(ContentService.MimeType.JAVASCRIPT);
+    if (cb) return ContentService.createTextOutput(cb+'('+json+')').setMimeType(ContentService.MimeType.JAVASCRIPT);
     return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function parseFlexDate(str) {
+  if (!str) return null;
+  str = str.toString().trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const [y,m,d] = str.split('-');
+    return new Date(parseInt(y), parseInt(m)-1, parseInt(d));
+  }
+  return parseDDMMYYYY(str);
 }
 
 // ── Summary handler — last 7 days, per site, per order ──────────────
