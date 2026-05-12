@@ -426,7 +426,10 @@ function handleGetOrders(e) {
         });
       }
 
-      return resp({ ok: true, mode: 'items', orderId, site: items[0] ? items[0].site : '', items });
+      // Filter out items with qty=0 (removed during a recall amendment)
+      const orderSite   = items[0] ? items[0].site : '';
+      const activeItems = items.filter(item => item.qty > 0);
+      return resp({ ok: true, mode: 'items', orderId, site: orderSite, items: activeItems });
     }
 
     // Search by site + date — return list of matching orders
