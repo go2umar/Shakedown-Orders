@@ -79,7 +79,8 @@ function handleProductsGet(e) {
       const name = (row[0] || '').toString().trim();
       if (!name || name.startsWith('KEY')) continue;
 
-      const unit      = (row[2] || '').toString().trim();
+      const pkgType   = (row[1] || '').toString().trim(); // Col B = Pkg Type (packaging description)
+      const unit      = (row[2] || '').toString().trim(); // Col C = Unit (used for quantities)
       const active    = (row[5] || '').toString().trim().toLowerCase();
       const category  = (row[7] || '').toString().trim();
       const orderType = (row[8] || '').toString().trim();
@@ -98,11 +99,11 @@ function handleProductsGet(e) {
 
         if (inPrep) {
           if (!siteData[site].prep[displayCat]) siteData[site].prep[displayCat] = [];
-          siteData[site].prep[displayCat].push({ name, unit });
+          siteData[site].prep[displayCat].push({ name, unit, pkgType });
         }
         if (inStock) {
           if (!siteData[site].stock[displayCat]) siteData[site].stock[displayCat] = [];
-          siteData[site].stock[displayCat].push({ name, unit });
+          siteData[site].stock[displayCat].push({ name, unit, pkgType });
         }
       }
     }

@@ -269,6 +269,11 @@ body{min-height:100vh}
   font-size:11px;color:var(--text-tertiary);
   margin-top:2px;font-weight:500;
 }
+.prod-pkg{
+  font-size:10px;color:var(--text-secondary);font-weight:500;
+  margin-top:3px;background:var(--bg);border:1px solid var(--border);
+  border-radius:4px;padding:1px 6px;display:inline-block;
+}
 
 /* ── QTY CONTROLS ────────────────────────────────────── */
 .qty-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0}
@@ -1584,12 +1589,18 @@ function buildCats(containerId, productsObj, section) {
       info.className = 'prod-info';
       const nameDiv = document.createElement('div');
       nameDiv.className = 'prod-name';
-      nameDiv.textContent = p.name;  // XSS-safe
+      nameDiv.textContent = p.name;
       const unitDiv = document.createElement('div');
       unitDiv.className = 'prod-unit';
-      unitDiv.textContent = p.unit;  // XSS-safe
+      unitDiv.textContent = p.unit;
       info.appendChild(nameDiv);
       info.appendChild(unitDiv);
+      if (p.pkgType) {
+        const pkgDiv = document.createElement('div');
+        pkgDiv.className = 'prod-pkg';
+        pkgDiv.textContent = p.pkgType;
+        info.appendChild(pkgDiv);
+      }
 
       // Qty wrap
       const qtyWrap = document.createElement('div');
@@ -2176,6 +2187,11 @@ function buildSearchResultRow(item, container) {
   const unitEl = document.createElement('div');
   unitEl.className = 'prod-unit'; unitEl.textContent = item.unit;
   info.appendChild(nameEl); info.appendChild(unitEl);
+  if (item.pkgType) {
+    const pkgEl = document.createElement('div');
+    pkgEl.className = 'prod-pkg'; pkgEl.textContent = item.pkgType;
+    info.appendChild(pkgEl);
+  }
 
   const qtyWrap = document.createElement('div');
   qtyWrap.className = 'qty-wrap';
