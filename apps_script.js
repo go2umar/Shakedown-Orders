@@ -568,29 +568,32 @@ function doPost(e) {
     // Store message IDs so orders can be recalled within 30 min
     storeTelegramMsgIds(ss, orderId, site, prepMsgId, stockMsgId, timeStr);
 
-    // ── Log to master Order Log + per-site sheet ──────────────────────
-    allItems.forEach(item => {
+    // ── Batch write to Order Log + site sheet (one setValues call each) ──
+    // Much faster than appendRow per item — reduces N sheet ops to 2.
+    const logRows = allItems.map(item => {
       const tgStatus = buildTelegramStatus(item.ot, prepOk, stockOk);
-      const row = [
+      return [
         timeStr, site, item.name, item.unit, item.qty, item.supplier,
         item.price, item.total, notes, delivDate,
         tgStatus, orderId, dateOnly, monthYear
       ];
-      logWs.appendRow(row);
-      siteWs.appendRow(row);
     });
+    const cols = LOG_HEADERS.length;
+    logWs.getRange(logWs.getLastRow() + 1, 1, logRows.length, cols).setValues(logRows);
+    siteWs.getRange(siteWs.getLastRow() + 1, 1, logRows.length, cols).setValues(logRows);
 
-    // ── One summary row per order (used by Looker Studio + HTML summary) ──
+    // ── One summary row per order ──────────────────────────────────────
     const summaryWs  = getOrCreateSummarySheet(ss);
     const totalValue = allItems.reduce((sum, i) => sum + i.total, 0);
-    summaryWs.appendRow([
+    const sumRow     = [[
       orderId, site, orderType, timeStr, delivDate,
       allItems.length,
       Math.round(totalValue * 100) / 100,
       prepOk  === true ? '✅ Sent' : prepOk  === false ? '❌ Failed' : '—',
       stockOk === true ? '✅ Sent' : stockOk === false ? '❌ Failed' : '—',
       notes, dateOnly, monthYear
-    ]);
+    ]];
+    summaryWs.getRange(summaryWs.getLastRow() + 1, 1, 1, SUMMARY_HEADERS.length).setValues(sumRow);
 
     return jsonResponse({
       ok: true,
