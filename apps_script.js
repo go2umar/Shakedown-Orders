@@ -403,6 +403,25 @@ function handleGetOrders(e) {
           delivDate: rawD9 instanceof Date ? Utilities.formatDate(rawD9, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rawD9||'').toString().trim()
         });
       }
+      // Check Credits sheet — mark items that have been partially or fully credited
+      const credWs = ss.getSheetByName('Credits');
+      if (credWs) {
+        const credData  = credWs.getDataRange().getValues();
+        const creditMap = {};
+        for (let i = 1; i < credData.length; i++) {
+          const r   = credData[i];
+          const ref = (r[2] || '').toString().trim();
+          if (ref !== orderId) continue;
+          const n = (r[3] || '').toString().trim();
+          const q = parseFloat(r[4]) || 0;
+          creditMap[n] = (creditMap[n] || 0) + q;
+        }
+        items.forEach(item => {
+          item.creditedQty   = Math.round((creditMap[item.name] || 0) * 10) / 10;
+          item.fullyCredited = item.creditedQty >= item.qty;
+        });
+      }
+
       return resp({ ok: true, mode: 'items', orderId, site: items[0] ? items[0].site : '', items });
     }
 
@@ -916,8 +935,9 @@ function sendTelegramAddition(chatId, site, items, orderId, timeStr, label) {
 // ════════════════════════════════════════════════════════════════════
 function handleRecallOrder(payload) {
   try {
-    const orderId = (payload.orderId || '').trim();
-    const site    = (payload.site    || '').trim();
+    const orderId     = (payload.orderId || '').trim();
+    const site        = (payload.site    || '').trim();
+    const modItems    = payload.modifiedItems || null; // [{name, unit, qty, tg}]
     if (!orderId || !site) return jsonResponse({ ok: false, error: 'Missing orderId or site.' });
 
     const ss    = SpreadsheetApp.getActiveSpreadsheet();
@@ -957,14 +977,37 @@ function handleRecallOrder(payload) {
       }
     }
 
-    // Resend complete order
+    // If staff sent modified items, rebuild and update Order Log
+    if (modItems && modItems.length > 0) {
+      prepItems.length = 0; stockItems.length = 0;
+      modItems.forEach(item => {
+        const mi = { name: item.name, unit: item.unit, qty: parseFloat(item.qty) || 0 };
+        const tg = (item.tg || '').toLowerCase();
+        if (tg.includes('prep'))  prepItems.push(mi);
+        if (tg.includes('stock')) stockItems.push(mi);
+      });
+      // Update Order Log rows with modified quantities
+      const modMap  = {};
+      modItems.forEach(m => { modMap[m.name] = parseFloat(m.qty) || 0; });
+      const logData2 = logWs.getDataRange().getValues();
+      for (let i = 1; i < logData2.length; i++) {
+        if ((logData2[i][11] || '').toString().trim() !== orderId) continue;
+        const name   = (logData2[i][2] || '').toString().trim();
+        const newQty = name in modMap ? modMap[name] : 0;
+        const price  = parseFloat(logData2[i][6]) || 0;
+        logWs.getRange(i + 1, 5).setValue(newQty);
+        logWs.getRange(i + 1, 8).setValue(Math.round(price * newQty * 100) / 100);
+      }
+    }
+
+    // Resend to Telegram with final item lists
     const newTime = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
     let prepR = null, stockR = null;
     if (prepItems.length > 0) {
       prepR = sendTelegram(PREP_GROUP_ID, site, prepItems, notes, delivDate, orderId, newTime, 'PREP');
     }
     if (stockItems.length > 0) {
-      stockR = sendTelegram(STOCK_GROUP_ID, site, stockItems, notes, delivDate, orderId, timeStr, 'STOCK');
+      stockR = sendTelegram(STOCK_GROUP_ID, site, stockItems, notes, delivDate, orderId, newTime, 'STOCK');
     }
 
     // Update stored message IDs

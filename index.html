@@ -2519,14 +2519,34 @@ function hideRecallBar() {
   renderRecallContainer();
 }
 
-// Opens the Order Lookup pre-loaded with this order so staff can review/amend
-// before confirming the resend. The actual Telegram recall happens from inside
-// the Order Lookup via the "Confirm Recall & Resend" button shown there.
+// Staff recall — opens Order Lookup in recall-edit mode (qty changes, no credits)
+let _inRecallContext = false;
 function recallSpecificOrder(orderId, site, btn) {
+  _inRecallContext = true;
   openOrderLookup();
   setLookupMode('id');
   document.getElementById('lookup-order-id').value = orderId;
   runLookup();
+}
+
+async function recallOrderWithItems(orderId, site, modifiedItems, btn) {
+  if (!modifiedItems.length) {
+    if (!confirm('All items have been removed. The original Telegram message will be deleted with no replacement. Continue?')) return;
+  }
+  btn.disabled = true; btn.textContent = 'Recalling…';
+  try {
+    const res  = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(JSON.stringify({ action:'recall_order', orderId, site, modifiedItems }))
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.style.background = 'var(--prep)'; btn.textContent = '✅ Recalled & Resent';
+      setTimeout(() => { removeRecallOrder(orderId); closeOrderLookup(); }, 1500);
+    } else {
+      alert('Error: ' + (data.error || 'Recall failed.')); btn.disabled = false; btn.textContent = '↩ Confirm Recall & Resend to Telegram';
+    }
+  } catch(e) { alert('Connection error.'); btn.disabled = false; btn.textContent = '↩ Confirm Recall & Resend to Telegram'; }
 }
 
 function recallLastOrder(btn) {
@@ -3152,6 +3172,7 @@ function openOrderLookup() {
 
 function closeOrderLookup() {
   document.getElementById('orders-overlay').classList.remove('show');
+  _inRecallContext = false;
 }
 
 function setLookupMode(mode) {
@@ -3362,97 +3383,139 @@ function renderOrderItems(orderId, site, items, container) {
     return;
   }
   const submitted = items[0] && items[0].submitted;
+  const isRecall = _inRecallContext;
   const wrap  = document.createElement('div'); wrap.style.overflowX = 'auto';
   const table = document.createElement('table'); table.className = 'order-items-table';
-  table.innerHTML = '<thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Price (£)</th><th>Total (£)</th><th>Supplier</th><th>Action</th></tr></thead>';
+  // Recall view: qty inputs + remove. Manager view: credit buttons. Credited items: badge only.
+  const colHdr = isRecall
+    ? '<th>Item</th><th>Qty</th><th>Unit</th><th>Price (£)</th><th>Total (£)</th><th>Action</th>'
+    : '<th>Item</th><th>Qty</th><th>Unit</th><th>Price (£)</th><th>Total (£)</th><th>Supplier</th><th>Action</th>';
+  table.innerHTML = '<thead><tr>' + colHdr + '</tr></thead>';
   const tbody = document.createElement('tbody');
 
   items.forEach(item => {
     const tr = document.createElement('tr');
-    // Item cells
-    const cells = [item.name, item.qty, item.unit, '£'+item.price, '£'+item.total, item.supplier||'—'];
-    cells.forEach(c => { const td = document.createElement('td'); td.innerHTML = c; tr.appendChild(td); });
+    const netQty = item.qty - (item.creditedQty || 0); // available qty after credits
 
-    // Credit button + inline form
+    // Base cells (same for all views)
+    const baseCells = isRecall
+      ? [item.name, item.qty, item.unit, '£'+item.price, '£'+item.total]
+      : [item.name, item.qty, item.unit, '£'+item.price, '£'+item.total, item.supplier||'—'];
+    baseCells.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
+
+    // Action column
     const actionTd = document.createElement('td');
-    const creditBtn = document.createElement('button');
-    creditBtn.className = 'credit-item-btn'; creditBtn.textContent = 'Credit';
 
-    // Inline credit form (hidden by default)
-    const inlineForm = document.createElement('tr');
-    inlineForm.style.display = 'none';
-    const formTd = document.createElement('td'); formTd.colSpan = 7; formTd.style.padding = '0';
-    const formDiv = document.createElement('div'); formDiv.className = 'credit-inline-form open';
-    formDiv.innerHTML = `
-      <span style="font-size:12px;font-weight:600;color:var(--brand)">Crediting: ${item.name}</span>
-      <label>Qty</label>
-      <input type="number" class="credit-inline-input" style="width:70px" value="${item.qty}" min="0.5" max="${item.qty}" step="0.5">
-      <label>Reason</label>
-      <select class="credit-inline-input" id="cr-reason-sel-${orderId}-${item.name.replace(/\s+/g,'_')}">
-        <option>Out of stock</option>
-        <option>Damaged on delivery</option>
-        <option>Wrong item delivered</option>
-        <option>Short delivery</option>
-        <option value="Other">Other</option>
-      </select>
-      <input type="text" class="credit-inline-input credit-other-input" placeholder="Describe the reason…"
-             style="display:none;min-width:160px">
-      <button class="credit-inline-confirm">Confirm Credit</button>
-      <button class="credit-inline-cancel">Cancel</button>`;
+    if (item.fullyCredited) {
+      // ── Fully credited — just show badge, no further action ──────
+      const badge = document.createElement('span');
+      badge.style.cssText = 'font-size:11px;font-weight:700;color:var(--prep);background:var(--prep-bg);padding:3px 8px;border-radius:6px;border:1px solid var(--prep-border);white-space:nowrap';
+      badge.textContent = '✓ Item Credited';
+      actionTd.appendChild(badge);
+      tr.style.opacity = '.5';
 
-    const reasonSel   = formDiv.querySelector('select');
-    const otherInput  = formDiv.querySelector('.credit-other-input');
-    reasonSel.onchange = () => {
-      otherInput.style.display = reasonSel.value === 'Other' ? 'block' : 'none';
-      if (reasonSel.value === 'Other') otherInput.focus();
-    };
+    } else if (isRecall) {
+      // ── Recall/staff view — qty input + remove ───────────────────
+      if (item.creditedQty > 0) {
+        const note = document.createElement('div');
+        note.style.cssText = 'font-size:10px;color:#B45309;margin-bottom:4px';
+        note.textContent = item.creditedQty + ' ' + item.unit + ' already credited';
+        actionTd.appendChild(note);
+      }
+      const qtyInp = document.createElement('input');
+      qtyInp.type = 'number';
+      qtyInp.className = 'credit-inline-input';
+      qtyInp.style.cssText = 'width:60px;margin-right:6px';
+      qtyInp.value = netQty;
+      qtyInp.min = '0.5'; qtyInp.max = String(netQty); qtyInp.step = '0.5';
+      qtyInp.dataset.itemName = item.name;
+      qtyInp.dataset.itemUnit = item.unit;
+      qtyInp.dataset.itemTg   = item.tgStatus;
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'credit-item-btn';
+      removeBtn.style.cssText = 'background:#FEF2F2;color:var(--brand);border-color:#FBBCBC';
+      removeBtn.textContent = 'Remove';
+      removeBtn.onclick = () => { qtyInp.value = '0'; tr.style.opacity = '.4'; removeBtn.textContent = 'Removed'; removeBtn.disabled = true; };
+      actionTd.appendChild(qtyInp); actionTd.appendChild(removeBtn);
 
-    formDiv.querySelector('.credit-inline-confirm').onclick = async () => {
-      const qty    = parseFloat(formDiv.querySelector('input[type=number]').value) || 0;
-      const reason = reasonSel.value === 'Other'
-        ? (otherInput.value.trim() || 'Other')
-        : reasonSel.value;
-      if (qty <= 0) { formDiv.querySelector('input').focus(); return; }
-      const confirmBtn = formDiv.querySelector('.credit-inline-confirm');
-      confirmBtn.textContent = 'Saving…'; confirmBtn.disabled = true;
-      try {
-        const res  = await fetch(SCRIPT_URL, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body:    'data=' + encodeURIComponent(JSON.stringify({
-            action:'record_credit', site, orderRef:orderId,
-            itemName:item.name, qty, unit:item.unit, price:item.price, reason
-          }))
-        });
-        const d = await res.json();
-        if (d.ok) {
-          inlineForm.style.display = 'none';
-          tr.style.opacity = '.4';
-          creditBtn.textContent = '✓ Credited'; creditBtn.disabled = true;
-        } else {
-          alert('Error: ' + (d.error || 'Could not record credit.')); confirmBtn.textContent = 'Confirm Credit'; confirmBtn.disabled = false;
-        }
-      } catch(e) { alert('Connection error.'); confirmBtn.textContent = 'Confirm Credit'; confirmBtn.disabled = false; }
-    };
-    formDiv.querySelector('.credit-inline-cancel').onclick = () => { inlineForm.style.display = 'none'; };
+    } else {
+      // ── Manager view — credit button + inline form ────────────────
+      const creditBtn = document.createElement('button');
+      creditBtn.className = 'credit-item-btn'; creditBtn.textContent = 'Credit';
+      const inlineForm = document.createElement('tr');
+      inlineForm.style.display = 'none';
+      const formTd = document.createElement('td'); formTd.colSpan = 7; formTd.style.padding = '0';
+      const formDiv = document.createElement('div'); formDiv.className = 'credit-inline-form open';
+      const maxQ = item.creditedQty > 0 ? netQty : item.qty;
+      formDiv.innerHTML = `
+        <span style="font-size:12px;font-weight:600;color:var(--brand)">Crediting: ${item.name}</span>
+        <label>Qty</label>
+        <input type="number" class="credit-inline-input" style="width:70px" value="${maxQ}" min="0.5" max="${maxQ}" step="0.5">
+        <label>Reason</label>
+        <select class="credit-inline-input">
+          <option>Out of stock</option><option>Damaged on delivery</option>
+          <option>Wrong item delivered</option><option>Short delivery</option>
+          <option value="Other">Other</option>
+        </select>
+        <input type="text" class="credit-inline-input credit-other-input" placeholder="Describe the reason…" style="display:none;min-width:160px">
+        <button class="credit-inline-confirm">Confirm Credit</button>
+        <button class="credit-inline-cancel">Cancel</button>`;
+      const reasonSel  = formDiv.querySelector('select');
+      const otherInput = formDiv.querySelector('.credit-other-input');
+      reasonSel.onchange = () => { otherInput.style.display = reasonSel.value === 'Other' ? 'block' : 'none'; if (reasonSel.value === 'Other') otherInput.focus(); };
+      formDiv.querySelector('.credit-inline-confirm').onclick = async () => {
+        const qty    = parseFloat(formDiv.querySelector('input[type=number]').value) || 0;
+        const reason = reasonSel.value === 'Other' ? (otherInput.value.trim() || 'Other') : reasonSel.value;
+        if (qty <= 0) { formDiv.querySelector('input').focus(); return; }
+        const confirmBtn = formDiv.querySelector('.credit-inline-confirm');
+        confirmBtn.textContent = 'Saving…'; confirmBtn.disabled = true;
+        try {
+          const res = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+            body:'data='+encodeURIComponent(JSON.stringify({action:'record_credit',site,orderRef:orderId,itemName:item.name,qty,unit:item.unit,price:item.price,reason})) });
+          const d = await res.json();
+          if (d.ok) { inlineForm.style.display='none'; tr.style.opacity='.4'; creditBtn.textContent='✓ Credited'; creditBtn.disabled=true; }
+          else { alert('Error: '+(d.error||'Could not record credit.')); confirmBtn.textContent='Confirm Credit'; confirmBtn.disabled=false; }
+        } catch(e) { alert('Connection error.'); confirmBtn.textContent='Confirm Credit'; confirmBtn.disabled=false; }
+      };
+      formDiv.querySelector('.credit-inline-cancel').onclick = () => { inlineForm.style.display = 'none'; };
+      creditBtn.onclick = () => { inlineForm.style.display = inlineForm.style.display === 'none' ? 'table-row' : 'none'; };
+      actionTd.appendChild(creditBtn); tr.appendChild(actionTd);
+      formTd.appendChild(formDiv); inlineForm.appendChild(formTd);
+      tbody.appendChild(tr); tbody.appendChild(inlineForm);
+      return; // skip the tr.appendChild(actionTd) below
+    }
 
-    creditBtn.onclick = () => { inlineForm.style.display = inlineForm.style.display === 'none' ? 'table-row' : 'none'; };
-    actionTd.appendChild(creditBtn); tr.appendChild(actionTd);
-    formTd.appendChild(formDiv); inlineForm.appendChild(formTd);
-    tbody.appendChild(tr); tbody.appendChild(inlineForm);
+    tr.appendChild(actionTd);
+    tbody.appendChild(tr);
   });
   table.appendChild(tbody); wrap.appendChild(table); container.appendChild(wrap);
 
-  // ── Recall & Resend (within 30 min only) ──────────────────────
+  // ── Recall & Resend (within 30 min only) ─────────────────────
   if (isWithin30Min(submitted)) {
     const recallBar = document.createElement('div');
     recallBar.style.cssText = 'padding:14px 16px;background:#FFF8E7;border-top:1px solid #F5D58A;';
-    recallBar.innerHTML = `
-      <div style="font-size:12px;color:#B45309;font-weight:600;margin-bottom:8px">⏱ Within 30 min — add any missing items above, then confirm the resend</div>
-      <button style="width:100%;padding:13px;background:#B45309;color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer">
-        ↩ Confirm Recall &amp; Resend to Telegram
-      </button>`;
-    recallBar.querySelector('button').onclick = () => recallOrder(orderId, site, recallBar.querySelector('button'));
+    const recallNote = document.createElement('div');
+    recallNote.style.cssText = 'font-size:12px;color:#B45309;font-weight:600;margin-bottom:8px';
+    recallNote.textContent = isRecall
+      ? '⏱ Adjust quantities or remove items above, then confirm to resend to Telegram'
+      : '⏱ Within 30 min — you can recall this order';
+    const recallBtn = document.createElement('button');
+    recallBtn.style.cssText = 'width:100%;padding:13px;background:#B45309;color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer';
+    recallBtn.textContent = '↩ Confirm Recall & Resend to Telegram';
+    recallBtn.onclick = () => {
+      if (isRecall) {
+        // Gather modified qty inputs
+        const modifiedItems = [];
+        wrap.querySelectorAll('input[data-item-name]').forEach(inp => {
+          const qty = parseFloat(inp.value) || 0;
+          if (qty > 0) modifiedItems.push({ name: inp.dataset.itemName, unit: inp.dataset.itemUnit, qty, tg: inp.dataset.itemTg });
+        });
+        recallOrderWithItems(orderId, site, modifiedItems, recallBtn);
+      } else {
+        recallOrder(orderId, site, recallBtn);
+      }
+    };
+    recallBar.appendChild(recallNote); recallBar.appendChild(recallBtn);
     container.appendChild(recallBar);
   }
 
