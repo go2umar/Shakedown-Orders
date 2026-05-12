@@ -2463,7 +2463,7 @@ function showRecallBar(orderId, site) {
   clearTimeout(_recallTimer);
   const bar = document.getElementById('recall-bar');
   const btn = document.getElementById('recall-bar-btn');
-  document.getElementById('recall-bar-ref').textContent = orderId;
+  document.getElementById('recall-bar-ref').textContent = orderId + ' · ' + site;
   btn.disabled = false; btn.textContent = '↩ Recall & Resend';
   bar.style.display = 'flex';
   // Auto-hide after 30 minutes
