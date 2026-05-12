@@ -2497,19 +2497,41 @@ function hideRecallBar() {
   document.getElementById('recall-bar').style.display = 'none';
 }
 
-// On page load — restore recall bar if last order is still within 30 min
+// On page load — restore recall bar.
+// Same device: instant from localStorage.
+// Different device: server check (cross-device recall).
 (function checkStoredRecall() {
   try {
     const raw = localStorage.getItem('lastOrder');
-    if (!raw) return;
-    const { orderId, site, submittedAt } = JSON.parse(raw);
-    if (Date.now() - submittedAt < 30 * 60 * 1000) {
-      showRecallBar(orderId, site, submittedAt);
-    } else {
+    if (raw) {
+      const { orderId, site, submittedAt } = JSON.parse(raw);
+      if (Date.now() - submittedAt < 30 * 60 * 1000) {
+        showRecallBar(orderId, site, submittedAt);
+        return; // Local data valid — no server call needed
+      }
       localStorage.removeItem('lastOrder');
     }
   } catch(e) {}
+  // No valid local data — silently ask the server (catches other devices)
+  checkServerRecall();
 })();
+
+function checkServerRecall() {
+  const old = document.getElementById('recall-server-jsonp');
+  if (old) old.remove();
+  window._onRecentOrderLoaded = function(data) {
+    if (!data || !data.ok || !data.order) return;
+    const { orderId, site, submittedAt } = data.order;
+    if (Date.now() - submittedAt < 30 * 60 * 1000) {
+      showRecallBar(orderId, site, submittedAt);
+    }
+  };
+  const s = document.createElement('script');
+  s.id  = 'recall-server-jsonp';
+  s.src = SCRIPT_URL + '?action=recent_order&callback=_onRecentOrderLoaded';
+  s.onerror = () => {};
+  document.head.appendChild(s);
+}
 
 async function recallLastOrder(btn) {
   if (!_recallOrderId || !_recallSite) return;

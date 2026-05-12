@@ -28,9 +28,10 @@ const SUMMARY_HEADERS = [
 // ════════════════════════════════════════════════════════════════════
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'products';
-  if (action === 'summary')    return handleSummaryGet(e);
-  if (action === 'dashboard')  return handleDashboardGet(e);
-  if (action === 'get_orders') return handleGetOrders(e);
+  if (action === 'summary')      return handleSummaryGet(e);
+  if (action === 'dashboard')    return handleDashboardGet(e);
+  if (action === 'get_orders')   return handleGetOrders(e);
+  if (action === 'recent_order') return handleRecentOrderGet(e);
   return handleProductsGet(e);
 }
 
@@ -308,6 +309,54 @@ function parseFlexDate(str) {
     return new Date(parseInt(y), parseInt(m)-1, parseInt(d));
   }
   return parseDDMMYYYY(str);
+}
+
+// ── Recent order — returns most recent order within last 30 min ──────
+// Used by the HTML for cross-device recall bar on page load.
+function handleRecentOrderGet(e) {
+  try {
+    const ss   = SpreadsheetApp.getActiveSpreadsheet();
+    const tgWs = ss.getSheetByName('TG Messages');
+    const cb   = e && e.parameter && e.parameter.callback;
+
+    const resp = obj => {
+      const json = JSON.stringify(obj);
+      if (cb) return ContentService.createTextOutput(cb+'('+json+')').setMimeType(ContentService.MimeType.JAVASCRIPT);
+      return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+    };
+
+    if (!tgWs) return resp({ ok: true, order: null });
+
+    const data   = tgWs.getDataRange().getValues();
+    const now    = new Date();
+    const cutoff = new Date(now.getTime() - 30 * 60 * 1000);
+
+    let best = null, bestTime = null;
+    for (let i = 1; i < data.length; i++) {
+      const orderId = (data[i][0]||'').toString().trim();
+      const site    = (data[i][1]||'').toString().trim();
+      const sentAt  = parseDDMMYYYYHHMM((data[i][4]||'').toString().trim());
+      if (!sentAt || sentAt < cutoff) continue;
+      if (!bestTime || sentAt > bestTime) { bestTime = sentAt; best = { orderId, site, submittedAt: sentAt.getTime() }; }
+    }
+
+    return resp({ ok: true, order: best });
+  } catch(err) {
+    const json = JSON.stringify({ ok: false, error: err.toString() });
+    const cb   = e && e.parameter && e.parameter.callback;
+    if (cb) return ContentService.createTextOutput(cb+'('+json+')').setMimeType(ContentService.MimeType.JAVASCRIPT);
+    return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function parseDDMMYYYYHHMM(str) {
+  if (!str) return null;
+  const parts = str.split(' ');
+  if (parts.length < 2) return null;
+  const [d, m, y] = parts[0].split('/');
+  const [h, min]  = parts[1].split(':');
+  if (!y || !m || !d || !h || !min) return null;
+  return new Date(parseInt(y), parseInt(m)-1, parseInt(d), parseInt(h), parseInt(min));
 }
 
 // ── Order lookup — search by Order ID or by site + date ─────────────
