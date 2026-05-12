@@ -2523,6 +2523,7 @@ function hideRecallBar() {
 let _inRecallContext = false;
 function recallSpecificOrder(orderId, site, btn) {
   _inRecallContext = true;
+  document.getElementById('success-overlay').classList.remove('show');
   openOrderLookup();
   setLookupMode('id');
   document.getElementById('lookup-order-id').value = orderId;
