@@ -1971,12 +1971,15 @@ function resetForm() {
   clearQuickAdd();
   closeScan();
   closeBasket();
-  hideRecallBar();
+  // Do NOT hideRecallBar here — recall persists for 30 min even after starting a new order
   document.getElementById('st-site').textContent  = '—';
   document.getElementById('st-type').textContent  = '—';
   document.getElementById('st-items').textContent = '0';
   document.getElementById('hdr-badge').textContent= '0 items';
   document.getElementById('submit-btn').disabled  = true;
+  // Hide basket FAB — it's only shown when items exist with an active order type
+  const fab = document.getElementById('basket-fab');
+  if (fab) fab.style.display = 'none';
   hideError();
   window.scrollTo(0,0);
   document.getElementById('review-overlay').classList.remove('show');
