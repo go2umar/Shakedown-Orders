@@ -1535,7 +1535,15 @@ function buildCats(containerId, productsObj, section) {
   for (const [cat, rawItems] of Object.entries(productsObj)) {
     if (!rawItems || !rawItems.length) continue;
     // Sort alphabetically within each category
-    const items = [...rawItems].sort((a, b) => a.name.localeCompare(b.name));
+    const isDC  = currentSite && currentSite.startsWith('DC');
+    const items = [...rawItems].sort((a, b) => {
+      if (isDC) {
+        const aClub = a.name.toLowerCase().startsWith('club');
+        const bClub = b.name.toLowerCase().startsWith('club');
+        if (aClub !== bClub) return aClub ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
 
     // ── Category header — built with DOM API (XSS-safe) ──
     const hdr = document.createElement('div');
@@ -2142,12 +2150,20 @@ function onItemSearch(val) {
   resultsEl.innerHTML = '';
   if (!q) return;
 
-  // Exact start-of-word matches first, then other contains matches
-  const alpha  = (a, b) => a.name.localeCompare(b.name);
-  const starts   = _searchIndex.filter(p => p.name.toLowerCase().startsWith(q)).sort(alpha);
+  // DC sites: Club items first then alphabetical. All others: alphabetical.
+  const isDC2 = currentSite && currentSite.startsWith('DC');
+  const sortFn = (a, b) => {
+    if (isDC2) {
+      const aClub = a.name.toLowerCase().startsWith('club');
+      const bClub = b.name.toLowerCase().startsWith('club');
+      if (aClub !== bClub) return aClub ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name);
+  };
+  const starts   = _searchIndex.filter(p => p.name.toLowerCase().startsWith(q)).sort(sortFn);
   const contains = _searchIndex.filter(p =>
     !p.name.toLowerCase().startsWith(q) && p.name.toLowerCase().includes(q)
-  ).sort(alpha);
+  ).sort(sortFn);
   const matches = [...starts, ...contains].slice(0, 40);
 
   if (!matches.length) {
