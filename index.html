@@ -1408,6 +1408,11 @@ body{min-height:100vh}
     </div>
   </div>
   <div class="review-body" id="basket-body"></div>
+  <div style="padding:0 16px 24px">
+    <button onclick="goToSubmit()" style="width:100%;padding:15px;background:var(--brand);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(230,57,70,.3);transition:all .15s">
+      Review &amp; Submit Order →
+    </button>
+  </div>
 </div>
 
 <!-- BASKET FAB — fixed floating button -->
@@ -2358,6 +2363,14 @@ function openBasket() {
 
 function closeBasket() {
   document.getElementById('basket-overlay').classList.remove('show');
+}
+
+function goToSubmit() {
+  closeBasket();
+  const submitSection = document.getElementById('submit-section');
+  if (submitSection) {
+    setTimeout(() => submitSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+  }
 }
 
 function renderBasket() {
