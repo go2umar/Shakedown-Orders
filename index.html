@@ -3138,19 +3138,30 @@ function renderOrderItems(orderId, site, items, container) {
       <label>Qty</label>
       <input type="number" class="credit-inline-input" style="width:70px" value="${item.qty}" min="0.5" max="${item.qty}" step="0.5">
       <label>Reason</label>
-      <select class="credit-inline-input">
+      <select class="credit-inline-input" id="cr-reason-sel-${orderId}-${item.name.replace(/\s+/g,'_')}">
         <option>Out of stock</option>
         <option>Damaged on delivery</option>
         <option>Wrong item delivered</option>
         <option>Short delivery</option>
-        <option>Other</option>
+        <option value="Other">Other</option>
       </select>
+      <input type="text" class="credit-inline-input credit-other-input" placeholder="Describe the reason…"
+             style="display:none;min-width:160px">
       <button class="credit-inline-confirm">Confirm Credit</button>
       <button class="credit-inline-cancel">Cancel</button>`;
 
+    const reasonSel   = formDiv.querySelector('select');
+    const otherInput  = formDiv.querySelector('.credit-other-input');
+    reasonSel.onchange = () => {
+      otherInput.style.display = reasonSel.value === 'Other' ? 'block' : 'none';
+      if (reasonSel.value === 'Other') otherInput.focus();
+    };
+
     formDiv.querySelector('.credit-inline-confirm').onclick = async () => {
-      const qty    = parseFloat(formDiv.querySelector('input').value) || 0;
-      const reason = formDiv.querySelector('select').value;
+      const qty    = parseFloat(formDiv.querySelector('input[type=number]').value) || 0;
+      const reason = reasonSel.value === 'Other'
+        ? (otherInput.value.trim() || 'Other')
+        : reasonSel.value;
       if (qty <= 0) { formDiv.querySelector('input').focus(); return; }
       const confirmBtn = formDiv.querySelector('.credit-inline-confirm');
       confirmBtn.textContent = 'Saving…'; confirmBtn.disabled = true;
