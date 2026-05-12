@@ -263,7 +263,8 @@ body{min-height:100vh}
 }
 .prod-unit{
   font-size:11px;color:var(--text-tertiary);
-  font-weight:600;letter-spacing:.1px;margin-left:2px;
+  font-weight:600;letter-spacing:.1px;margin-left:4px;
+  width:46px;flex-shrink:0;
 }
 .prod-pkg{
   font-size:11px;color:var(--text-tertiary);
@@ -2128,7 +2129,7 @@ function buildSearchIndex() {
       (items || []).forEach(p => {
         if (!seen.has(p.name)) {
           seen.add(p.name);
-          _searchIndex.push({ name: p.name, unit: p.unit, section: sec, cat });
+          _searchIndex.push({ name: p.name, unit: p.unit, pkgType: p.pkgType || '', section: sec, cat });
         }
       });
     });
