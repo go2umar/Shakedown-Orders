@@ -3216,6 +3216,14 @@ function runLookup() {
       return;
     }
     if (data.mode === 'items') {
+      // In recall context, ensure search index is built so Add Item works
+      if (_inRecallContext && data.items && data.items[0] && data.site) {
+        if (SITE_DATA && SITE_DATA[data.site]) {
+          currentSite = data.site;
+          if (!orderType) orderType = 'both';
+          buildSearchIndex();
+        }
+      }
       renderOrderItems(data.orderId, data.site, data.items, resultsEl);
     } else {
       renderOrderList(data.orders, resultsEl);
@@ -3279,6 +3287,15 @@ function fetchOrderItems(orderId, site, container) {
   const cbName = '_onItemsLoaded_' + orderId.replace('-','_');
   window[cbName] = function(data) {
     if (!data || !data.ok) { container.innerHTML = '<div class="dash-empty">Could not load items.</div>'; return; }
+    // In recall context, build search index from this order's site so Add Item works
+    if (_inRecallContext && data.items && data.items[0]) {
+      const orderSite = data.items[0].site;
+      if (SITE_DATA && SITE_DATA[orderSite]) {
+        currentSite = orderSite;
+        if (!orderType) orderType = 'both';
+        buildSearchIndex();
+      }
+    }
     renderOrderItems(orderId, site, data.items, container);
   };
   const s = document.createElement('script');

@@ -390,6 +390,10 @@ function handleGetOrders(e) {
         const row = logData[i];
         if ((row[11]||'').toString().trim() !== orderId) continue;
         const rawD9  = row[9];
+        const rawD0 = row[0];
+        const submittedFmt = rawD0 instanceof Date
+          ? Utilities.formatDate(rawD0, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')
+          : (rawD0 || '').toString().trim();
         items.push({
           name:      (row[2] ||'').toString().trim(),
           unit:      (row[3] ||'').toString().trim(),
@@ -399,7 +403,7 @@ function handleGetOrders(e) {
           total:     parseFloat(row[7]) || 0,
           tgStatus:  (row[10]||'').toString().trim(),
           site:      (row[1] ||'').toString().trim(),
-          submitted: (row[0] ||'').toString().trim(),
+          submitted: submittedFmt,
           delivDate: rawD9 instanceof Date ? Utilities.formatDate(rawD9, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rawD9||'').toString().trim()
         });
       }
