@@ -2457,24 +2457,46 @@ function buildBasketRow(name, unit, qty, onRemove) {
 // ── RECALL (staff form) ───────────────────────────────────────────
 let _recallOrderId = null, _recallSite = null, _recallTimer = null;
 
-function showRecallBar(orderId, site) {
+function showRecallBar(orderId, site, submittedAt) {
   _recallOrderId = orderId;
   _recallSite    = site;
   clearTimeout(_recallTimer);
+
+  const ts = submittedAt || Date.now();
+  // Persist so page refresh doesn't lose it
+  try { localStorage.setItem('lastOrder', JSON.stringify({ orderId, site, submittedAt: ts })); } catch(e) {}
+
+  const remaining = Math.max(0, 30 * 60 * 1000 - (Date.now() - ts));
+  if (remaining === 0) { hideRecallBar(); return; }
+
   const bar = document.getElementById('recall-bar');
   const btn = document.getElementById('recall-bar-btn');
   document.getElementById('recall-bar-ref').textContent = orderId + ' · ' + site;
   btn.disabled = false; btn.textContent = '↩ Recall & Resend';
   bar.style.display = 'flex';
-  // Auto-hide after 30 minutes
-  _recallTimer = setTimeout(hideRecallBar, 30 * 60 * 1000);
+  _recallTimer = setTimeout(hideRecallBar, remaining);
 }
 
 function hideRecallBar() {
   _recallOrderId = null; _recallSite = null;
   clearTimeout(_recallTimer);
+  try { localStorage.removeItem('lastOrder'); } catch(e) {}
   document.getElementById('recall-bar').style.display = 'none';
 }
+
+// On page load — restore recall bar if last order is still within 30 min
+(function checkStoredRecall() {
+  try {
+    const raw = localStorage.getItem('lastOrder');
+    if (!raw) return;
+    const { orderId, site, submittedAt } = JSON.parse(raw);
+    if (Date.now() - submittedAt < 30 * 60 * 1000) {
+      showRecallBar(orderId, site, submittedAt);
+    } else {
+      localStorage.removeItem('lastOrder');
+    }
+  } catch(e) {}
+})();
 
 async function recallLastOrder(btn) {
   if (!_recallOrderId || !_recallSite) return;
