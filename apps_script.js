@@ -981,8 +981,9 @@ function handleRecallOrder(payload) {
       }
     }
 
-    // If staff sent modified items, rebuild and update Order Log
-    if (modItems && modItems.length > 0) {
+    // modItems was explicitly provided (even as empty array) → use it as the new item list
+    // modItems === null means no changes were sent → use original Order Log items
+    if (modItems !== null && modItems !== undefined) {
       prepItems.length = 0; stockItems.length = 0;
       modItems.forEach(item => {
         const mi = { name: item.name, unit: item.unit, qty: parseFloat(item.qty) || 0 };
@@ -990,8 +991,8 @@ function handleRecallOrder(payload) {
         if (tg.includes('prep'))  prepItems.push(mi);
         if (tg.includes('stock')) stockItems.push(mi);
       });
-      // Update Order Log rows with modified quantities
-      const modMap  = {};
+      // Update Order Log: new qty for changed items, 0 for removed items
+      const modMap   = {};
       modItems.forEach(m => { modMap[m.name] = parseFloat(m.qty) || 0; });
       const logData2 = logWs.getDataRange().getValues();
       for (let i = 1; i < logData2.length; i++) {
@@ -1004,8 +1005,15 @@ function handleRecallOrder(payload) {
       }
     }
 
-    // Resend to Telegram with final item lists
+    // If no items remain after modifications, just delete and don't resend
     const newTime = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+    if (prepItems.length === 0 && stockItems.length === 0) {
+      storeTelegramMsgIds(ss, orderId, site, null, null, newTime);
+      Logger.log('Recall: all items removed, old message deleted, nothing resent.');
+      return jsonResponse({ ok: true });
+    }
+
+    // Resend to Telegram with updated item lists
     let prepR = null, stockR = null;
     if (prepItems.length > 0) {
       prepR = sendTelegram(PREP_GROUP_ID, site, prepItems, notes, delivDate, orderId, newTime, 'PREP');
