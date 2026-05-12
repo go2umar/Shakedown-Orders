@@ -1111,11 +1111,8 @@ body{min-height:100vh}
   <div class="status-pill">Items: <strong id="st-items">0</strong></div>
 </div>
 
-<!-- Recall bar — shown for 30 min after a successful order submission -->
-<div class="recall-bar" id="recall-bar" style="display:none">
-  <span class="recall-bar-text">Last order: <strong id="recall-bar-ref">—</strong></span>
-  <button class="recall-bar-btn" id="recall-bar-btn" onclick="recallLastOrder(this)">↩ Recall &amp; Resend</button>
-</div>
+<!-- Recall container — populated dynamically, one row per recent order -->
+<div id="recall-container" style="display:none"></div>
 
 <div class="section">
   <div class="section-label">Order Details</div>
@@ -2468,113 +2465,110 @@ function buildBasketRow(name, unit, qty, onRemove) {
 }
 
 // ── RECALL (staff form) ───────────────────────────────────────────
-let _recallOrderId = null, _recallSite = null, _recallTimer = null;
+// Keyed by orderId — prevents duplicates from localStorage + server
+let _recallOrders = {}, _recallTimers = {};
 
-function showRecallBar(orderId, site, submittedAt) {
-  _recallOrderId = orderId;
-  _recallSite    = site;
-  clearTimeout(_recallTimer);
-
+function addRecallOrder(orderId, site, submittedAt) {
   const ts = submittedAt || Date.now();
-  // Persist so page refresh doesn't lose it
+  const remaining = 30 * 60 * 1000 - (Date.now() - ts);
+  if (remaining <= 0 || _recallOrders[orderId]) return;
+  _recallOrders[orderId] = { site, submittedAt: ts };
+  _recallTimers[orderId] = setTimeout(() => removeRecallOrder(orderId), remaining);
+  renderRecallContainer();
+}
+
+function removeRecallOrder(orderId) {
+  clearTimeout(_recallTimers[orderId]);
+  delete _recallOrders[orderId]; delete _recallTimers[orderId];
+  renderRecallContainer();
+}
+
+function renderRecallContainer() {
+  const container = document.getElementById('recall-container');
+  if (!container) return;
+  container.innerHTML = '';
+  const entries = Object.entries(_recallOrders).sort((a, b) => b[1].submittedAt - a[1].submittedAt);
+  if (!entries.length) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  entries.forEach(([orderId, { site }], i) => {
+    const bar = document.createElement('div');
+    bar.className = 'recall-bar';
+    if (i > 0) bar.style.borderTop = '1px solid #F0D070';
+    const txt = document.createElement('span');
+    txt.className = 'recall-bar-text';
+    txt.innerHTML = '<strong>' + orderId + ' · ' + site + '</strong>';
+    const btn = document.createElement('button');
+    btn.className = 'recall-bar-btn'; btn.textContent = '↩ Recall & Resend';
+    btn.onclick = () => recallSpecificOrder(orderId, site, btn);
+    bar.appendChild(txt); bar.appendChild(btn);
+    container.appendChild(bar);
+  });
+}
+
+// Called after successful submission — persists to localStorage for same-device refresh
+function showRecallBar(orderId, site, submittedAt) {
+  const ts = submittedAt || Date.now();
   try { localStorage.setItem('lastOrder', JSON.stringify({ orderId, site, submittedAt: ts })); } catch(e) {}
-
-  const remaining = Math.max(0, 30 * 60 * 1000 - (Date.now() - ts));
-  if (remaining === 0) { hideRecallBar(); return; }
-
-  const bar = document.getElementById('recall-bar');
-  const btn = document.getElementById('recall-bar-btn');
-  document.getElementById('recall-bar-ref').textContent = orderId + ' · ' + site;
-  btn.disabled = false; btn.textContent = '↩ Recall & Resend';
-  bar.style.display = 'flex';
-  _recallTimer = setTimeout(hideRecallBar, remaining);
+  addRecallOrder(orderId, site, ts);
 }
 
 function hideRecallBar() {
-  _recallOrderId = null; _recallSite = null;
-  clearTimeout(_recallTimer);
+  Object.keys(_recallTimers).forEach(id => clearTimeout(_recallTimers[id]));
+  _recallOrders = {}; _recallTimers = {};
   try { localStorage.removeItem('lastOrder'); } catch(e) {}
-  document.getElementById('recall-bar').style.display = 'none';
+  renderRecallContainer();
 }
 
-// On page load — restore recall bar.
-// Same device: instant from localStorage.
-// Different device: server check (cross-device recall).
-(function checkStoredRecall() {
+async function recallSpecificOrder(orderId, site, btn) {
+  if (!confirm('Recall ' + orderId + ' (' + site + ')?\nThis deletes the original Telegram message and sends a fresh one.')) return;
+  btn.disabled = true; btn.textContent = 'Recalling…';
+  try {
+    const res  = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(JSON.stringify({ action:'recall_order', orderId, site }))
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.style.background = 'var(--prep)'; btn.textContent = '✅ Recalled & Resent';
+      setTimeout(() => removeRecallOrder(orderId), 2000);
+    } else {
+      alert('Error: ' + (data.error || 'Recall failed.')); btn.disabled = false; btn.textContent = '↩ Recall & Resend';
+    }
+  } catch(e) { alert('Connection error.'); btn.disabled = false; btn.textContent = '↩ Recall & Resend'; }
+}
+
+// Wrappers for success overlay buttons (use first available recall order)
+function recallLastOrder(btn) {
+  const first = Object.keys(_recallOrders)[0];
+  if (first) recallSpecificOrder(first, _recallOrders[first].site, btn);
+}
+function recallFromSuccess(btn) { recallLastOrder(btn); }
+
+// On page load: localStorage (same device, instant) + server (all devices)
+(function initRecall() {
   try {
     const raw = localStorage.getItem('lastOrder');
     if (raw) {
       const { orderId, site, submittedAt } = JSON.parse(raw);
-      if (Date.now() - submittedAt < 30 * 60 * 1000) {
-        showRecallBar(orderId, site, submittedAt);
-        return; // Local data valid — no server call needed
-      }
-      localStorage.removeItem('lastOrder');
+      if (Date.now() - submittedAt < 30 * 60 * 1000) addRecallOrder(orderId, site, submittedAt);
+      else localStorage.removeItem('lastOrder');
     }
   } catch(e) {}
-  // No valid local data — silently ask the server (catches other devices)
+  // Always check server — picks up orders from other devices/sites
   checkServerRecall();
 })();
 
 function checkServerRecall() {
-  const old = document.getElementById('recall-server-jsonp');
-  if (old) old.remove();
+  const old = document.getElementById('recall-server-jsonp'); if (old) old.remove();
   window._onRecentOrderLoaded = function(data) {
-    if (!data || !data.ok || !data.order) return;
-    const { orderId, site, submittedAt } = data.order;
-    if (Date.now() - submittedAt < 30 * 60 * 1000) {
-      showRecallBar(orderId, site, submittedAt);
-    }
+    if (!data || !data.ok || !data.orders) return;
+    data.orders.forEach(o => addRecallOrder(o.orderId, o.site, o.submittedAt));
   };
   const s = document.createElement('script');
-  s.id  = 'recall-server-jsonp';
+  s.id = 'recall-server-jsonp';
   s.src = SCRIPT_URL + '?action=recent_order&callback=_onRecentOrderLoaded';
   s.onerror = () => {};
   document.head.appendChild(s);
-}
-
-async function recallLastOrder(btn) {
-  if (!_recallOrderId || !_recallSite) return;
-  if (!confirm('This will delete the original Telegram message for ' + _recallOrderId + ' and send a fresh updated order. Continue?')) return;
-  btn.disabled = true; btn.textContent = 'Recalling…';
-  try {
-    const res  = await fetch(SCRIPT_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body:    'data=' + encodeURIComponent(JSON.stringify({ action:'recall_order', orderId:_recallOrderId, site:_recallSite }))
-    });
-    const data = await res.json();
-    if (data.ok) {
-      btn.style.background = 'var(--prep)'; btn.style.borderColor = 'var(--prep)';
-      btn.textContent = '✅ Recalled & Resent';
-    } else {
-      alert('Error: ' + (data.error || 'Recall failed.')); btn.disabled = false; btn.textContent = '↩ Recall & Resend';
-    }
-  } catch(e) {
-    alert('Connection error.'); btn.disabled = false; btn.textContent = '↩ Recall & Resend';
-  }
-}
-
-async function recallFromSuccess(btn) {
-  if (!_recallOrderId || !_recallSite) return;
-  if (!confirm('Recall ' + _recallOrderId + '? This deletes the original Telegram message and sends a fresh one.')) return;
-  btn.disabled = true; btn.textContent = 'Recalling…';
-  try {
-    const res  = await fetch(SCRIPT_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body:    'data=' + encodeURIComponent(JSON.stringify({ action:'recall_order', orderId:_recallOrderId, site:_recallSite }))
-    });
-    const data = await res.json();
-    if (data.ok) {
-      btn.style.background = '#D1FAE5'; btn.style.color = 'var(--prep)'; btn.style.border = '1.5px solid var(--prep)';
-      btn.textContent = '✅ Recalled & Resent';
-    } else {
-      alert('Error: ' + (data.error || 'Recall failed.')); btn.disabled = false; btn.textContent = '↩ Recall & Resend Order';
-    }
-  } catch(e) {
-    alert('Connection error.'); btn.disabled = false; btn.textContent = '↩ Recall & Resend Order';
-  }
 }
 
 // ── IMAGE SCAN ────────────────────────────────────────────────────

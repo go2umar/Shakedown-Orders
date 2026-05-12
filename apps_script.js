@@ -331,16 +331,18 @@ function handleRecentOrderGet(e) {
     const now    = new Date();
     const cutoff = new Date(now.getTime() - 30 * 60 * 1000);
 
-    let best = null, bestTime = null;
+    const orders = [];
     for (let i = 1; i < data.length; i++) {
       const orderId = (data[i][0]||'').toString().trim();
       const site    = (data[i][1]||'').toString().trim();
       const sentAt  = parseDDMMYYYYHHMM((data[i][4]||'').toString().trim());
-      if (!sentAt || sentAt < cutoff) continue;
-      if (!bestTime || sentAt > bestTime) { bestTime = sentAt; best = { orderId, site, submittedAt: sentAt.getTime() }; }
+      if (!orderId || !sentAt || sentAt < cutoff) continue;
+      orders.push({ orderId, site, submittedAt: sentAt.getTime() });
     }
+    // Newest first
+    orders.sort((a, b) => b.submittedAt - a.submittedAt);
 
-    return resp({ ok: true, order: best });
+    return resp({ ok: true, orders });
   } catch(err) {
     const json = JSON.stringify({ ok: false, error: err.toString() });
     const cb   = e && e.parameter && e.parameter.callback;
