@@ -3402,16 +3402,18 @@ function renderOrderItems(orderId, site, items, container) {
   }
   const submitted = items[0] && items[0].submitted;
   const isRecall = _inRecallContext;
+  // Staff recall view: hide removed items (qty=0). Manager view: show all with badges.
+  const displayItems = isRecall ? items.filter(i => !i.removed && i.qty > 0) : items;
+
   const wrap  = document.createElement('div'); wrap.style.overflowX = 'auto';
   const table = document.createElement('table'); table.className = 'order-items-table';
-  // Recall view: qty inputs + remove. Manager view: credit buttons. Credited items: badge only.
   const colHdr = isRecall
     ? '<th>Item</th><th>Qty</th><th>Unit</th><th>Price (£)</th><th>Total (£)</th><th>Action</th>'
     : '<th>Item</th><th>Qty</th><th>Unit</th><th>Price (£)</th><th>Total (£)</th><th>Supplier</th><th>Action</th>';
   table.innerHTML = '<thead><tr>' + colHdr + '</tr></thead>';
   const tbody = document.createElement('tbody');
 
-  items.forEach(item => {
+  displayItems.forEach(item => {
     const tr = document.createElement('tr');
     const netQty = item.qty - (item.creditedQty || 0); // available qty after credits
 
@@ -3424,7 +3426,16 @@ function renderOrderItems(orderId, site, items, container) {
     // Action column
     const actionTd = document.createElement('td');
 
-    if (item.fullyCredited) {
+    if (item.removed) {
+      // ── Removed during recall — show badge, no further action ────
+      const badge = document.createElement('span');
+      badge.style.cssText = 'font-size:11px;font-weight:700;color:var(--brand);background:var(--brand-light);padding:3px 8px;border-radius:6px;border:1px solid #FBBCBC;white-space:nowrap';
+      badge.textContent = '✕ Item Removed';
+      actionTd.appendChild(badge);
+      tr.style.opacity = '.45';
+      tr.style.textDecoration = 'line-through';
+
+    } else if (item.fullyCredited) {
       // ── Fully credited — just show badge, no further action ──────
       const badge = document.createElement('span');
       badge.style.cssText = 'font-size:11px;font-weight:700;color:var(--prep);background:var(--prep-bg);padding:3px 8px;border-radius:6px;border:1px solid var(--prep-border);white-space:nowrap';

@@ -426,10 +426,11 @@ function handleGetOrders(e) {
         });
       }
 
-      // Filter out items with qty=0 (removed during a recall amendment)
-      const orderSite   = items[0] ? items[0].site : '';
-      const activeItems = items.filter(item => item.qty > 0);
-      return resp({ ok: true, mode: 'items', orderId, site: orderSite, items: activeItems });
+      // Mark removed items (qty=0) so the manager can see what was removed
+      // but staff in recall-edit mode can filter them out client-side
+      const orderSite = items[0] ? items[0].site : '';
+      items.forEach(item => { if (item.qty === 0) item.removed = true; });
+      return resp({ ok: true, mode: 'items', orderId, site: orderSite, items });
     }
 
     // Search by site + date — return list of matching orders
@@ -986,8 +987,11 @@ function handleRecallOrder(payload) {
 
     // modItems was explicitly provided (even as empty array) → use it as the new item list
     // modItems === null means no changes were sent → use original Order Log items
+    let modMap = null; // declared here so it's accessible after the if block
     if (modItems !== null && modItems !== undefined) {
       prepItems.length = 0; stockItems.length = 0;
+      modMap = {};
+      modItems.forEach(m => { modMap[m.name] = parseFloat(m.qty) || 0; });
       modItems.forEach(item => {
         const mi = { name: item.name, unit: item.unit, qty: parseFloat(item.qty) || 0 };
         const tg = (item.tg || '').toLowerCase();
@@ -995,8 +999,6 @@ function handleRecallOrder(payload) {
         if (tg.includes('stock')) stockItems.push(mi);
       });
       // Update Order Log: new qty for changed items, 0 for removed items
-      const modMap   = {};
-      modItems.forEach(m => { modMap[m.name] = parseFloat(m.qty) || 0; });
       const logData2 = logWs.getDataRange().getValues();
       for (let i = 1; i < logData2.length; i++) {
         if ((logData2[i][11] || '').toString().trim() !== orderId) continue;
@@ -1027,6 +1029,43 @@ function handleRecallOrder(payload) {
 
     // Update stored message IDs
     storeTelegramMsgIds(ss, orderId, site, prepR ? prepR.messageId : null, stockR ? stockR.messageId : null, newTime);
+
+    // ── Sync site sheet + Orders Summary when modifications were made ──
+    if (modMap) {
+      // Site sheet — mirror the Order Log changes
+      const siteSheet = ss.getSheetByName(site);
+      if (siteSheet) {
+        const sData = siteSheet.getDataRange().getValues();
+        for (let i = 1; i < sData.length; i++) {
+          if ((sData[i][11] || '').toString().trim() !== orderId) continue;
+          const name   = (sData[i][2] || '').toString().trim();
+          const newQty = name in modMap ? modMap[name] : 0;
+          const price  = parseFloat(sData[i][6]) || 0;
+          siteSheet.getRange(i + 1, 5).setValue(newQty);
+          siteSheet.getRange(i + 1, 8).setValue(Math.round(price * newQty * 100) / 100);
+        }
+      }
+
+      // Orders Summary — recalculate items count and total value from updated Order Log
+      const sumWs = ss.getSheetByName('Orders Summary');
+      if (sumWs) {
+        const freshLog = logWs.getDataRange().getValues();
+        let newCount = 0, newValue = 0;
+        for (let i = 1; i < freshLog.length; i++) {
+          if ((freshLog[i][11] || '').toString().trim() !== orderId) continue;
+          const qty   = parseFloat(freshLog[i][4]) || 0;
+          const total = parseFloat(freshLog[i][7]) || 0;
+          if (qty > 0) { newCount++; newValue += total; }
+        }
+        const sumData = sumWs.getDataRange().getValues();
+        for (let i = 1; i < sumData.length; i++) {
+          if ((sumData[i][0] || '').toString().trim() !== orderId) continue;
+          sumWs.getRange(i + 1, 6).setValue(newCount);                       // Items
+          sumWs.getRange(i + 1, 7).setValue(Math.round(newValue * 100) / 100); // Total Value (£)
+          break;
+        }
+      }
+    }
 
     return jsonResponse({ ok: true });
   } catch(err) {
