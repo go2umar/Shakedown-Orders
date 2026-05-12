@@ -1590,11 +1590,8 @@ function buildCats(containerId, productsObj, section) {
       const nameDiv = document.createElement('div');
       nameDiv.className = 'prod-name';
       nameDiv.textContent = p.name;
-      const unitDiv = document.createElement('div');
-      unitDiv.className = 'prod-unit';
-      unitDiv.textContent = p.unit;
       info.appendChild(nameDiv);
-      info.appendChild(unitDiv);
+      // Pkg type shown under the name (not unit)
       if (p.pkgType) {
         const pkgDiv = document.createElement('div');
         pkgDiv.className = 'prod-pkg';
@@ -1602,7 +1599,7 @@ function buildCats(containerId, productsObj, section) {
         info.appendChild(pkgDiv);
       }
 
-      // Qty wrap
+      // Qty wrap — unit shown after the + button
       const qtyWrap = document.createElement('div');
       qtyWrap.className = 'qty-wrap';
 
@@ -1619,7 +1616,7 @@ function buildCats(containerId, productsObj, section) {
       input.max = '999';
       input.step = '0.5';
       input.placeholder = '0';
-      input.dataset.name    = p.name;  // stored in dataset, not HTML attribute
+      input.dataset.name    = p.name;
       input.dataset.unit    = p.unit;
       input.dataset.section = section;
       input.dataset.cat     = cat;
@@ -1632,9 +1629,14 @@ function buildCats(containerId, productsObj, section) {
       plusBtn.setAttribute('tabindex', '-1');
       plusBtn.onclick = () => adj(plusBtn, 0.5);
 
+      const unitLbl = document.createElement('span');
+      unitLbl.className = 'prod-unit';
+      unitLbl.textContent = p.unit;
+
       qtyWrap.appendChild(minusBtn);
       qtyWrap.appendChild(input);
       qtyWrap.appendChild(plusBtn);
+      qtyWrap.appendChild(unitLbl);
 
       row.appendChild(info);
       row.appendChild(qtyWrap);
@@ -2184,9 +2186,8 @@ function buildSearchResultRow(item, container) {
   info.className = 'prod-info';
   const nameEl = document.createElement('div');
   nameEl.className = 'prod-name'; nameEl.textContent = item.name;
-  const unitEl = document.createElement('div');
-  unitEl.className = 'prod-unit'; unitEl.textContent = item.unit;
-  info.appendChild(nameEl); info.appendChild(unitEl);
+  info.appendChild(nameEl);
+  // Pkg type under the name only
   if (item.pkgType) {
     const pkgEl = document.createElement('div');
     pkgEl.className = 'prod-pkg'; pkgEl.textContent = item.pkgType;
@@ -2232,7 +2233,11 @@ function buildSearchResultRow(item, container) {
   minus.onclick  = () => sync((parseFloat(input.value) || 0) - 0.5);
   plus.onclick   = () => sync((parseFloat(input.value) || 0) + 0.5);
 
-  qtyWrap.appendChild(minus); qtyWrap.appendChild(input); qtyWrap.appendChild(plus);
+  const unitLbl2 = document.createElement('span');
+  unitLbl2.className = 'prod-unit';
+  unitLbl2.textContent = item.unit;
+
+  qtyWrap.appendChild(minus); qtyWrap.appendChild(input); qtyWrap.appendChild(plus); qtyWrap.appendChild(unitLbl2);
   row.appendChild(info); row.appendChild(qtyWrap);
   container.appendChild(row);
 }
