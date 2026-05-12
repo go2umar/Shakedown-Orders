@@ -3122,12 +3122,103 @@ function fetchOrderItems(orderId, site, container) {
   document.head.appendChild(s);
 }
 
+function filterAddItem(input, dropdownId) {
+  const q  = input.value.trim().toLowerCase();
+  const dd = document.getElementById(dropdownId);
+  if (!dd) return;
+  dd.innerHTML = '';
+  if (!q || q.length < 1) { dd.style.display = 'none'; return; }
+  // Use _searchIndex if populated, otherwise just text input
+  const matches = _searchIndex.filter(p => p.name.toLowerCase().includes(q)).slice(0, 20);
+  if (!matches.length) { dd.style.display = 'none'; return; }
+  const rect = input.getBoundingClientRect();
+  dd.style.top   = (rect.bottom + 4) + 'px';
+  dd.style.left  = rect.left + 'px';
+  dd.style.width = rect.width + 'px';
+  matches.forEach(p => {
+    const opt = document.createElement('div');
+    opt.className = 'scan-combobox-option';
+    opt.textContent = p.name + (p.unit ? '  (' + p.unit + ')' : '');
+    opt.onmousedown = e => { e.preventDefault(); input.value = p.name; input.dataset.selectedItem = p.name; dd.style.display = 'none'; };
+    dd.appendChild(opt);
+  });
+  dd.style.display = 'block';
+}
+
+async function addItemToOrder(orderId, site, btn) {
+  const nameInput = document.getElementById('add-name-' + orderId);
+  const qtyInput  = document.getElementById('add-qty-'  + orderId);
+  const feedback  = document.getElementById('add-feedback-' + orderId);
+  const name = (nameInput.value || '').trim();
+  const qty  = parseFloat(qtyInput.value) || 0;
+  if (!name || qty <= 0) { nameInput.focus(); return; }
+
+  btn.disabled = true; btn.textContent = 'Adding…';
+  try {
+    const res  = await fetch(SCRIPT_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    'data=' + encodeURIComponent(JSON.stringify({ action:'add_to_order', orderId, site, itemName:name, qty }))
+    });
+    const data = await res.json();
+    if (data.ok) {
+      feedback.style.cssText = 'font-size:12px;padding:0 16px 12px;display:block;color:var(--prep);font-weight:600';
+      feedback.textContent = '✅ ' + name + ' (×' + qty + ') added to ' + orderId + ' — Telegram notified';
+      nameInput.value = ''; qtyInput.value = ''; nameInput.dataset.selectedItem = '';
+    } else {
+      feedback.style.cssText = 'font-size:12px;padding:0 16px 12px;display:block;color:var(--brand);font-weight:600';
+      feedback.textContent = '❌ ' + (data.error || 'Could not add item.');
+    }
+  } catch(e) {
+    feedback.style.cssText = 'font-size:12px;padding:0 16px 12px;display:block;color:var(--brand);font-weight:600';
+    feedback.textContent = '❌ Connection error.';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Add Item';
+  }
+}
+
+async function recallOrder(orderId, site, btn) {
+  if (!confirm('This will delete the original Telegram message(s) for ' + orderId + ' and send a new complete order with all current items. Continue?')) return;
+  btn.disabled = true; btn.textContent = 'Recalling…';
+  try {
+    const res  = await fetch(SCRIPT_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    'data=' + encodeURIComponent(JSON.stringify({ action:'recall_order', orderId, site }))
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.style.background = 'var(--prep)';
+      btn.textContent = '✅ Recalled & Resent';
+      btn.disabled = true;
+    } else {
+      alert('Error: ' + (data.error || 'Recall failed.'));
+      btn.disabled = false; btn.textContent = '↩ Recall & Resend';
+    }
+  } catch(e) {
+    alert('Connection error.');
+    btn.disabled = false; btn.textContent = '↩ Recall & Resend';
+  }
+}
+
+function isWithin30Min(submittedStr) {
+  if (!submittedStr) return false;
+  // Parse "dd/MM/yyyy HH:mm"
+  const parts = submittedStr.split(' ');
+  if (parts.length < 2) return false;
+  const [d, m, y] = parts[0].split('/');
+  const [h, min]  = parts[1].split(':');
+  const t = new Date(parseInt(y), parseInt(m)-1, parseInt(d), parseInt(h), parseInt(min));
+  return (Date.now() - t.getTime()) < 30 * 60 * 1000;
+}
+
 function renderOrderItems(orderId, site, items, container) {
   container.innerHTML = '';
   if (!items || !items.length) {
     container.innerHTML = '<div class="dash-empty">No items found for ' + orderId + '</div>';
     return;
   }
+  const submitted = items[0] && items[0].submitted;
   const wrap  = document.createElement('div'); wrap.style.overflowX = 'auto';
   const table = document.createElement('table'); table.className = 'order-items-table';
   table.innerHTML = '<thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Price (£)</th><th>Total (£)</th><th>Supplier</th><th>Action</th></tr></thead>';
@@ -3208,6 +3299,36 @@ function renderOrderItems(orderId, site, items, container) {
     tbody.appendChild(tr); tbody.appendChild(inlineForm);
   });
   table.appendChild(tbody); wrap.appendChild(table); container.appendChild(wrap);
+
+  // ── Recall & Resend (within 30 min only) ──────────────────────
+  if (isWithin30Min(submitted)) {
+    const recallBar = document.createElement('div');
+    recallBar.style.cssText = 'padding:12px 16px;background:#FFF8E7;border-top:1px solid #F5D58A;display:flex;align-items:center;gap:10px;flex-wrap:wrap';
+    recallBar.innerHTML = `
+      <span style="font-size:12px;color:#B45309;font-weight:600">⏱ Within 30 min — you can recall this order</span>
+      <button id="recall-btn-${orderId}" style="margin-left:auto;padding:7px 16px;background:#B45309;color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer">↩ Recall &amp; Resend</button>`;
+    recallBar.querySelector('button').onclick = () => recallOrder(orderId, site, recallBar.querySelector('button'));
+    container.appendChild(recallBar);
+  }
+
+  // ── Add Item to this order ─────────────────────────────────────
+  const addBar = document.createElement('div');
+  addBar.style.cssText = 'border-top:1px solid #F2F2F7';
+  addBar.innerHTML = `
+    <div style="padding:12px 16px 4px;font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--text-tertiary)">Add item to ${orderId}</div>
+    <div style="display:flex;gap:8px;padding:0 16px 14px;flex-wrap:wrap;align-items:flex-end">
+      <div style="flex:1;min-width:160px;position:relative">
+        <input type="text" id="add-name-${orderId}" placeholder="Type item name…"
+               style="width:100%;padding:9px 12px;background:#F2F2F7;border:1.5px solid transparent;border-radius:10px;font-family:var(--font);font-size:13px;outline:none;"
+               oninput="filterAddItem(this,'add-dropdown-${orderId}')">
+        <div id="add-dropdown-${orderId}" class="scan-combobox-dropdown" style="display:none"></div>
+      </div>
+      <input type="number" id="add-qty-${orderId}" placeholder="Qty" min="0.5" step="0.5"
+             style="width:64px;padding:9px 10px;background:#F2F2F7;border:1.5px solid transparent;border-radius:10px;font-family:var(--font);font-size:13px;outline:none;">
+      <button onclick="addItemToOrder('${orderId}','${site}',this)" style="padding:9px 18px;background:#6366F1;color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">Add Item</button>
+    </div>
+    <div id="add-feedback-${orderId}" style="font-size:12px;padding:0 16px 12px;display:none"></div>`;
+  container.appendChild(addBar);
 }
 
 // ── MANAGER DASHBOARD ─────────────────────────────────────────────

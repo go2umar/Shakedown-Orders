@@ -492,6 +492,8 @@ function doPost(e) {
 
     if ((payload.action || '') === 'record_credit')  return handleCreditPost(payload);
     if ((payload.action || '') === 'set_item_price') return handleSetItemPrice(payload);
+    if ((payload.action || '') === 'add_to_order')   return handleAddToOrder(payload);
+    if ((payload.action || '') === 'recall_order')   return handleRecallOrder(payload);
 
     const site      = (payload.site      || '').trim();
     const orderType = (payload.orderType || '').trim();
@@ -554,13 +556,17 @@ function doPost(e) {
     if (!allItems.length) return jsonResponse({ ok: false, error: 'No valid items to log' });
 
     // ── Send Telegram FIRST — status known before any row is written ──
-    let prepOk = null, stockOk = null;
+    let prepOk = null, stockOk = null, prepMsgId = null, stockMsgId = null;
     if (prepItems.length > 0) {
-      prepOk = sendTelegram(PREP_GROUP_ID, site, prepItems, notes, delivDate, orderId, timeStr, 'PREP');
+      const r = sendTelegram(PREP_GROUP_ID, site, prepItems, notes, delivDate, orderId, timeStr, 'PREP');
+      prepOk = r.ok; prepMsgId = r.messageId;
     }
     if (stockItems.length > 0) {
-      stockOk = sendTelegram(STOCK_GROUP_ID, site, stockItems, notes, delivDate, orderId, timeStr, 'STOCK');
+      const r = sendTelegram(STOCK_GROUP_ID, site, stockItems, notes, delivDate, orderId, timeStr, 'STOCK');
+      stockOk = r.ok; stockMsgId = r.messageId;
     }
+    // Store message IDs so orders can be recalled within 30 min
+    storeTelegramMsgIds(ss, orderId, site, prepMsgId, stockMsgId, timeStr);
 
     // ── Log to master Order Log + per-site sheet ──────────────────────
     allItems.forEach(item => {
@@ -688,14 +694,16 @@ function sendTelegram(chatId, site, items, notes, deliveryDate, orderId, timeStr
     });
     const code = response.getResponseCode();
     if (code !== 200) {
-      Logger.log('Telegram FAILED to ' + chatId + ' (' + label + '): HTTP ' + code + ' — ' + response.getContentText());
-      return false;
+      Logger.log('Telegram FAILED to ' + chatId + ' (' + label + '): HTTP ' + code);
+      return { ok: false, messageId: null };
     }
-    Logger.log('Telegram OK to ' + chatId + ' (' + label + ')');
-    return true;
+    const body      = JSON.parse(response.getContentText());
+    const messageId = body.result && body.result.message_id ? body.result.message_id : null;
+    Logger.log('Telegram OK to ' + chatId + ' (' + label + ') messageId=' + messageId);
+    return { ok: true, messageId };
   } catch(err) {
     Logger.log('Telegram EXCEPTION to ' + chatId + ' (' + label + '): ' + err);
-    return false;
+    return { ok: false, messageId: null };
   }
 }
 
@@ -739,6 +747,205 @@ function createMonthlyArchives() {
   });
 
   Logger.log('Monthly archives created for ' + monthLabel);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ADD ITEM TO EXISTING ORDER
+// Appends a new line to Order Log + site sheet, updates Orders Summary,
+// and sends a small "📝 ADDITION" Telegram notification.
+// ════════════════════════════════════════════════════════════════════
+function handleAddToOrder(payload) {
+  try {
+    const orderId  = (payload.orderId  || '').trim();
+    const site     = (payload.site     || '').trim();
+    const itemName = (payload.itemName || '').trim();
+    const qty      = parseFloat(payload.qty)   || 0;
+    const manualPrice = parseFloat(payload.price) || 0;
+
+    if (!orderId || !site || !itemName || qty <= 0) {
+      return jsonResponse({ ok: false, error: 'Missing required fields.' });
+    }
+
+    const ss      = SpreadsheetApp.getActiveSpreadsheet();
+    const priceWs = ss.getSheetByName('Price List');
+    const logWs   = ss.getSheetByName('Order Log');
+    const sumWs   = ss.getSheetByName('Orders Summary');
+
+    // Look up item from Price List (price, supplier, unit, orderType)
+    const prRows = priceWs.getDataRange().getValues();
+    let price = manualPrice, supplier = '', unit = '', orderType = 'stock';
+    for (let i = 3; i < prRows.length; i++) {
+      const n = (prRows[i][0] || '').toString().trim();
+      if (n !== itemName) continue;
+      price     = parseFloat(prRows[i][4]) || manualPrice;
+      supplier  = (prRows[i][3] || '').toString();
+      unit      = (prRows[i][2] || '').toString().trim();
+      orderType = (prRows[i][8] || '').toString().trim().toLowerCase();
+      break;
+    }
+    const total = Math.round(price * qty * 100) / 100;
+
+    // Find original order's meta from Order Log
+    const logData = logWs.getDataRange().getValues();
+    let origTime = '', origDeliv = '', origNotes = '', origDate = '', origMonth = '';
+    for (let i = 1; i < logData.length; i++) {
+      if ((logData[i][11] || '').toString().trim() !== orderId) continue;
+      origTime  = (logData[i][0]  || '').toString();
+      origNotes = (logData[i][8]  || '').toString();
+      const rd = logData[i][9];
+      origDeliv = rd instanceof Date ? Utilities.formatDate(rd, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rd||'').toString();
+      const rd2 = logData[i][12];
+      origDate  = rd2 instanceof Date ? Utilities.formatDate(rd2, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rd2||'').toString();
+      const rd3 = logData[i][13];
+      origMonth = rd3 instanceof Date ? Utilities.formatDate(rd3, Session.getScriptTimeZone(), 'MMM-yyyy') : (rd3||'').toString();
+      break;
+    }
+
+    // Build Telegram status
+    const addedTimeStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+    let prepR = null, stockR = null;
+    const addItems = [{ name: itemName, unit, qty }];
+    if (orderType === 'prep' || orderType === 'both') {
+      prepR = sendTelegramAddition(PREP_GROUP_ID, site, addItems, orderId, addedTimeStr, 'PREP');
+    }
+    if (orderType === 'stock' || orderType === 'both') {
+      stockR = sendTelegramAddition(STOCK_GROUP_ID, site, addItems, orderId, addedTimeStr, 'STOCK');
+    }
+    const tgStatus = buildTelegramStatus(orderType, prepR ? prepR.ok : null, stockR ? stockR.ok : null);
+
+    // Append to Order Log
+    const newRow = [origTime, site, itemName, unit, qty, supplier, price, total, origNotes, origDeliv, tgStatus + ' (addition)', orderId, origDate, origMonth];
+    logWs.appendRow(newRow);
+    const siteWs = ss.getSheetByName(site);
+    if (siteWs) siteWs.appendRow(newRow);
+
+    // Update Orders Summary
+    if (sumWs) {
+      const sumData = sumWs.getDataRange().getValues();
+      for (let i = 1; i < sumData.length; i++) {
+        if ((sumData[i][0] || '').toString().trim() !== orderId) continue;
+        sumWs.getRange(i + 1, 6).setValue((parseInt(sumData[i][5]) || 0) + 1);
+        sumWs.getRange(i + 1, 7).setValue(Math.round(((parseFloat(sumData[i][6]) || 0) + total) * 100) / 100);
+        break;
+      }
+    }
+
+    return jsonResponse({ ok: true, price, total });
+  } catch(err) {
+    Logger.log('handleAddToOrder error: ' + err);
+    return jsonResponse({ ok: false, error: err.toString() });
+  }
+}
+
+function sendTelegramAddition(chatId, site, items, orderId, timeStr, label) {
+  let msg  = `📝 ${label} ORDER — ADDITION\n`;
+  msg     += `📍 ${site}\n`;
+  msg     += `Ref: ${orderId} | ${timeStr}\n`;
+  msg     += `─────────────────────\n`;
+  items.forEach(it => {
+    const q = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
+    msg += `• ${it.name}  —  ${q} ${pluraliseUnit(it.unit, it.qty)}\n`;
+  });
+  msg += `─────────────────────`;
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+  try {
+    const r = UrlFetchApp.fetch(url, { method:'post', contentType:'application/json',
+      payload: JSON.stringify({ chat_id: chatId, text: msg }), muteHttpExceptions: true });
+    const body = JSON.parse(r.getContentText());
+    return { ok: r.getResponseCode() === 200, messageId: body.result && body.result.message_id };
+  } catch(e) { return { ok: false, messageId: null }; }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// RECALL ORDER — deletes original Telegram message(s) and resends
+// a complete updated order. Only works within 30 minutes.
+// ════════════════════════════════════════════════════════════════════
+function handleRecallOrder(payload) {
+  try {
+    const orderId = (payload.orderId || '').trim();
+    const site    = (payload.site    || '').trim();
+    if (!orderId || !site) return jsonResponse({ ok: false, error: 'Missing orderId or site.' });
+
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const logWs = ss.getSheetByName('Order Log');
+    const tgWs  = ss.getSheetByName('TG Messages');
+
+    // Collect all current items for this order grouped by prep/stock
+    const logData = logWs.getDataRange().getValues();
+    const prepItems = [], stockItems = [], bothItems = [];
+    let notes = '', delivDate = '', timeStr = '';
+    for (let i = 1; i < logData.length; i++) {
+      const row = logData[i];
+      if ((row[11] || '').toString().trim() !== orderId) continue;
+      if (!notes)    notes    = (row[8] || '').toString();
+      if (!timeStr)  timeStr  = (row[0] || '').toString();
+      if (!delivDate) {
+        const rd = row[9];
+        delivDate = rd instanceof Date ? Utilities.formatDate(rd, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rd||'').toString();
+      }
+      const name = (row[2] || '').toString().trim();
+      const unit = (row[3] || '').toString().trim();
+      const qty  = parseFloat(row[4]) || 0;
+      const tg   = (row[10] || '').toString();
+      const item = { name, unit, qty };
+      if (tg.includes('Prep') && tg.includes('Stock')) { prepItems.push(item); stockItems.push(item); }
+      else if (tg.includes('Prep'))  prepItems.push(item);
+      else                           stockItems.push(item);
+    }
+
+    // Delete original Telegram messages
+    if (tgWs) {
+      const tgData = tgWs.getDataRange().getValues();
+      for (let i = 1; i < tgData.length; i++) {
+        if ((tgData[i][0] || '').toString().trim() !== orderId) continue;
+        if (tgData[i][2]) deleteTelegramMessage(PREP_GROUP_ID,  tgData[i][2]);
+        if (tgData[i][3]) deleteTelegramMessage(STOCK_GROUP_ID, tgData[i][3]);
+      }
+    }
+
+    // Resend complete order
+    const newTime = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+    let prepR = null, stockR = null;
+    if (prepItems.length > 0) {
+      prepR = sendTelegram(PREP_GROUP_ID, site, prepItems, notes, delivDate, orderId, newTime, 'PREP (AMENDED)');
+    }
+    if (stockItems.length > 0) {
+      stockR = sendTelegram(STOCK_GROUP_ID, site, stockItems, notes, delivDate, orderId, newTime, 'STOCK (AMENDED)');
+    }
+
+    // Update stored message IDs
+    storeTelegramMsgIds(ss, orderId, site, prepR ? prepR.messageId : null, stockR ? stockR.messageId : null, newTime);
+
+    return jsonResponse({ ok: true });
+  } catch(err) {
+    Logger.log('handleRecallOrder error: ' + err);
+    return jsonResponse({ ok: false, error: err.toString() });
+  }
+}
+
+function deleteTelegramMessage(chatId, messageId) {
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/deleteMessage`;
+    UrlFetchApp.fetch(url, { method:'post', contentType:'application/json',
+      payload: JSON.stringify({ chat_id: chatId, message_id: parseInt(messageId) }),
+      muteHttpExceptions: true });
+  } catch(e) { Logger.log('deleteTelegramMessage failed: ' + e); }
+}
+
+function storeTelegramMsgIds(ss, orderId, site, prepMsgId, stockMsgId, timeStr) {
+  let tgWs = ss.getSheetByName('TG Messages');
+  if (!tgWs) {
+    tgWs = ss.insertSheet('TG Messages');
+    tgWs.appendRow(['Order ID','Site','Prep Msg ID','Stock Msg ID','Sent At']);
+    tgWs.getRange(1,1,1,5).setFontWeight('bold').setBackground('#f3f3f3');
+    tgWs.setFrozenRows(1);
+  }
+  // Remove old entry for this orderId if exists (we'll add fresh one)
+  const data = tgWs.getDataRange().getValues();
+  for (let i = data.length - 1; i >= 1; i--) {
+    if ((data[i][0]||'').toString().trim() === orderId) tgWs.deleteRow(i + 1);
+  }
+  tgWs.appendRow([orderId, site, prepMsgId||'', stockMsgId||'', timeStr]);
 }
 
 // ════════════════════════════════════════════════════════════════════
