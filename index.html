@@ -2519,25 +2519,16 @@ function hideRecallBar() {
   renderRecallContainer();
 }
 
-async function recallSpecificOrder(orderId, site, btn) {
-  if (!confirm('Recall ' + orderId + ' (' + site + ')?\nThis deletes the original Telegram message and sends a fresh one.')) return;
-  btn.disabled = true; btn.textContent = 'Recalling…';
-  try {
-    const res  = await fetch(SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'data=' + encodeURIComponent(JSON.stringify({ action:'recall_order', orderId, site }))
-    });
-    const data = await res.json();
-    if (data.ok) {
-      btn.style.background = 'var(--prep)'; btn.textContent = '✅ Recalled & Resent';
-      setTimeout(() => removeRecallOrder(orderId), 2000);
-    } else {
-      alert('Error: ' + (data.error || 'Recall failed.')); btn.disabled = false; btn.textContent = '↩ Recall & Resend';
-    }
-  } catch(e) { alert('Connection error.'); btn.disabled = false; btn.textContent = '↩ Recall & Resend'; }
+// Opens the Order Lookup pre-loaded with this order so staff can review/amend
+// before confirming the resend. The actual Telegram recall happens from inside
+// the Order Lookup via the "Confirm Recall & Resend" button shown there.
+function recallSpecificOrder(orderId, site, btn) {
+  openOrderLookup();
+  setLookupMode('id');
+  document.getElementById('lookup-order-id').value = orderId;
+  runLookup();
 }
 
-// Wrappers for success overlay buttons (use first available recall order)
 function recallLastOrder(btn) {
   const first = Object.keys(_recallOrders)[0];
   if (first) recallSpecificOrder(first, _recallOrders[first].site, btn);
@@ -3455,10 +3446,12 @@ function renderOrderItems(orderId, site, items, container) {
   // ── Recall & Resend (within 30 min only) ──────────────────────
   if (isWithin30Min(submitted)) {
     const recallBar = document.createElement('div');
-    recallBar.style.cssText = 'padding:12px 16px;background:#FFF8E7;border-top:1px solid #F5D58A;display:flex;align-items:center;gap:10px;flex-wrap:wrap';
+    recallBar.style.cssText = 'padding:14px 16px;background:#FFF8E7;border-top:1px solid #F5D58A;';
     recallBar.innerHTML = `
-      <span style="font-size:12px;color:#B45309;font-weight:600">⏱ Within 30 min — you can recall this order</span>
-      <button id="recall-btn-${orderId}" style="margin-left:auto;padding:7px 16px;background:#B45309;color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer">↩ Recall &amp; Resend</button>`;
+      <div style="font-size:12px;color:#B45309;font-weight:600;margin-bottom:8px">⏱ Within 30 min — add any missing items above, then confirm the resend</div>
+      <button style="width:100%;padding:13px;background:#B45309;color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer">
+        ↩ Confirm Recall &amp; Resend to Telegram
+      </button>`;
     recallBar.querySelector('button').onclick = () => recallOrder(orderId, site, recallBar.querySelector('button'));
     container.appendChild(recallBar);
   }

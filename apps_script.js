@@ -961,10 +961,10 @@ function handleRecallOrder(payload) {
     const newTime = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
     let prepR = null, stockR = null;
     if (prepItems.length > 0) {
-      prepR = sendTelegram(PREP_GROUP_ID, site, prepItems, notes, delivDate, orderId, newTime, 'PREP (AMENDED)');
+      prepR = sendTelegram(PREP_GROUP_ID, site, prepItems, notes, delivDate, orderId, newTime, 'PREP');
     }
     if (stockItems.length > 0) {
-      stockR = sendTelegram(STOCK_GROUP_ID, site, stockItems, notes, delivDate, orderId, newTime, 'STOCK (AMENDED)');
+      stockR = sendTelegram(STOCK_GROUP_ID, site, stockItems, notes, delivDate, orderId, timeStr, 'STOCK');
     }
 
     // Update stored message IDs
