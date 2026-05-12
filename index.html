@@ -632,6 +632,24 @@ body{min-height:100vh}
 .scan-combobox-option:last-child{border-bottom:none}
 .scan-combobox-option:hover{background:var(--selected-bg);color:var(--selected-text)}
 
+/* ── RECALL BAR (staff form) ─────────────────────────── */
+.recall-bar{
+  background:#FFF8E7;border-bottom:1px solid #F5D58A;
+  padding:9px 20px;display:flex;align-items:center;
+  gap:12px;flex-wrap:wrap;
+}
+.recall-bar-text{font-size:12px;color:#B45309;font-weight:500;flex:1}
+.recall-bar-text strong{font-weight:700}
+.recall-bar-btn{
+  padding:6px 14px;background:#B45309;color:#fff;
+  border:none;border-radius:8px;
+  font-family:var(--font);font-size:12px;font-weight:700;
+  cursor:pointer;white-space:nowrap;transition:background .15s;
+  flex-shrink:0;
+}
+.recall-bar-btn:hover{background:#92400E}
+.recall-bar-btn:disabled{background:#D97706;cursor:not-allowed}
+
 /* ── SCAN TRIGGER ────────────────────────────────────── */
 .scan-trigger-btn{
   width:100%;padding:14px 16px;
@@ -1093,6 +1111,12 @@ body{min-height:100vh}
   <div class="status-pill">Items: <strong id="st-items">0</strong></div>
 </div>
 
+<!-- Recall bar — shown for 30 min after a successful order submission -->
+<div class="recall-bar" id="recall-bar" style="display:none">
+  <span class="recall-bar-text">Last order: <strong id="recall-bar-ref">—</strong></span>
+  <button class="recall-bar-btn" id="recall-bar-btn" onclick="recallLastOrder(this)">↩ Recall &amp; Resend</button>
+</div>
+
 <div class="section">
   <div class="section-label">Order Details</div>
   <div class="card">
@@ -1270,6 +1294,9 @@ body{min-height:100vh}
     <p style="font-size:13px;color:var(--text-tertiary);margin-bottom:5px">Your order reference:</p>
     <div class="order-ref" id="success-ref">ORD-000000</div>
     <button class="new-order-btn" onclick="resetForm()">Submit Another Order</button>
+    <button id="success-recall-btn"
+      style="width:100%;margin-top:10px;padding:12px;background:#FFF8E7;color:#B45309;border:1.5px solid #F5D58A;border-radius:var(--radius-sm);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:background .15s"
+      onclick="recallFromSuccess(this)">↩ Recall &amp; Resend Order</button>
   </div>
 </div>
 
@@ -1875,10 +1902,14 @@ async function submitOrder() {
     const json = await res.json();
     document.getElementById('loading-overlay').classList.remove('show');
     if (json.ok) {
-      document.getElementById('success-ref').textContent = json.orderId || 'ORD-??????';
+      const submittedOrderId   = json.orderId || 'ORD-??????';
+      const submittedOrderSite = site;
+      document.getElementById('success-ref').textContent = submittedOrderId;
       document.getElementById('review-overlay').classList.remove('show');
       document.getElementById('success-overlay').classList.add('show');
       window.scrollTo(0,0);
+      // Show recall bar on the main form for 30 minutes
+      showRecallBar(submittedOrderId, submittedOrderSite);
     } else {
       showError('Order failed: ' + (json.error || 'Please try again.'), false);
       document.getElementById('submit-btn').disabled = false;
@@ -1940,6 +1971,7 @@ function resetForm() {
   clearQuickAdd();
   closeScan();
   closeBasket();
+  hideRecallBar();
   document.getElementById('st-site').textContent  = '—';
   document.getElementById('st-type').textContent  = '—';
   document.getElementById('st-items').textContent = '0';
@@ -2417,6 +2449,72 @@ function buildBasketRow(name, unit, qty, onRemove) {
   detail.appendChild(qtyEl); detail.appendChild(unitEl); detail.appendChild(rm);
   row.appendChild(nameEl); row.appendChild(detail);
   return row;
+}
+
+// ── RECALL (staff form) ───────────────────────────────────────────
+let _recallOrderId = null, _recallSite = null, _recallTimer = null;
+
+function showRecallBar(orderId, site) {
+  _recallOrderId = orderId;
+  _recallSite    = site;
+  clearTimeout(_recallTimer);
+  const bar = document.getElementById('recall-bar');
+  const btn = document.getElementById('recall-bar-btn');
+  document.getElementById('recall-bar-ref').textContent = orderId;
+  btn.disabled = false; btn.textContent = '↩ Recall & Resend';
+  bar.style.display = 'flex';
+  // Auto-hide after 30 minutes
+  _recallTimer = setTimeout(hideRecallBar, 30 * 60 * 1000);
+}
+
+function hideRecallBar() {
+  _recallOrderId = null; _recallSite = null;
+  clearTimeout(_recallTimer);
+  document.getElementById('recall-bar').style.display = 'none';
+}
+
+async function recallLastOrder(btn) {
+  if (!_recallOrderId || !_recallSite) return;
+  if (!confirm('This will delete the original Telegram message for ' + _recallOrderId + ' and send a fresh updated order. Continue?')) return;
+  btn.disabled = true; btn.textContent = 'Recalling…';
+  try {
+    const res  = await fetch(SCRIPT_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    'data=' + encodeURIComponent(JSON.stringify({ action:'recall_order', orderId:_recallOrderId, site:_recallSite }))
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.style.background = 'var(--prep)'; btn.style.borderColor = 'var(--prep)';
+      btn.textContent = '✅ Recalled & Resent';
+    } else {
+      alert('Error: ' + (data.error || 'Recall failed.')); btn.disabled = false; btn.textContent = '↩ Recall & Resend';
+    }
+  } catch(e) {
+    alert('Connection error.'); btn.disabled = false; btn.textContent = '↩ Recall & Resend';
+  }
+}
+
+async function recallFromSuccess(btn) {
+  if (!_recallOrderId || !_recallSite) return;
+  if (!confirm('Recall ' + _recallOrderId + '? This deletes the original Telegram message and sends a fresh one.')) return;
+  btn.disabled = true; btn.textContent = 'Recalling…';
+  try {
+    const res  = await fetch(SCRIPT_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    'data=' + encodeURIComponent(JSON.stringify({ action:'recall_order', orderId:_recallOrderId, site:_recallSite }))
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.style.background = '#D1FAE5'; btn.style.color = 'var(--prep)'; btn.style.border = '1.5px solid var(--prep)';
+      btn.textContent = '✅ Recalled & Resent';
+    } else {
+      alert('Error: ' + (data.error || 'Recall failed.')); btn.disabled = false; btn.textContent = '↩ Recall & Resend Order';
+    }
+  } catch(e) {
+    alert('Connection error.'); btn.disabled = false; btn.textContent = '↩ Recall & Resend Order';
+  }
 }
 
 // ── IMAGE SCAN ────────────────────────────────────────────────────
