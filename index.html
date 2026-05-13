@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <meta name="theme-color" content="#000000">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1074,6 +1076,60 @@ body{min-height:100vh}
 }
 .summary-refresh-btn:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-light)}
 
+/* ── PER-ITEM NOTE ───────────────────────────────────── */
+.item-note-wrap{
+  display:none;
+  padding:0 20px 10px;
+  background:var(--surface);
+  border-bottom:1px solid #F2F2F7;
+}
+.item-note-wrap.visible{display:block}
+.item-note-input{
+  width:100%;padding:7px 12px;
+  background:#F7F7F9;border:1.5px solid #E8E8ED;
+  border-radius:8px;
+  font-family:var(--font);font-size:12px;
+  color:var(--text-primary);
+  outline:none;transition:border-color .15s,background .15s;
+}
+.item-note-input:focus{border-color:var(--brand);background:var(--surface);box-shadow:0 0 0 3px rgba(230,57,70,.07)}
+.item-note-input::placeholder{color:var(--text-tertiary)}
+.item-note-input.has-note{border-color:#C8C8D0;background:var(--surface)}
+
+/* ── ADDITIONAL NOTES (submit area) ─────────────────── */
+.add-notes-toggle{
+  display:block;width:100%;
+  background:none;border:none;
+  color:var(--text-tertiary);
+  font-family:var(--font);font-size:13px;font-weight:500;
+  cursor:pointer;padding:10px 0 2px;text-align:center;
+  letter-spacing:.1px;transition:color .15s;
+}
+.add-notes-toggle:hover{color:var(--brand)}
+.notes-expand{margin-top:6px}
+.notes-textarea{
+  width:100%;padding:12px 14px;
+  background:var(--surface);
+  border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-sm);
+  font-family:var(--font);font-size:14px;
+  color:var(--text-primary);
+  resize:none;outline:none;
+  transition:border-color .15s,box-shadow .15s;
+  display:block;
+}
+.notes-textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(230,57,70,.08)}
+.notes-textarea::placeholder{color:var(--text-tertiary)}
+
+/* ── REVIEW ITEM NOTE ────────────────────────────────── */
+.review-item-note{
+  font-size:11px;color:var(--text-secondary);
+  padding:0 16px 10px;
+  border-bottom:1px solid var(--border);
+  margin-top:-4px;
+}
+.review-item-note:last-child{border-bottom:none}
+
 /* ── RESPONSIVE ──────────────────────────────────────── */
 @media(min-width:600px){
   .app-header,.status-bar{padding-left:24px;padding-right:24px}
@@ -1081,7 +1137,7 @@ body{min-height:100vh}
   .submit-section{padding:24px 20px}
   .field{padding:16px 20px}
   .ot-grid{padding:0 20px 18px}
-  .card-head,.cat-hdr,.prod-row,.order-section-head,.search-wrap{padding-left:20px;padding-right:20px}
+  .card-head,.cat-hdr,.prod-row,.item-note-wrap,.order-section-head,.search-wrap{padding-left:20px;padding-right:20px}
   .custom-col-hdrs,.custom-row{padding-left:20px;padding-right:20px}
   .add-custom-btn{margin:10px 20px;width:calc(100% - 40px)}
   .error-banner{margin:12px 20px}
@@ -1146,10 +1202,6 @@ body{min-height:100vh}
       <button class="ot-btn stock" onclick="setType('stock')">Stock</button>
       <button class="ot-btn both"  onclick="setType('both')">Both</button>
     </div>
-    <div class="field" style="padding-bottom:16px">
-      <label>Notes (optional)</label>
-      <input type="text" id="notes" placeholder="e.g. urgent, deliver before 10am…">
-    </div>
   </div>
 </div>
 
@@ -1169,10 +1221,6 @@ body{min-height:100vh}
              autocomplete="off" autocorrect="off" spellcheck="false">
     </div>
     <div id="item-search-results"></div>
-  </div>
-  <div id="order-items-wrap" style="display:none">
-    <div class="order-list-label">In Your Order</div>
-    <div class="review-card" id="order-items-list"></div>
   </div>
 </div>
 
@@ -1248,6 +1296,10 @@ body{min-height:100vh}
     </div>
   </div>
   <button class="submit-btn" id="submit-btn" onclick="openReview()" disabled>Review Order →</button>
+  <button class="add-notes-toggle" id="add-notes-toggle" onclick="toggleNotesField()">+ Add additional notes</button>
+  <div class="notes-expand" id="notes-expand" style="display:none">
+    <textarea id="notes" class="notes-textarea" rows="3" placeholder="e.g. urgent, deliver before 10am, leave by the back door…"></textarea>
+  </div>
 </div>
 
 
@@ -1668,6 +1720,19 @@ function buildCats(containerId, productsObj, section) {
       row.appendChild(info);
       row.appendChild(qtyWrap);
       body.appendChild(row);
+
+      // Per-item note — shown only when item has qty (via CSS .has-qty + .item-note-wrap)
+      const noteWrap = document.createElement('div');
+      noteWrap.className = 'item-note-wrap';
+      const noteInput = document.createElement('input');
+      noteInput.type = 'text';
+      noteInput.className = 'item-note-input';
+      noteInput.placeholder = '📝 Add a note for this item…';
+      noteInput.dataset.name = p.name;
+      noteInput.maxLength = 120;
+      noteInput.oninput = () => noteInput.classList.toggle('has-note', noteInput.value.trim().length > 0);
+      noteWrap.appendChild(noteInput);
+      body.appendChild(noteWrap);
     });
 
     wrap.appendChild(hdr);
@@ -1780,7 +1845,19 @@ function onQtyInput(input) {
   const ok = v > 0 && v <= 999;
   if (v > 999) { input.value = 999; }
   input.classList.toggle('filled', ok && v > 0);
-  input.closest('.prod-row')?.classList.toggle('has-qty', ok && v > 0);
+  const row = input.closest('.prod-row');
+  if (row) {
+    row.classList.toggle('has-qty', ok && v > 0);
+    // Show/hide the per-item note input below this row
+    const noteWrap = row.nextElementSibling;
+    if (noteWrap && noteWrap.classList.contains('item-note-wrap')) {
+      noteWrap.classList.toggle('visible', ok && v > 0);
+      if (!(ok && v > 0)) {
+        const ni = noteWrap.querySelector('.item-note-input');
+        if (ni) { ni.value = ''; ni.classList.remove('has-note'); }
+      }
+    }
+  }
   if (!ok || v <= 0) input.value = '';
   updateCatMeta(input);
   updateStatus();
@@ -1863,7 +1940,9 @@ async function submitOrder() {
   document.querySelectorAll('.qty-input.filled').forEach(inp => {
     const qty = parseFloat(inp.value);
     if (qty > 0 && qty <= 999) {
-      items.push({ name:inp.dataset.name, unit:inp.dataset.unit, qty, section:inp.dataset.section });
+      const noteEl = document.querySelector(`.item-note-input[data-name="${CSS.escape(inp.dataset.name)}"]`);
+      const note   = noteEl ? noteEl.value.trim() : '';
+      items.push({ name:inp.dataset.name, unit:inp.dataset.unit, qty, section:inp.dataset.section, ...(note && {note}) });
     }
   });
   document.querySelectorAll('.custom-row').forEach(row => {
@@ -1949,10 +2028,16 @@ function hideError() {
 function resetForm() {
   document.getElementById('success-overlay').classList.remove('show');
   document.getElementById('site').value  = '';
-  document.getElementById('notes').value = '';
+  const notesEl = document.getElementById('notes');
+  if (notesEl) notesEl.value = '';
+  const notesExpand = document.getElementById('notes-expand');
+  if (notesExpand) notesExpand.style.display = 'none';
+  const notesToggle = document.getElementById('add-notes-toggle');
+  if (notesToggle) notesToggle.textContent = '+ Add additional notes';
   const dd = document.getElementById('delivery-date');
   if (dd) dd.value = '';
   clearAllQtys();
+  document.querySelectorAll('.item-note-input').forEach(n => { n.value = ''; n.classList.remove('has-note'); });
   initCustomRows();
   // Clear search fields and restore full product lists
   document.querySelectorAll('.search-input').forEach(inp => {
@@ -2023,16 +2108,18 @@ function openReview() {
   sections.innerHTML = '';
 
   // Gather all listed items grouped by section→category
-  const grouped = {};  // {section: {cat: [{name,unit,qty}]}}
+  const grouped = {};  // {section: {cat: [{name,unit,qty,note}]}}
   document.querySelectorAll('.qty-input.filled').forEach(inp => {
     const sec = inp.dataset.section || 'prep';
     const cat = inp.dataset.cat     || 'Other';
     const name= inp.dataset.name;
     const unit= inp.dataset.unit;
     const qty = parseFloat(inp.value);
+    const noteEl = document.querySelector(`.item-note-input[data-name="${CSS.escape(name)}"]`);
+    const note   = noteEl ? noteEl.value.trim() : '';
     if (!grouped[sec]) grouped[sec] = {};
     if (!grouped[sec][cat]) grouped[sec][cat] = [];
-    grouped[sec][cat].push({name, unit, qty});
+    grouped[sec][cat].push({name, unit, qty, note});
   });
 
   // Gather custom items
@@ -2069,6 +2156,7 @@ function openReview() {
       items.forEach(item => {
         const row = document.createElement('div');
         row.className = 'review-item';
+        row.style.borderBottom = item.note ? 'none' : '';
         const nameEl = document.createElement('div');
         nameEl.className = 'review-item-name';
         nameEl.textContent = item.name;
@@ -2085,6 +2173,12 @@ function openReview() {
         row.appendChild(nameEl);
         row.appendChild(detail);
         card.appendChild(row);
+        if (item.note) {
+          const noteEl = document.createElement('div');
+          noteEl.className = 'review-item-note';
+          noteEl.textContent = '📝 ' + item.note;
+          card.appendChild(noteEl);
+        }
         totalItems++;
       });
     });
@@ -2155,6 +2249,16 @@ function onConfirmChange() {
   document.getElementById('review-submit-btn').classList.toggle('ready', checked);
 }
 
+
+// ── ADDITIONAL NOTES TOGGLE ──────────────────────────────────────
+function toggleNotesField() {
+  const wrap = document.getElementById('notes-expand');
+  const btn  = document.getElementById('add-notes-toggle');
+  const open = wrap.style.display === 'none' || wrap.style.display === '';
+  wrap.style.display = open ? 'block' : 'none';
+  btn.textContent    = open ? '− Remove notes' : '+ Add additional notes';
+  if (open) setTimeout(() => document.getElementById('notes').focus(), 50);
+}
 
 // ── ITEM SEARCH ───────────────────────────────────────────────────
 // Flat product index for the current site + order type.

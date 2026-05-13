@@ -54,22 +54,6 @@ function handleProductsGet(e) {
       'DC Oxford Road': 18,
     };
 
-    const CAT_DISPLAY = {
-      'Raw':                          'Meat & Protein',
-      'Fresh':                        'Fresh Produce',
-      'Frozen':                       'Frozen',
-      'Potted Sauces':                'Potted Sauces',
-      'Sauces':                       'Sauces',
-      'Packaging':                    'Packaging',
-      'Drinks':                       'Drinks',
-      'Dry Goods':                    'Dry Goods',
-      'Dessert Toppings':             'Dessert Toppings',
-      'Dessert Mix':                  'Dessert Mix',
-      'Cleaning & Kitchen Equipment': 'Cleaning & Kitchen',
-      'BOH':                          'Kitchen Equipment',
-      'Other':                        'Other',
-    };
-
     const siteData = {};
     for (const site of Object.keys(SITE_COLS)) {
       siteData[site] = { prep: {}, stock: {} };
@@ -89,7 +73,7 @@ function handleProductsGet(e) {
       if (active !== 'yes') continue;
       if (!orderType) continue;
 
-      const displayCat = CAT_DISPLAY[category] || category || 'Other';
+      const displayCat = category || 'Other';
       const otLower    = orderType.toLowerCase();
       const inPrep     = otLower === 'prep'  || otLower === 'both';
       const inStock    = otLower === 'stock' || otLower === 'both';
@@ -603,7 +587,7 @@ function doPost(e) {
 
     // Build lookup maps from Price List (live)
     const prRows = priceWs.getDataRange().getValues();
-    const priceMap = {}, supplierMap = {}, unitMap = {}, orderTypeMap = {};
+    const priceMap = {}, supplierMap = {}, unitMap = {}, orderTypeMap = {}, categoryMap = {};
     for (let i = 3; i < prRows.length; i++) {
       const n = (prRows[i][0] || '').toString().trim();
       if (!n || n.startsWith('KEY')) continue;
@@ -611,6 +595,7 @@ function doPost(e) {
       supplierMap[n]  = prRows[i][3] || '';
       unitMap[n]      = prRows[i][2] || '';
       orderTypeMap[n] = (prRows[i][8] || '').toString().trim();
+      categoryMap[n]  = (prRows[i][7] || '').toString().trim() || 'Other';
     }
 
     // Build categorised item arrays
@@ -625,10 +610,12 @@ function doPost(e) {
       const unit     = unitMap[name]     || item.unit || '';
       const total    = Math.round(price * qty * 100) / 100;
       const ot       = (orderTypeMap[name] || item.section || 'stock').toLowerCase();
+      const category = categoryMap[name]  || 'Other';
+      const note     = (item.note || '').toString().trim().slice(0, 120);
 
-      allItems.push({ name, unit, qty, price, supplier, total, ot });
-      if (ot === 'prep'  || ot === 'both') prepItems.push({ name, unit, qty });
-      if (ot === 'stock' || ot === 'both') stockItems.push({ name, unit, qty });
+      allItems.push({ name, unit, qty, price, supplier, total, ot, category, note });
+      if (ot === 'prep'  || ot === 'both') prepItems.push({ name, unit, qty, category, note });
+      if (ot === 'stock' || ot === 'both') stockItems.push({ name, unit, qty, category, note });
     });
 
     if (!allItems.length) return jsonResponse({ ok: false, error: 'No valid items to log' });
@@ -742,8 +729,7 @@ function pluraliseUnit(unit, qty) {
 }
 
 function sendTelegram(chatId, site, items, notes, deliveryDate, orderId, timeStr, label) {
-  // Sort: DC sites → Club items first then alphabetical; all others → alphabetical
-  const sorted = items.slice().sort((a, b) => {
+  const sortItems = arr => arr.slice().sort((a, b) => {
     if (site.startsWith('DC')) {
       const aClub = a.name.toLowerCase().startsWith('club');
       const bClub = b.name.toLowerCase().startsWith('club');
@@ -753,15 +739,49 @@ function sendTelegram(chatId, site, items, notes, deliveryDate, orderId, timeStr
   });
 
   let msg  = `${label} ORDER\n`;
-  msg     += `📍 ${site}\n`;
+  msg     += `${site}\n`;
   msg     += `Ref: ${orderId} | ${timeStr}\n`;
-  if (deliveryDate) msg += `🗓 Delivery: ${deliveryDate}\n`;
+  if (deliveryDate) msg += `Delivery: ${deliveryDate}\n`;
   msg     += `─────────────────────\n`;
-  sorted.forEach(it => {
-    const q    = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
-    const unit = pluraliseUnit(it.unit, it.qty);
-    msg += `• ${it.name}  —  ${q} ${unit}\n`;
-  });
+
+  const hasCategories = items.some(i => i.category);
+  if (hasCategories) {
+    const catMap = {};
+    items.forEach(it => {
+      const cat = it.category || 'Other';
+      if (!catMap[cat]) catMap[cat] = [];
+      catMap[cat].push(it);
+    });
+    const CAT_ORDER = ['Raw', 'Sauces', 'Potted Sauces', 'Fresh', 'Frozen', 'BOH'];
+    const sortedCats = Object.keys(catMap).sort((a, b) => {
+      const ai = CAT_ORDER.indexOf(a);
+      const bi = CAT_ORDER.indexOf(b);
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      if (ai !== -1) return -1;
+      if (bi !== -1) return 1;
+      return a.localeCompare(b);
+    });
+    sortedCats.forEach((cat, idx) => {
+      if (idx > 0) msg += `\n`;
+      msg += `${cat}\n`;
+      sortItems(catMap[cat]).forEach(it => {
+        const q    = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
+        const unit = pluraliseUnit(it.unit, it.qty);
+        msg += `• ${it.name}  —  ${q} ${unit}`;
+        if (it.note) msg += `  (${it.note})`;
+        msg += `\n`;
+      });
+    });
+  } else {
+    sortItems(items).forEach(it => {
+      const q    = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
+      const unit = pluraliseUnit(it.unit, it.qty);
+      msg += `• ${it.name}  —  ${q} ${unit}`;
+      if (it.note) msg += `  (${it.note})`;
+      msg += `\n`;
+    });
+  }
+
   msg += `─────────────────────`;
   if (notes) msg += `\nNotes: ${notes}`;
 
@@ -925,7 +945,9 @@ function sendTelegramAddition(chatId, site, items, orderId, timeStr, label) {
   msg     += `─────────────────────\n`;
   items.forEach(it => {
     const q = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
-    msg += `• ${it.name}  —  ${q} ${pluraliseUnit(it.unit, it.qty)}\n`;
+    msg += `• ${it.name}  —  ${q} ${pluraliseUnit(it.unit, it.qty)}`;
+    if (it.note) msg += `  (${it.note})`;
+    msg += `\n`;
   });
   msg += `─────────────────────`;
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
@@ -952,6 +974,18 @@ function handleRecallOrder(payload) {
     const logWs = ss.getSheetByName('Order Log');
     const tgWs  = ss.getSheetByName('TG Messages');
 
+    // Build category lookup from Price List so recalled messages are also categorized
+    const recallCatLookup = {};
+    const priceWsR = ss.getSheetByName('Price List');
+    if (priceWsR) {
+      const prRowsR = priceWsR.getDataRange().getValues();
+      for (let i = 3; i < prRowsR.length; i++) {
+        const n = (prRowsR[i][0] || '').toString().trim();
+        if (!n) continue;
+        recallCatLookup[n] = (prRowsR[i][7] || '').toString().trim() || 'Other';
+      }
+    }
+
     // Collect all current items for this order grouped by prep/stock
     const logData = logWs.getDataRange().getValues();
     const prepItems = [], stockItems = [], bothItems = [];
@@ -969,7 +1003,7 @@ function handleRecallOrder(payload) {
       const unit = (row[3] || '').toString().trim();
       const qty  = parseFloat(row[4]) || 0;
       const tg   = (row[10] || '').toString();
-      const item = { name, unit, qty };
+      const item = { name, unit, qty, category: recallCatLookup[name] || 'Other' };
       if (tg.includes('Prep') && tg.includes('Stock')) { prepItems.push(item); stockItems.push(item); }
       else if (tg.includes('Prep'))  prepItems.push(item);
       else                           stockItems.push(item);
@@ -993,7 +1027,7 @@ function handleRecallOrder(payload) {
       modMap = {};
       modItems.forEach(m => { modMap[m.name] = parseFloat(m.qty) || 0; });
       modItems.forEach(item => {
-        const mi = { name: item.name, unit: item.unit, qty: parseFloat(item.qty) || 0 };
+        const mi = { name: item.name, unit: item.unit, qty: parseFloat(item.qty) || 0, category: recallCatLookup[item.name] || 'Other' };
         const tg = (item.tg || '').toLowerCase();
         if (tg.includes('prep'))  prepItems.push(mi);
         if (tg.includes('stock')) stockItems.push(mi);
