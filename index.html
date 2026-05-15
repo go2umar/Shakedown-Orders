@@ -2625,8 +2625,10 @@ function hideRecallBar() {
 
 // Staff recall — opens Order Lookup in recall-edit mode (qty changes, no credits)
 let _inRecallContext = false;
+let _recallAddMap = {}; // tracks new items staged for addition across search queries
 function recallSpecificOrder(orderId, site, btn) {
   _inRecallContext = true;
+  _recallAddMap = {};
   document.getElementById('success-overlay').classList.remove('show');
   openOrderLookup();
   setLookupMode('id');
@@ -3630,7 +3632,7 @@ function renderOrderItems(orderId, site, items, container) {
     const recallNote = document.createElement('div');
     recallNote.style.cssText = 'font-size:12px;color:#B45309;font-weight:600;margin-bottom:8px';
     recallNote.textContent = isRecall
-      ? '⏱ Adjust quantities or remove items above, then confirm to resend to Telegram'
+      ? '⏱ Adjust quantities, remove items above, or search below to add new items — then confirm to resend to Telegram'
       : '⏱ Within 30 min — you can recall this order';
     const recallBtn = document.createElement('button');
     recallBtn.style.cssText = 'width:100%;padding:13px;background:#B45309;color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer';
@@ -3644,14 +3646,10 @@ function renderOrderItems(orderId, site, items, container) {
           const qty = parseFloat(inp.value) || 0;
           if (qty > 0) modifiedItems.push({ name: inp.dataset.itemName, unit: inp.dataset.itemUnit, qty, tg: inp.dataset.itemTg });
         });
-        // Newly added items from search
-        const addRes = document.getElementById(addResultsId);
-        if (addRes) {
-          addRes.querySelectorAll('input[data-add-name]').forEach(inp => {
-            const qty = parseFloat(inp.value) || 0;
-            if (qty > 0) modifiedItems.push({ name: inp.dataset.addName, unit: inp.dataset.addUnit, qty, tg: inp.dataset.addTg });
-          });
-        }
+        // Newly added items (tracked across searches via _recallAddMap)
+        Object.values(_recallAddMap).forEach(item => {
+          if (item.qty > 0) modifiedItems.push(item);
+        });
         recallOrderWithItems(orderId, site, modifiedItems, recallBtn);
       } else {
         recallOrder(orderId, site, recallBtn);
@@ -3744,6 +3742,18 @@ function buildAddItemRow(product, nonRecallConfig) {
   const unitLbl = document.createElement('span'); unitLbl.className = 'prod-unit'; unitLbl.textContent = product.unit;
 
   qtyWrap.appendChild(minus); qtyWrap.appendChild(input); qtyWrap.appendChild(plus); qtyWrap.appendChild(unitLbl);
+
+  // Recall mode: track staged additions across search queries so they survive a new search
+  if (!nonRecallConfig) {
+    const track = () => {
+      const qty = parseFloat(input.value) || 0;
+      if (qty > 0) _recallAddMap[product.name] = { name: product.name, unit: product.unit, qty, tg: input.dataset.addTg };
+      else delete _recallAddMap[product.name];
+    };
+    input.oninput = () => { syncStyle(); track(); };
+    minus.onclick = () => { const v = Math.max(0, Math.round(((parseFloat(input.value)||0)-0.5)*10)/10); input.value = v||''; syncStyle(); track(); };
+    plus.onclick  = () => { const v = Math.min(999, Math.round(((parseFloat(input.value)||0)+0.5)*10)/10); input.value = v; syncStyle(); track(); };
+  }
 
   // Non-recall: show individual "Add" button that sends to Apps Script
   if (nonRecallConfig) {

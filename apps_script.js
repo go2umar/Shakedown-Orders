@@ -989,7 +989,7 @@ function handleRecallOrder(payload) {
     // Collect all current items for this order grouped by prep/stock
     const logData = logWs.getDataRange().getValues();
     const prepItems = [], stockItems = [], bothItems = [];
-    let notes = '', delivDate = '', timeStr = '';
+    let notes = '', delivDate = '', timeStr = '', origDate = '', origMonth = '';
     for (let i = 1; i < logData.length; i++) {
       const row = logData[i];
       if ((row[11] || '').toString().trim() !== orderId) continue;
@@ -998,6 +998,14 @@ function handleRecallOrder(payload) {
       if (!delivDate) {
         const rd = row[9];
         delivDate = rd instanceof Date ? Utilities.formatDate(rd, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rd||'').toString();
+      }
+      if (!origDate) {
+        const rd2 = row[12];
+        origDate = rd2 instanceof Date ? Utilities.formatDate(rd2, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rd2||'').toString();
+      }
+      if (!origMonth) {
+        const rd3 = row[13];
+        origMonth = rd3 instanceof Date ? Utilities.formatDate(rd3, Session.getScriptTimeZone(), 'MMM-yyyy') : (rd3||'').toString();
       }
       const name = (row[2] || '').toString().trim();
       const unit = (row[3] || '').toString().trim();
@@ -1034,14 +1042,39 @@ function handleRecallOrder(payload) {
       });
       // Update Order Log: new qty for changed items, 0 for removed items
       const logData2 = logWs.getDataRange().getValues();
+      const existingNames = new Set();
       for (let i = 1; i < logData2.length; i++) {
         if ((logData2[i][11] || '').toString().trim() !== orderId) continue;
         const name   = (logData2[i][2] || '').toString().trim();
+        existingNames.add(name);
         const newQty = name in modMap ? modMap[name] : 0;
         const price  = parseFloat(logData2[i][6]) || 0;
         logWs.getRange(i + 1, 5).setValue(newQty);
         logWs.getRange(i + 1, 8).setValue(Math.round(price * newQty * 100) / 100);
       }
+      // Insert new items (not in original order) into Order Log and site sheet
+      const priceWsNew = ss.getSheetByName('Price List');
+      const prRowsNew  = priceWsNew ? priceWsNew.getDataRange().getValues() : [];
+      const priceLu    = {};
+      for (let i = 3; i < prRowsNew.length; i++) {
+        const n = (prRowsNew[i][0] || '').toString().trim();
+        if (n) priceLu[n] = { price: parseFloat(prRowsNew[i][4]) || 0, supplier: (prRowsNew[i][3] || '').toString(), unit: (prRowsNew[i][2] || '').toString().trim() };
+      }
+      const siteWsNew = ss.getSheetByName(site);
+      modItems.forEach(item => {
+        const name = (item.name || '').trim();
+        if (!name || existingNames.has(name)) return;
+        const qty = parseFloat(item.qty) || 0;
+        if (qty <= 0) return;
+        const pl       = priceLu[name] || {};
+        const price    = pl.price    || 0;
+        const unit     = pl.unit     || item.unit || '';
+        const supplier = pl.supplier || '';
+        const total    = Math.round(price * qty * 100) / 100;
+        const newRow   = [timeStr, site, name, unit, qty, supplier, price, total, notes, delivDate, (item.tg || '✅ Stock') + ' (recall addition)', orderId, origDate, origMonth];
+        logWs.appendRow(newRow);
+        if (siteWsNew) siteWsNew.appendRow(newRow);
+      });
     }
 
     // If no items remain after modifications, just delete and don't resend
