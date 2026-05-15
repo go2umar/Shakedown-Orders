@@ -1041,16 +1041,33 @@ function handleRecallOrder(payload) {
         if (tg.includes('stock')) stockItems.push(mi);
       });
       // Update Order Log: new qty for changed items, 0 for removed items
+      // Auto-credit items whose qty was reduced or fully removed
+      let credWs = ss.getSheetByName('Credits');
+      if (!credWs) {
+        credWs = ss.insertSheet('Credits');
+        credWs.appendRow(['Timestamp','Site','Order Ref','Item Name','Qty','Unit','Price (£)','Total (£)','Reason','Date','Month-Year']);
+        credWs.getRange(1,1,1,11).setFontWeight('bold').setBackground('#FFF3CD');
+        credWs.setFrozenRows(1);
+      }
+      const creditStamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+      const creditDate  = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy');
+      const creditMonth = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'MMM-yyyy');
       const logData2 = logWs.getDataRange().getValues();
       const existingNames = new Set();
       for (let i = 1; i < logData2.length; i++) {
         if ((logData2[i][11] || '').toString().trim() !== orderId) continue;
-        const name   = (logData2[i][2] || '').toString().trim();
+        const name    = (logData2[i][2] || '').toString().trim();
+        const unit    = (logData2[i][3] || '').toString().trim();
+        const origQty = parseFloat(logData2[i][4]) || 0;
+        const price   = parseFloat(logData2[i][6]) || 0;
         existingNames.add(name);
-        const newQty = name in modMap ? modMap[name] : 0;
-        const price  = parseFloat(logData2[i][6]) || 0;
+        const newQty  = name in modMap ? modMap[name] : 0;
         logWs.getRange(i + 1, 5).setValue(newQty);
         logWs.getRange(i + 1, 8).setValue(Math.round(price * newQty * 100) / 100);
+        const creditQty = Math.round((origQty - newQty) * 100) / 100;
+        if (creditQty > 0) {
+          credWs.appendRow([creditStamp, site, orderId, name, creditQty, unit, price, Math.round(price * creditQty * 100) / 100, 'Order Recalled', creditDate, creditMonth]);
+        }
       }
       // Insert new items (not in original order) into Order Log and site sheet
       const priceWsNew = ss.getSheetByName('Price List');
