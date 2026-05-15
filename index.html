@@ -1933,8 +1933,6 @@ async function submitOrder() {
   const site  = document.getElementById('site').value;
   const notes = document.getElementById('notes').value.trim();
   if (!site || !orderType) { showError('Please select your site and order type before submitting.', false); window.scrollTo(0,0); submitBtn.disabled=false; return; }
-  // Allow submission even if SITE_DATA failed — unlisted items can still be submitted
-  if (!SITE_DATA && items.length === 0) { showError('Products not loaded and no unlisted items added. Please refresh or add items manually.', true); submitBtn.disabled=false; return; }
 
   const items = [];
   document.querySelectorAll('.qty-input.filled').forEach(inp => {
@@ -1952,6 +1950,7 @@ async function submitOrder() {
     const sec  = row.querySelector('.custom-type').value;
     if (name && qty > 0 && qty <= 999) items.push({ name, unit, qty, section:sec, custom:true });
   });
+  if (!SITE_DATA && items.length === 0) { showError('Products not loaded and no unlisted items added. Please refresh or add items manually.', true); submitBtn.disabled=false; return; }
   if (!items.length) { showError('Please add at least one item — either from the list above or in the \'Items Not on the List\' section.', false); window.scrollTo(0,0); submitBtn.disabled=false; return; }
 
   document.getElementById('loading-overlay').classList.add('show');
@@ -3293,6 +3292,9 @@ function setLookupMode(mode) {
 }
 
 function runLookup() {
+  // Reset staged recall additions whenever a new lookup runs — prevents
+  // additions from a previous order leaking into a different order's recall
+  if (_inRecallContext) _recallAddMap = {};
   const resultsEl = document.getElementById('lookup-results');
   resultsEl.innerHTML = '<div class="dash-spinner"><div class="spinner"></div></div>';
   document.getElementById('lookup-sub').textContent = 'Searching…';

@@ -955,7 +955,7 @@ function sendTelegramAddition(chatId, site, items, orderId, timeStr, label) {
     const r = UrlFetchApp.fetch(url, { method:'post', contentType:'application/json',
       payload: JSON.stringify({ chat_id: chatId, text: msg }), muteHttpExceptions: true });
     const body = JSON.parse(r.getContentText());
-    return { ok: r.getResponseCode() === 200, messageId: body.result && body.result.message_id };
+    return { ok: body.ok === true, messageId: body.result ? body.result.message_id : null };
   } catch(e) { return { ok: false, messageId: null }; }
 }
 
@@ -1027,6 +1027,7 @@ function handleRecallOrder(payload) {
         if ((tgData[i][0] || '').toString().trim() !== orderId) continue;
         oldPrepMsgId  = tgData[i][2] ? String(tgData[i][2]) : null;
         oldStockMsgId = tgData[i][3] ? String(tgData[i][3]) : null;
+        break;
       }
     }
 
@@ -1094,7 +1095,7 @@ function handleRecallOrder(payload) {
         const unit     = pl.unit     || item.unit || '';
         const supplier = pl.supplier || '';
         const total    = Math.round(price * qty * 100) / 100;
-        const newRow   = [timeStr, site, name, unit, qty, supplier, price, total, notes, delivDate, (item.tg || '✅ Stock') + ' (recall addition)', orderId, origDate, origMonth];
+        const newRow   = [creditStamp, site, name, unit, qty, supplier, price, total, notes, delivDate, (item.tg || '✅ Stock') + ' (recall addition)', orderId, origDate, origMonth];
         logWs.appendRow(newRow);
         if (siteWsNew) siteWsNew.appendRow(newRow);
       });
