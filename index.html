@@ -2648,7 +2648,7 @@ async function recallOrderWithItems(orderId, site, modifiedItems, btn) {
     const data = await res.json();
     if (data.ok) {
       btn.style.background = 'var(--prep)'; btn.textContent = '✅ Recalled & Resent';
-      setTimeout(() => { removeRecallOrder(orderId); closeOrderLookup(); }, 1500);
+      setTimeout(() => { removeRecallOrder(orderId); closeOrderLookup(); resetForm(); }, 1500);
     } else {
       alert('Error: ' + (data.error || 'Recall failed.')); btn.disabled = false; btn.textContent = '↩ Confirm Recall & Resend to Telegram';
     }
