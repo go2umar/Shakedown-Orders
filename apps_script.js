@@ -733,7 +733,7 @@ function pluraliseUnit(unit, qty) {
   return u + 's';
 }
 
-function sendTelegram(chatId, site, items, notes, deliveryDate, orderId, timeStr, label) {
+function buildTelegramText(site, items, notes, deliveryDate, orderId, timeStr, label) {
   const sortItems = arr => arr.slice().sort((a, b) => {
     if (site.startsWith('DC')) {
       const aClub = a.name.toLowerCase().startsWith('club');
@@ -742,75 +742,68 @@ function sendTelegram(chatId, site, items, notes, deliveryDate, orderId, timeStr
     }
     return a.name.localeCompare(b.name);
   });
-
-  let msg  = `${label} ORDER\n`;
-  msg     += `${site}\n`;
-  msg     += `Ref: ${orderId} | ${timeStr}\n`;
+  let msg = `${label} ORDER\n${site}\nRef: ${orderId} | ${timeStr}\n`;
   if (deliveryDate) msg += `Delivery: ${deliveryDate}\n`;
-  msg     += `─────────────────────\n`;
-
+  msg += `─────────────────────\n`;
   const hasCategories = items.some(i => i.category);
   if (hasCategories) {
     const catMap = {};
-    items.forEach(it => {
-      const cat = it.category || 'Other';
-      if (!catMap[cat]) catMap[cat] = [];
-      catMap[cat].push(it);
-    });
+    items.forEach(it => { const cat = it.category || 'Other'; if (!catMap[cat]) catMap[cat] = []; catMap[cat].push(it); });
     const CAT_ORDER = ['Raw', 'Sauces', 'Potted Sauces', 'Fresh', 'Frozen', 'BOH'];
     const sortedCats = Object.keys(catMap).sort((a, b) => {
-      const ai = CAT_ORDER.indexOf(a);
-      const bi = CAT_ORDER.indexOf(b);
+      const ai = CAT_ORDER.indexOf(a), bi = CAT_ORDER.indexOf(b);
       if (ai !== -1 && bi !== -1) return ai - bi;
-      if (ai !== -1) return -1;
-      if (bi !== -1) return 1;
+      if (ai !== -1) return -1; if (bi !== -1) return 1;
       return a.localeCompare(b);
     });
     sortedCats.forEach((cat, idx) => {
       if (idx > 0) msg += `\n`;
       msg += `${cat}\n`;
       sortItems(catMap[cat]).forEach(it => {
-        const q    = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
-        const unit = pluraliseUnit(it.unit, it.qty);
-        msg += `• ${it.name}  —  ${q} ${unit}`;
-        if (it.note) msg += `  (${it.note})`;
-        msg += `\n`;
+        const q = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
+        msg += `• ${it.name}  —  ${q} ${pluraliseUnit(it.unit, it.qty)}${it.note ? `  (${it.note})` : ''}\n`;
       });
     });
   } else {
     sortItems(items).forEach(it => {
-      const q    = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
-      const unit = pluraliseUnit(it.unit, it.qty);
-      msg += `• ${it.name}  —  ${q} ${unit}`;
-      if (it.note) msg += `  (${it.note})`;
-      msg += `\n`;
+      const q = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
+      msg += `• ${it.name}  —  ${q} ${pluraliseUnit(it.unit, it.qty)}${it.note ? `  (${it.note})` : ''}\n`;
     });
   }
-
   msg += `─────────────────────`;
   if (notes) msg += `\nNotes: ${notes}`;
+  return msg;
+}
 
-  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+function sendTelegramText(chatId, text) {
   try {
-    const response = UrlFetchApp.fetch(url, {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify({ chat_id: chatId, text: msg }),
+    const res  = UrlFetchApp.fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+      method: 'post', contentType: 'application/json',
+      payload: JSON.stringify({ chat_id: chatId, text }),
       muteHttpExceptions: true
     });
-    const code = response.getResponseCode();
-    if (code !== 200) {
-      Logger.log('Telegram FAILED to ' + chatId + ' (' + label + '): HTTP ' + code);
-      return { ok: false, messageId: null };
-    }
-    const body      = JSON.parse(response.getContentText());
-    const messageId = body.result && body.result.message_id ? body.result.message_id : null;
-    Logger.log('Telegram OK to ' + chatId + ' (' + label + ') messageId=' + messageId);
-    return { ok: true, messageId };
-  } catch(err) {
-    Logger.log('Telegram EXCEPTION to ' + chatId + ' (' + label + '): ' + err);
-    return { ok: false, messageId: null };
-  }
+    const body = JSON.parse(res.getContentText());
+    return { ok: body.ok === true, messageId: body.result ? body.result.message_id : null };
+  } catch(e) { Logger.log('sendTelegramText error: ' + e); return { ok: false, messageId: null }; }
+}
+
+function editTelegramMessage(chatId, messageId, text) {
+  try {
+    const res  = UrlFetchApp.fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/editMessageText`, {
+      method: 'post', contentType: 'application/json',
+      payload: JSON.stringify({ chat_id: chatId, message_id: parseInt(messageId), text }),
+      muteHttpExceptions: true
+    });
+    const body = JSON.parse(res.getContentText());
+    return body.ok === true;
+  } catch(e) { Logger.log('editTelegramMessage error: ' + e); return false; }
+}
+
+function sendTelegram(chatId, site, items, notes, deliveryDate, orderId, timeStr, label) {
+  const msg    = buildTelegramText(site, items, notes, deliveryDate, orderId, timeStr, label);
+  const result = sendTelegramText(chatId, msg);
+  Logger.log('Telegram ' + (result.ok ? 'OK' : 'FAILED') + ' to ' + chatId + ' (' + label + ') msgId=' + result.messageId);
+  return result;
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1026,13 +1019,14 @@ function handleRecallOrder(payload) {
       else                           stockItems.push(item);
     }
 
-    // Delete original Telegram messages
+    // Read existing Telegram message IDs before replacing them
+    let oldPrepMsgId = null, oldStockMsgId = null;
     if (tgWs) {
       const tgData = tgWs.getDataRange().getValues();
       for (let i = 1; i < tgData.length; i++) {
         if ((tgData[i][0] || '').toString().trim() !== orderId) continue;
-        if (tgData[i][2]) deleteTelegramMessage(PREP_GROUP_ID,  tgData[i][2]);
-        if (tgData[i][3]) deleteTelegramMessage(STOCK_GROUP_ID, tgData[i][3]);
+        oldPrepMsgId  = tgData[i][2] ? String(tgData[i][2]) : null;
+        oldStockMsgId = tgData[i][3] ? String(tgData[i][3]) : null;
       }
     }
 
@@ -1106,25 +1100,58 @@ function handleRecallOrder(payload) {
       });
     }
 
-    // If no items remain after modifications, just delete and don't resend
     const newTime = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+
+    // Helper: delete old message, edit it if deletion fails, return new messageId
+    const replaceOrEdit = (chatId, oldMsgId, newText) => {
+      if (oldMsgId) {
+        const deleted = deleteTelegramMessage(chatId, oldMsgId);
+        if (deleted) {
+          return sendTelegramText(chatId, newText);
+        } else {
+          const edited = editTelegramMessage(chatId, oldMsgId, newText);
+          return { ok: edited, messageId: edited ? parseInt(oldMsgId) : null };
+        }
+      }
+      return sendTelegramText(chatId, newText);
+    };
+
+    // If all items removed — delete original messages (edit with cancellation notice if undeletable)
     if (prepItems.length === 0 && stockItems.length === 0) {
+      const cancelText = (lbl) => `↩ ${lbl} ORDER CANCELLED\n${site}\nRef: ${orderId}\nAll items removed.`;
+      if (oldPrepMsgId) {
+        const deleted = deleteTelegramMessage(PREP_GROUP_ID, oldPrepMsgId);
+        if (!deleted) editTelegramMessage(PREP_GROUP_ID, oldPrepMsgId, cancelText('PREP'));
+      }
+      if (oldStockMsgId) {
+        const deleted = deleteTelegramMessage(STOCK_GROUP_ID, oldStockMsgId);
+        if (!deleted) editTelegramMessage(STOCK_GROUP_ID, oldStockMsgId, cancelText('STOCK'));
+      }
       storeTelegramMsgIds(ss, orderId, site, null, null, newTime);
-      Logger.log('Recall: all items removed, old message deleted, nothing resent.');
+      Logger.log('Recall: all items removed.');
       return jsonResponse({ ok: true });
     }
 
-    // Resend to Telegram with updated item lists
-    let prepR = null, stockR = null;
+    // Build updated message texts and replace (delete+send) or edit in place
+    let prepR  = { ok: false, messageId: null };
+    let stockR = { ok: false, messageId: null };
+
     if (prepItems.length > 0) {
-      prepR = sendTelegram(PREP_GROUP_ID, site, prepItems, notes, delivDate, orderId, newTime, 'PREP');
+      const text = buildTelegramText(site, prepItems, notes, delivDate, orderId, newTime, 'PREP');
+      prepR = replaceOrEdit(PREP_GROUP_ID, oldPrepMsgId, text);
+    } else if (oldPrepMsgId) {
+      deleteTelegramMessage(PREP_GROUP_ID, oldPrepMsgId);
     }
+
     if (stockItems.length > 0) {
-      stockR = sendTelegram(STOCK_GROUP_ID, site, stockItems, notes, delivDate, orderId, newTime, 'STOCK');
+      const text = buildTelegramText(site, stockItems, notes, delivDate, orderId, newTime, 'STOCK');
+      stockR = replaceOrEdit(STOCK_GROUP_ID, oldStockMsgId, text);
+    } else if (oldStockMsgId) {
+      deleteTelegramMessage(STOCK_GROUP_ID, oldStockMsgId);
     }
 
     // Update stored message IDs
-    storeTelegramMsgIds(ss, orderId, site, prepR ? prepR.messageId : null, stockR ? stockR.messageId : null, newTime);
+    storeTelegramMsgIds(ss, orderId, site, prepR.messageId, stockR.messageId, newTime);
 
     // ── Sync site sheet + Orders Summary when modifications were made ──
     if (modMap) {
@@ -1172,11 +1199,14 @@ function handleRecallOrder(payload) {
 
 function deleteTelegramMessage(chatId, messageId) {
   try {
-    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/deleteMessage`;
-    UrlFetchApp.fetch(url, { method:'post', contentType:'application/json',
+    const res  = UrlFetchApp.fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/deleteMessage`, {
+      method: 'post', contentType: 'application/json',
       payload: JSON.stringify({ chat_id: chatId, message_id: parseInt(messageId) }),
-      muteHttpExceptions: true });
-  } catch(e) { Logger.log('deleteTelegramMessage failed: ' + e); }
+      muteHttpExceptions: true
+    });
+    const body = JSON.parse(res.getContentText());
+    return body.ok === true;
+  } catch(e) { Logger.log('deleteTelegramMessage failed: ' + e); return false; }
 }
 
 function storeTelegramMsgIds(ss, orderId, site, prepMsgId, stockMsgId, timeStr) {
