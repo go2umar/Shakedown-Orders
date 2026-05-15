@@ -585,12 +585,15 @@ function doPost(e) {
     const dateOnly  = Utilities.formatDate(stamp, Session.getScriptTimeZone(), 'dd/MM/yyyy');
     const monthYear = Utilities.formatDate(stamp, Session.getScriptTimeZone(), 'MMM-yyyy');
 
-    // Build lookup maps from Price List (live)
+    // Build lookup maps from Price List (active items only)
     const prRows = priceWs.getDataRange().getValues();
     const priceMap = {}, supplierMap = {}, unitMap = {}, orderTypeMap = {}, categoryMap = {};
+    const inactiveNames = new Set(); // names that exist in Price List but are inactive
     for (let i = 3; i < prRows.length; i++) {
       const n = (prRows[i][0] || '').toString().trim();
       if (!n || n.startsWith('KEY')) continue;
+      const activeFlag = (prRows[i][5] || '').toString().trim().toLowerCase();
+      if (activeFlag !== 'yes') { inactiveNames.add(n); continue; }
       priceMap[n]     = parseFloat(prRows[i][4]) || 0;
       supplierMap[n]  = prRows[i][3] || '';
       unitMap[n]      = prRows[i][2] || '';
@@ -604,6 +607,8 @@ function doPost(e) {
       const name = (item.name || '').trim();
       const qty  = parseFloat(item.qty) || 0;
       if (!name || qty <= 0 || qty > 999) return;
+      // Reject items that exist in the Price List but are marked inactive
+      if (inactiveNames.has(name) && !priceMap[name]) return;
 
       const price    = priceMap[name] || item.price || 0;
       const supplier = supplierMap[name] || '';
@@ -872,12 +877,14 @@ function handleAddToOrder(payload) {
     const logWs   = ss.getSheetByName('Order Log');
     const sumWs   = ss.getSheetByName('Orders Summary');
 
-    // Look up item from Price List (price, supplier, unit, orderType)
+    // Look up item from Price List (active rows only)
     const prRows = priceWs.getDataRange().getValues();
     let price = manualPrice, supplier = '', unit = '', orderType = 'stock';
     for (let i = 3; i < prRows.length; i++) {
       const n = (prRows[i][0] || '').toString().trim();
       if (n !== itemName) continue;
+      const activeFlag = (prRows[i][5] || '').toString().trim().toLowerCase();
+      if (activeFlag !== 'yes') continue;
       price     = parseFloat(prRows[i][4]) || manualPrice;
       supplier  = (prRows[i][3] || '').toString();
       unit      = (prRows[i][2] || '').toString().trim();
@@ -974,7 +981,7 @@ function handleRecallOrder(payload) {
     const logWs = ss.getSheetByName('Order Log');
     const tgWs  = ss.getSheetByName('TG Messages');
 
-    // Build category lookup from Price List so recalled messages are also categorized
+    // Build category lookup from Price List (active items only)
     const recallCatLookup = {};
     const priceWsR = ss.getSheetByName('Price List');
     if (priceWsR) {
@@ -982,6 +989,8 @@ function handleRecallOrder(payload) {
       for (let i = 3; i < prRowsR.length; i++) {
         const n = (prRowsR[i][0] || '').toString().trim();
         if (!n) continue;
+        const activeFlag = (prRowsR[i][5] || '').toString().trim().toLowerCase();
+        if (activeFlag !== 'yes') continue;
         recallCatLookup[n] = (prRowsR[i][7] || '').toString().trim() || 'Other';
       }
     }
@@ -1075,7 +1084,10 @@ function handleRecallOrder(payload) {
       const priceLu    = {};
       for (let i = 3; i < prRowsNew.length; i++) {
         const n = (prRowsNew[i][0] || '').toString().trim();
-        if (n) priceLu[n] = { price: parseFloat(prRowsNew[i][4]) || 0, supplier: (prRowsNew[i][3] || '').toString(), unit: (prRowsNew[i][2] || '').toString().trim() };
+        if (!n) continue;
+        const activeFlag = (prRowsNew[i][5] || '').toString().trim().toLowerCase();
+        if (activeFlag !== 'yes') continue;
+        priceLu[n] = { price: parseFloat(prRowsNew[i][4]) || 0, supplier: (prRowsNew[i][3] || '').toString(), unit: (prRowsNew[i][2] || '').toString().trim() };
       }
       const siteWsNew = ss.getSheetByName(site);
       modItems.forEach(item => {
