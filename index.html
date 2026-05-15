@@ -3544,13 +3544,75 @@ function renderOrderItems(orderId, site, items, container) {
     const actionTd = document.createElement('td');
 
     if (item.removed) {
-      // ── Removed during recall — show badge, no further action ────
+      // ── Removed during recall ─────────────────────────────────────
       const badge = document.createElement('span');
       badge.style.cssText = 'font-size:11px;font-weight:700;color:var(--brand);background:var(--brand-light);padding:3px 8px;border-radius:6px;border:1px solid #FBBCBC;white-space:nowrap';
       badge.textContent = '✕ Item Removed';
       actionTd.appendChild(badge);
       tr.style.opacity = '.45';
       tr.style.textDecoration = 'line-through';
+
+      if (!isRecall) {
+        if (item.creditedQty > 0) {
+          // Already credited — show summary
+          const creditNote = document.createElement('div');
+          creditNote.style.cssText = 'font-size:10px;color:var(--prep);font-weight:600;margin-top:4px';
+          creditNote.textContent = '✓ Credited ' + item.creditedQty + ' ' + item.unit;
+          actionTd.appendChild(creditNote);
+        } else {
+          // Not yet credited — allow manager to record credit manually (for past orders)
+          const creditBtn = document.createElement('button');
+          creditBtn.className = 'credit-item-btn';
+          creditBtn.style.cssText += ';margin-top:5px';
+          creditBtn.textContent = 'Credit';
+          const inlineForm = document.createElement('tr');
+          inlineForm.style.display = 'none';
+          const formTd = document.createElement('td'); formTd.colSpan = 7; formTd.style.padding = '0';
+          const formDiv = document.createElement('div'); formDiv.className = 'credit-inline-form open';
+          formDiv.innerHTML = `
+            <span style="font-size:12px;font-weight:600;color:var(--brand)">Credit: ${item.name}</span>
+            <label>Qty</label>
+            <input type="number" class="credit-inline-input" style="width:70px" min="0.5" step="0.5" placeholder="qty">
+            <label>Reason</label>
+            <select class="credit-inline-input">
+              <option value="Order Recalled">Order Recalled</option>
+              <option>Out of stock</option><option>Damaged on delivery</option>
+              <option>Wrong item delivered</option><option>Short delivery</option>
+              <option value="Other">Other</option>
+            </select>
+            <input type="text" class="credit-inline-input credit-other-input" placeholder="Describe the reason…" style="display:none;min-width:160px">
+            <button class="credit-inline-confirm">Confirm Credit</button>
+            <button class="credit-inline-cancel">Cancel</button>`;
+          const reasonSel  = formDiv.querySelector('select');
+          const otherInput = formDiv.querySelector('.credit-other-input');
+          reasonSel.onchange = () => { otherInput.style.display = reasonSel.value === 'Other' ? 'block' : 'none'; if (reasonSel.value === 'Other') otherInput.focus(); };
+          formDiv.querySelector('.credit-inline-confirm').onclick = async () => {
+            const qty    = parseFloat(formDiv.querySelector('input[type=number]').value) || 0;
+            const reason = reasonSel.value === 'Other' ? (otherInput.value.trim() || 'Other') : reasonSel.value;
+            if (qty <= 0) { formDiv.querySelector('input[type=number]').focus(); return; }
+            const confirmBtn = formDiv.querySelector('.credit-inline-confirm');
+            confirmBtn.textContent = 'Saving…'; confirmBtn.disabled = true;
+            try {
+              const res = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                body:'data='+encodeURIComponent(JSON.stringify({action:'record_credit',site,orderRef:orderId,itemName:item.name,qty,unit:item.unit,price:item.price,reason})) });
+              const d = await res.json();
+              if (d.ok) {
+                inlineForm.style.display = 'none'; creditBtn.style.display = 'none';
+                const creditNote = document.createElement('div');
+                creditNote.style.cssText = 'font-size:10px;color:var(--prep);font-weight:600;margin-top:4px';
+                creditNote.textContent = '✓ Credited ' + qty + ' ' + item.unit;
+                actionTd.appendChild(creditNote);
+              } else { alert('Error: '+(d.error||'Could not record credit.')); confirmBtn.textContent='Confirm Credit'; confirmBtn.disabled=false; }
+            } catch(e) { alert('Connection error.'); confirmBtn.textContent='Confirm Credit'; confirmBtn.disabled=false; }
+          };
+          formDiv.querySelector('.credit-inline-cancel').onclick = () => { inlineForm.style.display = 'none'; };
+          creditBtn.onclick = () => { inlineForm.style.display = inlineForm.style.display === 'none' ? 'table-row' : 'none'; };
+          actionTd.appendChild(creditBtn); tr.appendChild(actionTd);
+          formTd.appendChild(formDiv); inlineForm.appendChild(formTd);
+          tbody.appendChild(tr); tbody.appendChild(inlineForm);
+          return;
+        }
+      }
 
     } else if (item.fullyCredited) {
       // ── Fully credited — just show badge, no further action ──────
