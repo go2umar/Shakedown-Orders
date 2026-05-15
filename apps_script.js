@@ -742,7 +742,8 @@ function buildTelegramText(site, items, notes, deliveryDate, orderId, timeStr, l
     }
     return a.name.localeCompare(b.name);
   });
-  let msg = `${label} ORDER\n${site}\nRef: ${orderId} | ${timeStr}\n`;
+  // *bold* markers are WhatsApp-compatible: plain text in Telegram, bold when pasted into WhatsApp
+  let msg = `*${label} ORDER*\n📍 ${site}\nRef: ${orderId} | ${timeStr}\n`;
   if (deliveryDate) msg += `Delivery: ${deliveryDate}\n`;
   msg += `─────────────────────\n`;
   const hasCategories = items.some(i => i.category);
@@ -758,7 +759,7 @@ function buildTelegramText(site, items, notes, deliveryDate, orderId, timeStr, l
     });
     sortedCats.forEach((cat, idx) => {
       if (idx > 0) msg += `\n`;
-      msg += `${cat}\n`;
+      msg += `*${cat}*\n`;
       sortItems(catMap[cat]).forEach(it => {
         const q = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
         msg += `• ${it.name}  —  ${q} ${pluraliseUnit(it.unit, it.qty)}${it.note ? `  (${it.note})` : ''}\n`;
@@ -771,7 +772,7 @@ function buildTelegramText(site, items, notes, deliveryDate, orderId, timeStr, l
     });
   }
   msg += `─────────────────────`;
-  if (notes) msg += `\nNotes: ${notes}`;
+  if (notes) msg += `\n📝 Notes: ${notes}`;
   return msg;
 }
 
@@ -1106,7 +1107,7 @@ function handleRecallOrder(payload) {
 
     // If all items removed — delete original messages (edit with cancellation notice if undeletable)
     if (prepItems.length === 0 && stockItems.length === 0) {
-      const cancelText = (lbl) => `↩ ${lbl} ORDER CANCELLED\n${site}\nRef: ${orderId}\nAll items removed.`;
+      const cancelText = (lbl) => `*↩ ${lbl} ORDER CANCELLED*\n📍 ${site}\nRef: ${orderId}\nAll items removed.`;
       if (oldPrepMsgId) {
         const deleted = deleteTelegramMessage(PREP_GROUP_ID, oldPrepMsgId);
         if (!deleted) editTelegramMessage(PREP_GROUP_ID, oldPrepMsgId, cancelText('PREP'));
