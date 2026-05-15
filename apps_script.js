@@ -743,7 +743,7 @@ function buildTelegramText(site, items, notes, deliveryDate, orderId, timeStr, l
     return a.name.localeCompare(b.name);
   });
   // *bold* markers are WhatsApp-compatible: plain text in Telegram, bold when pasted into WhatsApp
-  let msg = `*${label} ORDER*\n📍 ${site}\nRef: ${orderId} | ${timeStr}\n`;
+  let msg = `*${label} ORDER*\n📌 ${site}\nRef: ${orderId} | ${timeStr}\n`;
   if (deliveryDate) msg += `Delivery: ${deliveryDate}\n`;
   msg += `─────────────────────\n`;
   const hasCategories = items.some(i => i.category);
@@ -1107,7 +1107,7 @@ function handleRecallOrder(payload) {
 
     // If all items removed — delete original messages (edit with cancellation notice if undeletable)
     if (prepItems.length === 0 && stockItems.length === 0) {
-      const cancelText = (lbl) => `*↩ ${lbl} ORDER CANCELLED*\n📍 ${site}\nRef: ${orderId}\nAll items removed.`;
+      const cancelText = (lbl) => `*↩ ${lbl} ORDER CANCELLED*\n📌 ${site}\nRef: ${orderId}\nAll items removed.`;
       if (oldPrepMsgId) {
         const deleted = deleteTelegramMessage(PREP_GROUP_ID, oldPrepMsgId);
         if (!deleted) editTelegramMessage(PREP_GROUP_ID, oldPrepMsgId, cancelText('PREP'));
