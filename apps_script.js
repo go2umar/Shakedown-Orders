@@ -872,7 +872,7 @@ function handleAddToOrder(payload) {
 
     // Look up item from Price List (active rows only)
     const prRows = priceWs.getDataRange().getValues();
-    let price = manualPrice, supplier = '', unit = '', orderType = 'stock';
+    let price = manualPrice, supplier = '', unit = '', orderType = 'stock', category = 'Other';
     for (let i = 3; i < prRows.length; i++) {
       const n = (prRows[i][0] || '').toString().trim();
       if (n !== itemName) continue;
@@ -882,6 +882,7 @@ function handleAddToOrder(payload) {
       supplier  = (prRows[i][3] || '').toString();
       unit      = (prRows[i][2] || '').toString().trim();
       orderType = (prRows[i][8] || '').toString().trim().toLowerCase();
+      category  = (prRows[i][7] || '').toString().trim() || 'Other';
       break;
     }
     const total = Math.round(price * qty * 100) / 100;
@@ -905,7 +906,7 @@ function handleAddToOrder(payload) {
     // Build Telegram status
     const addedTimeStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
     let prepR = null, stockR = null;
-    const addItems = [{ name: itemName, unit, qty }];
+    const addItems = [{ name: itemName, unit, qty, category }];
     if (orderType === 'prep' || orderType === 'both') {
       prepR = sendTelegramAddition(PREP_GROUP_ID, site, addItems, orderId, addedTimeStr, 'PREP');
     }
@@ -939,24 +940,8 @@ function handleAddToOrder(payload) {
 }
 
 function sendTelegramAddition(chatId, site, items, orderId, timeStr, label) {
-  let msg  = `📝 ${label} ORDER — ADDITION\n`;
-  msg     += `📍 ${site}\n`;
-  msg     += `Ref: ${orderId} | ${timeStr}\n`;
-  msg     += `─────────────────────\n`;
-  items.forEach(it => {
-    const q = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
-    msg += `• ${it.name}  —  ${q} ${pluraliseUnit(it.unit, it.qty)}`;
-    if (it.note) msg += `  (${it.note})`;
-    msg += `\n`;
-  });
-  msg += `─────────────────────`;
-  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
-  try {
-    const r = UrlFetchApp.fetch(url, { method:'post', contentType:'application/json',
-      payload: JSON.stringify({ chat_id: chatId, text: msg }), muteHttpExceptions: true });
-    const body = JSON.parse(r.getContentText());
-    return { ok: body.ok === true, messageId: body.result ? body.result.message_id : null };
-  } catch(e) { return { ok: false, messageId: null }; }
+  const text = buildTelegramText(site, items, null, null, orderId, timeStr, label + ' — ADDITION');
+  return sendTelegramText(chatId, text);
 }
 
 // ════════════════════════════════════════════════════════════════════
