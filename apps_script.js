@@ -854,14 +854,15 @@ function createMonthlyArchives() {
 // ════════════════════════════════════════════════════════════════════
 // ADD ITEM TO EXISTING ORDER
 // Appends a new line to Order Log + site sheet, updates Orders Summary,
-// and sends a small "📝 ADDITION" Telegram notification.
+// and edits the existing Telegram message to include the new item.
+// Falls back to sending a new message if the original can't be edited.
 // ════════════════════════════════════════════════════════════════════
 function handleAddToOrder(payload) {
   try {
-    const orderId  = (payload.orderId  || '').trim();
-    const site     = (payload.site     || '').trim();
-    const itemName = (payload.itemName || '').trim();
-    const qty      = parseFloat(payload.qty)   || 0;
+    const orderId     = (payload.orderId  || '').trim();
+    const site        = (payload.site     || '').trim();
+    const itemName    = (payload.itemName || '').trim();
+    const qty         = parseFloat(payload.qty) || 0;
     const manualPrice = parseFloat(payload.price) || 0;
 
     if (!orderId || !site || !itemName || qty <= 0) {
@@ -890,38 +891,98 @@ function handleAddToOrder(payload) {
     }
     const total = Math.round(price * qty * 100) / 100;
 
-    // Find original order's meta from Order Log
+    // Build category lookup for all items in this order
+    const catLookup = {};
+    for (let i = 3; i < prRows.length; i++) {
+      const n = (prRows[i][0] || '').toString().trim();
+      if (n) catLookup[n] = (prRows[i][7] || '').toString().trim() || 'Other';
+    }
+
+    // Find original order's meta + read all existing items from Order Log
     const logData = logWs.getDataRange().getValues();
     let origTime = '', origDeliv = '', origNotes = '', origDate = '', origMonth = '';
+    const prepItems = [], stockItems = [];
     for (let i = 1; i < logData.length; i++) {
-      if ((logData[i][11] || '').toString().trim() !== orderId) continue;
-      origTime  = (logData[i][0]  || '').toString();
-      origNotes = (logData[i][8]  || '').toString();
-      const rd = logData[i][9];
-      origDeliv = rd instanceof Date ? Utilities.formatDate(rd, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rd||'').toString();
-      const rd2 = logData[i][12];
-      origDate  = rd2 instanceof Date ? Utilities.formatDate(rd2, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rd2||'').toString();
-      const rd3 = logData[i][13];
-      origMonth = rd3 instanceof Date ? Utilities.formatDate(rd3, Session.getScriptTimeZone(), 'MMM-yyyy') : (rd3||'').toString();
-      break;
+      const row = logData[i];
+      if ((row[11] || '').toString().trim() !== orderId) continue;
+      if (!origTime) {
+        origTime  = (row[0]  || '').toString();
+        origNotes = (row[8]  || '').toString();
+        const rd  = row[9];
+        origDeliv = rd instanceof Date ? Utilities.formatDate(rd, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rd||'').toString();
+        const rd2 = row[12];
+        origDate  = rd2 instanceof Date ? Utilities.formatDate(rd2, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rd2||'').toString();
+        const rd3 = row[13];
+        origMonth = rd3 instanceof Date ? Utilities.formatDate(rd3, Session.getScriptTimeZone(), 'MMM-yyyy') : (rd3||'').toString();
+      }
+      const qty2 = parseFloat(row[4]) || 0;
+      if (qty2 <= 0) continue;
+      const name2 = (row[2] || '').toString().trim();
+      const unit2 = (row[3] || '').toString().trim();
+      const tg    = (row[10] || '').toString();
+      const item2 = { name: name2, unit: unit2, qty: qty2, category: catLookup[name2] || 'Other' };
+      if (tg.includes('Prep') && tg.includes('Stock')) { prepItems.push(item2); stockItems.push(item2); }
+      else if (tg.includes('Prep'))  prepItems.push(item2);
+      else                           stockItems.push(item2);
     }
 
-    // Build Telegram status
+    // Add new item to the relevant list(s) so the full updated message can be built
+    const newItem = { name: itemName, unit, qty, category };
+    const ot = orderType.toLowerCase();
+    if (ot === 'prep'  || ot === 'both') prepItems.push(newItem);
+    if (ot === 'stock' || ot === 'both') stockItems.push(newItem);
+
+    // Get existing Telegram message IDs
+    let oldPrepMsgId = null, oldStockMsgId = null;
+    const tgWs = ss.getSheetByName('TG Messages');
+    if (tgWs) {
+      const tgData = tgWs.getDataRange().getValues();
+      for (let i = 1; i < tgData.length; i++) {
+        if ((tgData[i][0] || '').toString().trim() !== orderId) continue;
+        oldPrepMsgId  = tgData[i][2] ? String(tgData[i][2]) : null;
+        oldStockMsgId = tgData[i][3] ? String(tgData[i][3]) : null;
+        break;
+      }
+    }
+
+    // Edit existing message or fall back to sending a new one
     const addedTimeStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
-    let prepR = null, stockR = null;
-    const addItems = [{ name: itemName, unit, qty, category }];
-    if (orderType === 'prep' || orderType === 'both') {
-      prepR = sendTelegramAddition(PREP_GROUP_ID, site, addItems, orderId, addedTimeStr, 'PREP');
-    }
-    if (orderType === 'stock' || orderType === 'both') {
-      stockR = sendTelegramAddition(STOCK_GROUP_ID, site, addItems, orderId, addedTimeStr, 'STOCK');
-    }
-    const tgStatus = buildTelegramStatus(orderType, prepR ? prepR.ok : null, stockR ? stockR.ok : null);
+    let prepOk = null, stockOk = null;
+    let newPrepMsgId = oldPrepMsgId, newStockMsgId = oldStockMsgId;
 
-    // Append to Order Log
+    const editOrSend = (chatId, oldMsgId, items, label) => {
+      const text = buildTelegramText(site, items, origNotes, origDeliv, orderId, addedTimeStr, label);
+      if (oldMsgId) {
+        const edited = editTelegramMessage(chatId, oldMsgId, text);
+        if (edited) return { ok: true, messageId: parseInt(oldMsgId) };
+        // Edit failed — delete old and send fresh
+        deleteTelegramMessage(chatId, oldMsgId);
+      }
+      return sendTelegramText(chatId, text);
+    };
+
+    if (prepItems.length > 0 && (ot === 'prep' || ot === 'both')) {
+      const r = editOrSend(PREP_GROUP_ID, oldPrepMsgId, prepItems, 'PREP');
+      prepOk = r.ok;
+      if (r.messageId) newPrepMsgId = String(r.messageId);
+    }
+    if (stockItems.length > 0 && (ot === 'stock' || ot === 'both')) {
+      const r = editOrSend(STOCK_GROUP_ID, oldStockMsgId, stockItems, 'STOCK');
+      stockOk = r.ok;
+      if (r.messageId) newStockMsgId = String(r.messageId);
+    }
+
+    // Update TG Messages if any message ID changed
+    if (newPrepMsgId !== oldPrepMsgId || newStockMsgId !== oldStockMsgId) {
+      storeTelegramMsgIds(ss, orderId, site, newPrepMsgId, newStockMsgId, addedTimeStr);
+    }
+
+    const tgStatus = buildTelegramStatus(orderType, prepOk, stockOk);
+
+    // Append new item to Order Log and site sheet
+    const siteWs = ss.getSheetByName(site);
     const newRow = [origTime, site, itemName, unit, qty, supplier, price, total, origNotes, origDeliv, tgStatus + ' (addition)', orderId, origDate, origMonth];
     logWs.appendRow(newRow);
-    const siteWs = ss.getSheetByName(site);
     if (siteWs) siteWs.appendRow(newRow);
 
     // Update Orders Summary
@@ -942,10 +1003,6 @@ function handleAddToOrder(payload) {
   }
 }
 
-function sendTelegramAddition(chatId, site, items, orderId, timeStr, label) {
-  const text = buildTelegramText(site, items, null, null, orderId, timeStr, label + ' — ADDITION');
-  return sendTelegramText(chatId, text);
-}
 
 // ════════════════════════════════════════════════════════════════════
 // RECALL ORDER — deletes original Telegram message(s) and resends
