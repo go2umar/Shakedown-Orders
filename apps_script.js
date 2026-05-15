@@ -997,6 +997,7 @@ function handleRecallOrder(payload) {
       const name = (row[2] || '').toString().trim();
       const unit = (row[3] || '').toString().trim();
       const qty  = parseFloat(row[4]) || 0;
+      if (qty <= 0) continue; // skip removed items — don't include in Telegram
       const tg   = (row[10] || '').toString();
       const item = { name, unit, qty, category: recallCatLookup[name] || 'Other' };
       if (tg.includes('Prep') && tg.includes('Stock')) { prepItems.push(item); stockItems.push(item); }
@@ -1025,6 +1026,7 @@ function handleRecallOrder(payload) {
       modItems.forEach(m => { modMap[m.name] = parseFloat(m.qty) || 0; });
       modItems.forEach(item => {
         const mi = { name: item.name, unit: item.unit, qty: parseFloat(item.qty) || 0, category: recallCatLookup[item.name] || 'Other' };
+        if (mi.qty <= 0) return; // removed items must not appear in the Telegram message
         const tg = (item.tg || '').toLowerCase();
         if (tg.includes('prep'))  prepItems.push(mi);
         if (tg.includes('stock')) stockItems.push(mi);
