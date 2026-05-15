@@ -3625,41 +3625,7 @@ function renderOrderItems(orderId, site, items, container) {
   });
   table.appendChild(tbody); wrap.appendChild(table); container.appendChild(wrap);
 
-  // ── Recall & Resend (within 30 min only) ─────────────────────
-  if (isWithin30Min(submitted)) {
-    const recallBar = document.createElement('div');
-    recallBar.style.cssText = 'padding:14px 16px;background:#FFF8E7;border-top:1px solid #F5D58A;';
-    const recallNote = document.createElement('div');
-    recallNote.style.cssText = 'font-size:12px;color:#B45309;font-weight:600;margin-bottom:8px';
-    recallNote.textContent = isRecall
-      ? '⏱ Adjust quantities, remove items above, or search below to add new items — then confirm to resend to Telegram'
-      : '⏱ Within 30 min — you can recall this order';
-    const recallBtn = document.createElement('button');
-    recallBtn.style.cssText = 'width:100%;padding:13px;background:#B45309;color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer';
-    recallBtn.textContent = '↩ Confirm Recall & Resend to Telegram';
-    const addResultsId = 'add-results-' + orderId.replace('-','_');
-    recallBtn.onclick = () => {
-      if (isRecall) {
-        const modifiedItems = [];
-        // Existing items (modified qty or removed)
-        wrap.querySelectorAll('input[data-item-name]').forEach(inp => {
-          const qty = parseFloat(inp.value) || 0;
-          if (qty > 0) modifiedItems.push({ name: inp.dataset.itemName, unit: inp.dataset.itemUnit, qty, tg: inp.dataset.itemTg });
-        });
-        // Newly added items (tracked across searches via _recallAddMap)
-        Object.values(_recallAddMap).forEach(item => {
-          if (item.qty > 0) modifiedItems.push(item);
-        });
-        recallOrderWithItems(orderId, site, modifiedItems, recallBtn);
-      } else {
-        recallOrder(orderId, site, recallBtn);
-      }
-    };
-    recallBar.appendChild(recallNote); recallBar.appendChild(recallBtn);
-    container.appendChild(recallBar);
-  }
-
-  // ── Add Item — homepage-style search with qty stepper ─────────
+  // ── Add Item — appears above the confirm button so it's always visible ───
   const addSection = document.createElement('div');
   addSection.style.cssText = 'border-top:1px solid #F2F2F7';
 
@@ -3668,7 +3634,6 @@ function renderOrderItems(orderId, site, items, container) {
   addHdr.textContent = isRecall ? 'Add items to include in resend' : 'Add item to ' + orderId;
   addSection.appendChild(addHdr);
 
-  // Search input (same style as homepage)
   const addSearchWrap = document.createElement('div');
   addSearchWrap.style.cssText = 'padding:8px 16px 0';
   const addSearchIn = document.createElement('input');
@@ -3676,12 +3641,9 @@ function renderOrderItems(orderId, site, items, container) {
   addSearchIn.placeholder = 'Search items to add…'; addSearchIn.autocomplete = 'off';
   addSearchWrap.appendChild(addSearchIn); addSection.appendChild(addSearchWrap);
 
-  // Results: homepage-style product rows
   const addResultsEl = document.createElement('div');
-  addResultsEl.id = addResultsId;
   addSection.appendChild(addResultsEl);
 
-  // Feedback (for non-recall "Add" button confirmations)
   const addFeedback = document.createElement('div');
   addFeedback.style.cssText = 'font-size:12px;padding:0 16px 10px;display:none';
   addSection.appendChild(addFeedback);
@@ -3699,6 +3661,37 @@ function renderOrderItems(orderId, site, items, container) {
   };
 
   container.appendChild(addSection);
+
+  // ── Recall & Resend (within 30 min only) ─────────────────────
+  if (isWithin30Min(submitted)) {
+    const recallBar = document.createElement('div');
+    recallBar.style.cssText = 'padding:14px 16px;background:#FFF8E7;border-top:1px solid #F5D58A;';
+    const recallNote = document.createElement('div');
+    recallNote.style.cssText = 'font-size:12px;color:#B45309;font-weight:600;margin-bottom:8px';
+    recallNote.textContent = isRecall
+      ? '⏱ Adjust quantities, remove items above, or search above to add new items — then confirm to resend to Telegram'
+      : '⏱ Within 30 min — you can recall this order';
+    const recallBtn = document.createElement('button');
+    recallBtn.style.cssText = 'width:100%;padding:13px;background:#B45309;color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer';
+    recallBtn.textContent = '↩ Confirm Recall & Resend to Telegram';
+    recallBtn.onclick = () => {
+      if (isRecall) {
+        const modifiedItems = [];
+        wrap.querySelectorAll('input[data-item-name]').forEach(inp => {
+          const qty = parseFloat(inp.value) || 0;
+          if (qty > 0) modifiedItems.push({ name: inp.dataset.itemName, unit: inp.dataset.itemUnit, qty, tg: inp.dataset.itemTg });
+        });
+        Object.values(_recallAddMap).forEach(item => {
+          if (item.qty > 0) modifiedItems.push(item);
+        });
+        recallOrderWithItems(orderId, site, modifiedItems, recallBtn);
+      } else {
+        recallOrder(orderId, site, recallBtn);
+      }
+    };
+    recallBar.appendChild(recallNote); recallBar.appendChild(recallBtn);
+    container.appendChild(recallBar);
+  }
 }
 
 function buildAddItemRow(product, nonRecallConfig) {
