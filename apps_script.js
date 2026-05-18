@@ -392,6 +392,8 @@ function handleGetOrders(e) {
         });
       }
       // Check Credits sheet — mark items that have been partially or fully credited
+      // Key by "name|price" so credits at the old price don't bleed onto rows
+      // of the same item added later at a different price.
       const credWs = ss.getSheetByName('Credits');
       if (credWs) {
         const credData  = credWs.getDataRange().getValues();
@@ -400,12 +402,15 @@ function handleGetOrders(e) {
           const r   = credData[i];
           const ref = (r[2] || '').toString().trim();
           if (ref !== orderId) continue;
-          const n = (r[3] || '').toString().trim();
-          const q = parseFloat(r[4]) || 0;
-          creditMap[n] = (creditMap[n] || 0) + q;
+          const n     = (r[3] || '').toString().trim();
+          const price = (parseFloat(r[6]) || 0).toFixed(4);
+          const q     = parseFloat(r[4]) || 0;
+          const key   = n + '|' + price;
+          creditMap[key] = (creditMap[key] || 0) + q;
         }
         items.forEach(item => {
-          item.creditedQty   = Math.round((creditMap[item.name] || 0) * 10) / 10;
+          const key          = item.name + '|' + (parseFloat(item.price) || 0).toFixed(4);
+          item.creditedQty   = Math.round((creditMap[key] || 0) * 10) / 10;
           item.fullyCredited = item.creditedQty >= item.qty;
         });
       }
