@@ -3523,6 +3523,7 @@ function renderOrderItems(orderId, site, items, container) {
 
   displayItems.forEach(item => {
     const tr = document.createElement('tr');
+    tr.dataset.itemRow = item.name; // used by the filter search below
     const netQty = item.qty - (item.creditedQty || 0); // available qty after credits
 
     // Base cells (same for all views)
@@ -3654,6 +3655,7 @@ function renderOrderItems(orderId, site, items, container) {
       creditBtn.className = 'credit-item-btn'; creditBtn.textContent = 'Credit';
       const inlineForm = document.createElement('tr');
       inlineForm.style.display = 'none';
+      inlineForm.dataset.itemRow = item.name; // kept in sync with parent row for filter
       const formTd = document.createElement('td'); formTd.colSpan = 7; formTd.style.padding = '0';
       const formDiv = document.createElement('div'); formDiv.className = 'credit-inline-form open';
       const maxQ = item.creditedQty > 0 ? netQty : item.qty;
@@ -3698,7 +3700,27 @@ function renderOrderItems(orderId, site, items, container) {
     tr.appendChild(actionTd);
     tbody.appendChild(tr);
   });
-  table.appendChild(tbody); wrap.appendChild(table); container.appendChild(wrap);
+  table.appendChild(tbody); wrap.appendChild(table);
+
+  // ── Item filter — manager view only, shown when order has more than 8 items ──
+  if (!isRecall && displayItems.length > 8) {
+    const filterWrap = document.createElement('div');
+    filterWrap.style.cssText = 'padding:10px 16px 6px';
+    const filterIn = document.createElement('input');
+    filterIn.type = 'text'; filterIn.className = 'search-input';
+    filterIn.placeholder = 'Filter items…'; filterIn.autocomplete = 'off';
+    filterIn.oninput = () => {
+      const q = filterIn.value.toLowerCase().trim();
+      tbody.querySelectorAll('tr[data-item-row]').forEach(row => {
+        const match = !q || (row.dataset.itemRow || '').toLowerCase().includes(q);
+        row.style.display = match ? '' : 'none';
+      });
+    };
+    filterWrap.appendChild(filterIn);
+    container.appendChild(filterWrap);
+  }
+
+  container.appendChild(wrap);
 
   // ── Add Item — appears above the confirm button so it's always visible ───
   const addSection = document.createElement('div');
