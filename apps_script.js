@@ -958,10 +958,12 @@ function handleAddToOrder(payload) {
     const editOrSend = (chatId, oldMsgId, items, label) => {
       const text = buildTelegramText(site, items, origNotes, origDeliv, orderId, addedTimeStr, label);
       if (oldMsgId) {
+        // Always try to delete + resend so Telegram fires a new notification.
+        // Only fall back to silent edit if deletion fails (message too old etc).
+        const deleted = deleteTelegramMessage(chatId, oldMsgId);
+        if (deleted) return sendTelegramText(chatId, text);
         const edited = editTelegramMessage(chatId, oldMsgId, text);
-        if (edited) return { ok: true, messageId: parseInt(oldMsgId) };
-        // Edit failed — delete old and send fresh
-        deleteTelegramMessage(chatId, oldMsgId);
+        return { ok: edited, messageId: edited ? parseInt(oldMsgId) : null };
       }
       return sendTelegramText(chatId, text);
     };
