@@ -968,7 +968,10 @@ body{min-height:100vh;background:#0D0D0D}
   background:#FFF5F5;border-top:1px solid #FBBCBC;
   padding:12px 14px;display:none;
 }
-.credit-inline-form.open{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.credit-inline-form.open{display:flex;flex-direction:column;gap:6px}
+.credit-inline-form .cif-title{font-size:12px;font-weight:700;color:var(--brand)}
+.credit-inline-form .cif-inputs{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.credit-inline-form .cif-btns{display:flex;gap:8px;align-items:center}
 .credit-inline-form label{font-size:11px;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:.5px}
 .credit-inline-input{
   padding:6px 10px;border:1.5px solid #FBBCBC;border-radius:var(--radius-xs);
@@ -3669,22 +3672,27 @@ function renderOrderItems(orderId, site, items, container) {
           creditBtn.textContent = 'Credit';
           const inlineForm = document.createElement('tr');
           inlineForm.style.display = 'none';
+          inlineForm.dataset.formRow = item.name;
           const formTd = document.createElement('td'); formTd.colSpan = 7; formTd.style.padding = '0';
           const formDiv = document.createElement('div'); formDiv.className = 'credit-inline-form open';
           formDiv.innerHTML = `
-            <span style="font-size:12px;font-weight:600;color:var(--brand)">Credit: ${item.name}</span>
-            <label>Qty</label>
-            <input type="number" class="credit-inline-input" style="width:70px" min="0.5" step="0.5" placeholder="qty">
-            <label>Reason</label>
-            <select class="credit-inline-input">
-              <option value="Order Recalled">Order Recalled</option>
-              <option>Out of stock</option><option>Damaged on delivery</option>
-              <option>Wrong item delivered</option><option>Short delivery</option>
-              <option value="Other">Other</option>
-            </select>
-            <input type="text" class="credit-inline-input credit-other-input" placeholder="Describe the reason…" style="display:none;min-width:160px">
-            <button class="credit-inline-confirm">Confirm Credit</button>
-            <button class="credit-inline-cancel">Cancel</button>`;
+            <div class="cif-title">Credit: ${item.name}</div>
+            <div class="cif-inputs">
+              <label>Qty</label>
+              <input type="number" class="credit-inline-input" style="width:70px" min="0.5" step="0.5" placeholder="qty">
+              <label>Reason</label>
+              <select class="credit-inline-input">
+                <option value="Order Recalled">Order Recalled</option>
+                <option>Out of stock</option><option>Damaged on delivery</option>
+                <option>Wrong item delivered</option><option>Short delivery</option>
+                <option value="Other">Other</option>
+              </select>
+              <input type="text" class="credit-inline-input credit-other-input" placeholder="Describe the reason…" style="display:none;min-width:160px">
+            </div>
+            <div class="cif-btns">
+              <button class="credit-inline-confirm">Confirm Credit</button>
+              <button class="credit-inline-cancel">Cancel</button>
+            </div>`;
           const reasonSel  = formDiv.querySelector('select');
           const otherInput = formDiv.querySelector('.credit-other-input');
           reasonSel.onchange = () => { otherInput.style.display = reasonSel.value === 'Other' ? 'block' : 'none'; if (reasonSel.value === 'Other') otherInput.focus(); };
@@ -3754,23 +3762,27 @@ function renderOrderItems(orderId, site, items, container) {
       creditBtn.className = 'credit-item-btn'; creditBtn.textContent = 'Credit';
       const inlineForm = document.createElement('tr');
       inlineForm.style.display = 'none';
-      inlineForm.dataset.itemRow = item.name; // kept in sync with parent row for filter
+      inlineForm.dataset.formRow = item.name; // separate attr so filter doesn't touch it
       const formTd = document.createElement('td'); formTd.colSpan = 7; formTd.style.padding = '0';
       const formDiv = document.createElement('div'); formDiv.className = 'credit-inline-form open';
       const maxQ = item.creditedQty > 0 ? netQty : item.qty;
       formDiv.innerHTML = `
-        <span style="font-size:12px;font-weight:600;color:var(--brand)">Crediting: ${item.name}</span>
-        <label>Qty</label>
-        <input type="number" class="credit-inline-input" style="width:70px" value="${maxQ}" min="0.5" max="${maxQ}" step="0.5">
-        <label>Reason</label>
-        <select class="credit-inline-input">
-          <option>Out of stock</option><option>Damaged on delivery</option>
-          <option>Wrong item delivered</option><option>Short delivery</option>
-          <option value="Other">Other</option>
-        </select>
-        <input type="text" class="credit-inline-input credit-other-input" placeholder="Describe the reason…" style="display:none;min-width:160px">
-        <button class="credit-inline-confirm">Confirm Credit</button>
-        <button class="credit-inline-cancel">Cancel</button>`;
+        <div class="cif-title">Crediting: ${item.name}</div>
+        <div class="cif-inputs">
+          <label>Qty</label>
+          <input type="number" class="credit-inline-input" style="width:70px" value="${maxQ}" min="0.5" max="${maxQ}" step="0.5">
+          <label>Reason</label>
+          <select class="credit-inline-input">
+            <option>Out of stock</option><option>Damaged on delivery</option>
+            <option>Wrong item delivered</option><option>Short delivery</option>
+            <option value="Other">Other</option>
+          </select>
+          <input type="text" class="credit-inline-input credit-other-input" placeholder="Describe the reason…" style="display:none;min-width:160px">
+        </div>
+        <div class="cif-btns">
+          <button class="credit-inline-confirm">Confirm Credit</button>
+          <button class="credit-inline-cancel">Cancel</button>
+        </div>`;
       const reasonSel  = formDiv.querySelector('select');
       const otherInput = formDiv.querySelector('.credit-other-input');
       reasonSel.onchange = () => { otherInput.style.display = reasonSel.value === 'Other' ? 'block' : 'none'; if (reasonSel.value === 'Other') otherInput.focus(); };
@@ -3810,9 +3822,13 @@ function renderOrderItems(orderId, site, items, container) {
     filterIn.placeholder = 'Filter items…'; filterIn.autocomplete = 'off';
     filterIn.oninput = () => {
       const q = filterIn.value.toLowerCase().trim();
+      // Only target item rows (not credit form rows which use data-form-row)
       tbody.querySelectorAll('tr[data-item-row]').forEach(row => {
         const match = !q || (row.dataset.itemRow || '').toLowerCase().includes(q);
         row.style.display = match ? '' : 'none';
+        // Also hide/restore the associated credit form row without disturbing its open/closed state
+        const formRow = tbody.querySelector(`tr[data-form-row="${CSS.escape(row.dataset.itemRow)}"]`);
+        if (formRow) formRow.style.display = match ? (formRow._savedDisplay || 'none') : (() => { formRow._savedDisplay = formRow.style.display || 'none'; return 'none'; })();
       });
     };
     filterWrap.appendChild(filterIn);
@@ -4203,6 +4219,13 @@ function renderDashboard(data, siteFilter, from, to) {
 
   const body = document.getElementById('dash-body');
   body.innerHTML = '';
+
+  // ── Empty state ────────────────────────────────────────────────
+  if (!data.stats || data.stats.orders === 0) {
+    body.innerHTML = '<div class="dash-empty" style="padding:60px 20px;text-align:center;color:rgba(255,255,255,.5);font-size:15px">No orders found for this period</div>';
+    _dashLoading = false;
+    return;
+  }
 
   // ── 1. STAT CARDS ─────────────────────────────────────────────
   const sg = document.createElement('div'); sg.className = 'dash-stats';
