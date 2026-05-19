@@ -141,7 +141,8 @@ function handleDashboardGet(e) {
       const orderId   = (row[0]  || '').toString();
       const orderType = (row[2]  || '').toString();
       const submitted = (row[3]  || '').toString();
-      const delivDate = (row[4]  || '').toString();
+      const rawD4     = row[4];
+      const delivDate = rawD4 instanceof Date ? Utilities.formatDate(rawD4, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rawD4||'').toString().trim();
       const items     = parseInt(row[5])   || 0;
       const value     = parseFloat(row[6]) || 0;
       const prepTg    = (row[7]  || '').toString();
@@ -441,7 +442,7 @@ function handleGetOrders(e) {
         site:      rowSite,
         type:      (row[2]||'').toString().trim(),
         submitted: (row[3]||'').toString().trim(),
-        delivDate: (row[4]||'').toString().trim(),
+        delivDate: (row[4] instanceof Date ? Utilities.formatDate(row[4], Session.getScriptTimeZone(), 'dd/MM/yyyy') : (row[4]||'').toString().trim()),
         items:     parseInt(row[5])   || 0,
         value:     parseFloat(row[6]) || 0,
         prepTg:    (row[7]||'').toString().trim(),
@@ -1183,6 +1184,17 @@ function handleRecallOrder(payload) {
         if (!deleted) editTelegramMessage(STOCK_GROUP_ID, oldStockMsgId, cancelText());
       }
       storeTelegramMsgIds(ss, orderId, site, null, null, newTime);
+      // Update Orders Summary to 0 items / £0 when entire order is cancelled
+      const sumWsCancel = ss.getSheetByName('Orders Summary');
+      if (sumWsCancel) {
+        const sumData = sumWsCancel.getDataRange().getValues();
+        for (let i = 1; i < sumData.length; i++) {
+          if ((sumData[i][0] || '').toString().trim() !== orderId) continue;
+          sumWsCancel.getRange(i + 1, 6).setValue(0);
+          sumWsCancel.getRange(i + 1, 7).setValue(0);
+          break;
+        }
+      }
       Logger.log('Recall: all items removed.');
       return jsonResponse({ ok: true });
     }
