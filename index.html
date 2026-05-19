@@ -69,36 +69,27 @@ body{min-height:100vh}
 
 /* ── HEADER ─────────────────────────────────────────── */
 .app-header{
-  background:#fff;
-  border-bottom:1px solid var(--border);
-  padding:12px 18px;
-  display:flex;align-items:center;justify-content:space-between;
+  background:url('./hero1.png') top center/cover no-repeat;
+  height:210px;
   position:sticky;top:0;z-index:100;
-  box-shadow:0 1px 6px rgba(0,0,0,.06);
+  display:flex;align-items:flex-start;justify-content:space-between;
+  padding:10px 14px;
+  border-bottom:none;
 }
 .hdr-icon-btn{
-  width:36px;height:36px;border:none;background:none;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  color:var(--text-primary);font-size:20px;border-radius:8px;flex-shrink:0;
-  transition:background .15s;
+  /* Transparent — clicks the visible icon already in the image */
+  width:44px;height:44px;border:none;background:transparent;
+  cursor:pointer;border-radius:10px;flex-shrink:0;
 }
-.hdr-icon-btn:hover{background:var(--bg)}
-.hdr-wordmark{
-  display:flex;align-items:center;gap:1px;
-  font-size:20px;font-weight:900;color:#111;letter-spacing:2px;
-}
-.hdr-wm-o{
-  display:inline-flex;align-items:center;justify-content:center;
-  width:22px;height:22px;margin:0 1px;
-}
-.hdr-wm-r{color:#FF9F1A}
+.hdr-wordmark{display:none} /* branding lives in the image */
+.hdr-wm-o,.hdr-wm-r{display:none}
 .header-badge{
-  background:var(--bg);color:var(--text-secondary);
-  border-radius:20px;padding:4px 10px;
-  font-size:11px;font-weight:600;flex-shrink:0;transition:all .2s;
-  border:1px solid var(--border);
+  display:none; /* hidden until items added */
+  background:#FF9F1A;color:#fff;border-radius:20px;
+  padding:3px 9px;font-size:11px;font-weight:700;
+  margin-top:6px;border:2px solid #fff;
 }
-.header-badge.has-items{background:#FF9F1A;color:#fff;border-color:#FF9F1A}
+.header-badge.has-items{display:block}
 
 /* ── HERO CARD ───────────────────────────────────────── */
 .hero-card-wrap{padding:14px 14px 0}
@@ -1193,19 +1184,6 @@ body{min-height:100vh}
   <p id="header-sub" style="display:none">Loading products…</p>
 </header>
 
-<!-- ── HERO CARD ─────────────────────────────────────── -->
-<div class="hero-card-wrap">
-  <div class="hero-card">
-    <div class="hero-card-text">
-      THINK.<br><span class="orange">CHOOSE.</span><br>ORDER.
-    </div>
-    <div class="hero-dots">
-      <span class="hero-dot active"></span>
-      <span class="hero-dot"></span>
-      <span class="hero-dot"></span>
-    </div>
-  </div>
-</div>
 
 <div class="status-bar">
   <div class="status-pill">Site: <strong id="st-site">—</strong></div>
