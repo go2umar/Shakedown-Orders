@@ -32,6 +32,7 @@ function doGet(e) {
   if (action === 'dashboard')    return handleDashboardGet(e);
   if (action === 'get_orders')   return handleGetOrders(e);
   if (action === 'recent_order') return handleRecentOrderGet(e);
+  if (action === 'get_pin')      return handleGetPin(e);
   return handleProductsGet(e);
 }
 
@@ -561,6 +562,7 @@ function doPost(e) {
       payload = JSON.parse(e.postData.contents);
     }
 
+    if ((payload.action || '') === 'set_pin')         return handleSetPin(payload);
     if ((payload.action || '') === 'record_credit')  return handleCreditPost(payload);
     if ((payload.action || '') === 'set_item_price') return handleSetItemPrice(payload);
     if ((payload.action || '') === 'add_to_order')   return handleAddToOrder(payload);
@@ -1349,6 +1351,31 @@ function handleSetItemPrice(payload) {
 
   } catch(err) {
     Logger.log('handleSetItemPrice error: ' + err);
+    return jsonResponse({ ok: false, error: err.toString() });
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MANAGER PIN — stored in Script Properties so it syncs across devices
+// ════════════════════════════════════════════════════════════════════
+function handleGetPin(e) {
+  const pin = PropertiesService.getScriptProperties().getProperty('manager_pin') || '1234';
+  const cb  = e && e.parameter && e.parameter.callback;
+  const json = JSON.stringify({ ok: true, pin });
+  if (cb) return ContentService.createTextOutput(cb + '(' + json + ')').setMimeType(ContentService.MimeType.JAVASCRIPT);
+  return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+}
+
+function handleSetPin(payload) {
+  try {
+    const currentPin = (payload.currentPin || '').toString().trim();
+    const newPin     = (payload.newPin     || '').toString().trim();
+    const stored     = PropertiesService.getScriptProperties().getProperty('manager_pin') || '1234';
+    if (currentPin !== stored)      return jsonResponse({ ok: false, error: 'Incorrect current PIN' });
+    if (!/^\d{4}$/.test(newPin))    return jsonResponse({ ok: false, error: 'PIN must be exactly 4 digits' });
+    PropertiesService.getScriptProperties().setProperty('manager_pin', newPin);
+    return jsonResponse({ ok: true });
+  } catch(err) {
     return jsonResponse({ ok: false, error: err.toString() });
   }
 }

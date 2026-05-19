@@ -4004,7 +4004,7 @@ function buildAddItemRow(product, nonRecallConfig) {
 }
 
 // ── MANAGER DASHBOARD ─────────────────────────────────────────────
-let   MANAGER_PIN      = localStorage.getItem('stockr_pin') || '1234';
+let   MANAGER_PIN      = localStorage.getItem('stockr_pin') || '1234'; // overwritten by server on load
 let   _managerUnlocked = false;
 let   _dashPeriod      = 7;
 let   _dashLoading     = false;
@@ -4022,6 +4022,15 @@ function closePinOverlay() {
   document.getElementById('pin-error').classList.remove('show');
 }
 
+// Fetch PIN from server on load so it's synced across all devices
+(function syncPinFromServer() {
+  window._onPinLoaded = d => { if (d && d.ok && d.pin) { MANAGER_PIN = d.pin; localStorage.setItem('stockr_pin', d.pin); } };
+  const s = document.createElement('script');
+  s.src = SCRIPT_URL + '?action=get_pin&callback=_onPinLoaded';
+  s.onerror = () => {};
+  document.head.appendChild(s);
+})();
+
 function openChangePinOverlay() {
   document.getElementById('change-pin-overlay').classList.add('show');
   setTimeout(() => document.getElementById('cp-current').focus(), 100);
@@ -4029,20 +4038,17 @@ function openChangePinOverlay() {
 function closeChangePinOverlay() {
   document.getElementById('change-pin-overlay').classList.remove('show');
   ['cp-current','cp-new','cp-confirm'].forEach(id => document.getElementById(id).value = '');
+  const btn = document.querySelector('#change-pin-overlay .pin-submit');
+  if (btn) { btn.textContent = 'Save New PIN'; btn.disabled = false; }
   const err = document.getElementById('cp-error');
   err.classList.remove('show'); err.textContent = 'Incorrect PIN';
 }
-function saveNewPin() {
+async function saveNewPin() {
   const current = document.getElementById('cp-current').value;
   const newPin  = document.getElementById('cp-new').value;
   const confirm = document.getElementById('cp-confirm').value;
   const errEl   = document.getElementById('cp-error');
-  if (current !== MANAGER_PIN) {
-    errEl.textContent = 'Incorrect current PIN';
-    errEl.classList.add('show');
-    document.getElementById('cp-current').value = '';
-    document.getElementById('cp-current').focus(); return;
-  }
+  const btn     = document.querySelector('#change-pin-overlay .pin-submit');
   if (!/^\d{4}$/.test(newPin)) {
     errEl.textContent = 'New PIN must be exactly 4 digits';
     errEl.classList.add('show');
@@ -4054,10 +4060,28 @@ function saveNewPin() {
     document.getElementById('cp-confirm').value = '';
     document.getElementById('cp-confirm').focus(); return;
   }
-  MANAGER_PIN = newPin;
-  localStorage.setItem('stockr_pin', newPin);
-  closeChangePinOverlay();
-  alert('✅ PIN changed successfully!');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+  try {
+    const res = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'data='+encodeURIComponent(JSON.stringify({action:'set_pin', currentPin:current, newPin})) });
+    const d = await res.json();
+    if (d.ok) {
+      MANAGER_PIN = newPin;
+      localStorage.setItem('stockr_pin', newPin);
+      closeChangePinOverlay();
+      alert('✅ PIN changed — all devices will use the new PIN after refreshing');
+    } else {
+      errEl.textContent = d.error || 'Incorrect current PIN';
+      errEl.classList.add('show');
+      document.getElementById('cp-current').value = '';
+      document.getElementById('cp-current').focus();
+      btn.textContent = 'Save New PIN'; btn.disabled = false;
+    }
+  } catch(e) {
+    errEl.textContent = 'Connection error — try again';
+    errEl.classList.add('show');
+    btn.textContent = 'Save New PIN'; btn.disabled = false;
+  }
 }
 
 function checkPin() {
