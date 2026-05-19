@@ -133,6 +133,8 @@ function handleDashboardGet(e) {
 
     for (let i = 1; i < sumData.length; i++) {
       const row     = sumData[i];
+      // Skip corrupt/header rows — valid orders always start with ORD-
+      if (!/^ORD-\d+$/.test((row[0] || '').toString().trim())) continue;
       const rowSite = (row[1] || '').toString().trim();
       if (site && rowSite !== site) continue;
       const rawRowDate = row[10];
