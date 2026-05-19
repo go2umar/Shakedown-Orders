@@ -1162,9 +1162,41 @@ body{min-height:100vh}
   .prod-name{white-space:normal}
 }
 @media(min-width:640px){.app{padding:0 0 80px}}
+
+/* ── SPLASH SCREEN ───────────────────────────────────── */
+#splash{
+  position:fixed;inset:0;z-index:9999;
+  background:#fff;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:20px;
+  transition:opacity .5s ease;
+}
+#splash.hide{opacity:0;pointer-events:none}
+#splash img{width:120px;height:120px;border-radius:26px;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+#splash .splash-name{
+  font-family:var(--font);font-size:26px;font-weight:800;
+  color:#111;letter-spacing:2px;
+}
+#splash .splash-name span{color:#FF9F1A}
+#splash .splash-bar{
+  width:48px;height:4px;border-radius:2px;background:#f0f0f0;overflow:hidden;
+}
+#splash .splash-bar::after{
+  content:'';display:block;height:100%;width:0;border-radius:2px;
+  background:#FF9F1A;animation:splash-load 1.6s ease forwards;
+}
+@keyframes splash-load{to{width:100%}}
 </style>
 </head>
 <body>
+
+<!-- ── SPLASH SCREEN ─────────────────────────────────── -->
+<div id="splash">
+  <img src="./icon.png" alt="Stockr">
+  <div class="splash-name">STOCK<span>r</span></div>
+  <div class="splash-bar"></div>
+</div>
+
 <div class="app">
 
 <header class="app-header">
@@ -4471,6 +4503,15 @@ function filterBoth(input) {
     }
   }
 }
+
+// ── SPLASH SCREEN — hide after content is ready (min 1.8s so animation completes)
+(function() {
+  const splash = document.getElementById('splash');
+  const hideSplash = () => { splash.classList.add('hide'); setTimeout(() => splash.remove(), 500); };
+  const minWait  = new Promise(r => setTimeout(r, 1800));
+  const pageLoad = new Promise(r => { if (document.readyState === 'complete') r(); else window.addEventListener('load', r); });
+  Promise.all([minWait, pageLoad]).then(hideSplash);
+})();
 
 </script>
 </body>
