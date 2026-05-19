@@ -134,7 +134,10 @@ function handleDashboardGet(e) {
       const row     = sumData[i];
       const rowSite = (row[1] || '').toString().trim();
       if (site && rowSite !== site) continue;
-      const rowDate = parseDDMMYYYY((row[10] || '').toString());
+      const rawRowDate = row[10];
+      const rowDate = rawRowDate instanceof Date
+        ? new Date(rawRowDate.getFullYear(), rawRowDate.getMonth(), rawRowDate.getDate())
+        : parseDDMMYYYY((rawRowDate || '').toString().trim());
       if (fromDate && rowDate && rowDate < fromDate) continue;
       if (toDate   && rowDate && rowDate > toDate)   continue;
 
