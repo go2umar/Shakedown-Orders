@@ -69,17 +69,22 @@ body{min-height:100vh}
 
 /* ── HEADER ─────────────────────────────────────────── */
 .app-header{
-  background:url('./header.png') top center/cover no-repeat;
+  background:url('./header.png') center/cover no-repeat #0D0D0D;
   height:210px;
   position:sticky;top:0;z-index:100;
   display:flex;align-items:flex-start;justify-content:space-between;
   padding:10px 14px;
   border-bottom:none;
 }
+@media(min-width:480px){
+  /* On wider screens show more of the image by increasing height */
+  .app-header{height:260px;background-position:center center}
+}
 .hdr-icon-btn{
-  /* Transparent — clicks the visible icon already in the image */
-  width:44px;height:44px;border:none;background:transparent;
+  width:44px;height:44px;border:none;background:rgba(0,0,0,.25);
   cursor:pointer;border-radius:10px;flex-shrink:0;
+  color:#fff; /* white hamburger lines */
+  backdrop-filter:blur(4px);
 }
 .hdr-wordmark{display:none} /* branding lives in the image */
 .hdr-wm-o,.hdr-wm-r{display:none}
