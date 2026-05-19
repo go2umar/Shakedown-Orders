@@ -69,57 +69,61 @@ body{min-height:100vh}
 
 /* ── HEADER ─────────────────────────────────────────── */
 .app-header{
-  background:#0D0D0D;
-  border-bottom:1px solid rgba(255,255,255,.08);
-  padding:14px 20px;
-  display:flex;align-items:center;gap:12px;
-  position:sticky;top:0;z-index:100;
-}
-.header-logo{
-  width:36px;height:36px;border-radius:10px;
-  display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;overflow:hidden;
-}
-.header-text h1{font-size:16px;font-weight:700;color:#FFFFFF;letter-spacing:-.4px}
-.header-text h1 span{color:#FF9F1A}
-.header-text p{font-size:11px;color:rgba(255,255,255,.45);margin-top:1px}
-.header-badge{
-  margin-left:auto;
-  background:rgba(255,255,255,.12);
-  color:rgba(255,255,255,.7);
-  border-radius:20px;padding:5px 13px;
-  font-size:12px;font-weight:600;
-  flex-shrink:0;transition:all .2s;
-}
-.header-badge.has-items{background:#FF9F1A;color:#0D0D0D}
-
-/* ── HERO BANNER ────────────────────────────────────── */
-.stockr-hero{
-  background:#0D0D0D;
+  background:#fff;
+  border-bottom:1px solid var(--border);
+  padding:12px 18px;
   display:flex;align-items:center;justify-content:space-between;
-  padding:22px 22px 26px;overflow:hidden;gap:8px;
-  border-bottom:1px solid rgba(255,255,255,.06);
+  position:sticky;top:0;z-index:100;
+  box-shadow:0 1px 6px rgba(0,0,0,.06);
 }
-.stockr-hero-left{flex:1;min-width:0}
-.stockr-wordmark{
-  display:flex;align-items:center;
-  font-size:34px;font-weight:900;color:#fff;
-  letter-spacing:3px;line-height:1;
+.hdr-icon-btn{
+  width:36px;height:36px;border:none;background:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-primary);font-size:20px;border-radius:8px;flex-shrink:0;
+  transition:background .15s;
 }
-.wm-o{
+.hdr-icon-btn:hover{background:var(--bg)}
+.hdr-wordmark{
+  display:flex;align-items:center;gap:1px;
+  font-size:20px;font-weight:900;color:#111;letter-spacing:2px;
+}
+.hdr-wm-o{
   display:inline-flex;align-items:center;justify-content:center;
-  width:34px;height:34px;margin:0 1px;flex-shrink:0;
+  width:22px;height:22px;margin:0 1px;
 }
+.hdr-wm-r{color:#FF9F1A}
+.header-badge{
+  background:var(--bg);color:var(--text-secondary);
+  border-radius:20px;padding:4px 10px;
+  font-size:11px;font-weight:600;flex-shrink:0;transition:all .2s;
+  border:1px solid var(--border);
+}
+.header-badge.has-items{background:#FF9F1A;color:#fff;border-color:#FF9F1A}
+
+/* ── HERO CARD ───────────────────────────────────────── */
+.hero-card-wrap{padding:14px 14px 0}
+.hero-card{
+  border-radius:20px;overflow:hidden;height:190px;
+  background:#0D0D0D url('./hero.png') center/cover no-repeat;
+  position:relative;display:flex;align-items:center;
+  box-shadow:0 8px 28px rgba(0,0,0,.22);
+}
+.hero-card-text{
+  position:absolute;left:22px;bottom:36px;
+  font-size:26px;font-weight:900;line-height:1.15;letter-spacing:-.5px;
+  color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.5);
+}
+.hero-card-text .orange{color:#FF9F1A}
+.hero-dots{
+  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+  display:flex;gap:5px;align-items:center;
+}
+.hero-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4)}
+.hero-dot.active{width:18px;border-radius:3px;background:#fff}
+
+/* ── WORDMARK (kept for any other use) ──────────────── */
+.wm-o{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;margin:0 1px;flex-shrink:0}
 .wm-r{color:#FF9F1A;font-style:normal}
-.stockr-tagline{
-  font-size:9.5px;color:#FF9F1A;letter-spacing:2.5px;
-  font-weight:700;margin-top:10px;text-transform:uppercase;
-  display:flex;align-items:center;gap:8px;
-}
-.stockr-tagline::before,.stockr-tagline::after{
-  content:'';display:block;height:1px;width:16px;background:#FF9F1A;opacity:.5;
-}
-.stockr-hero-right{flex-shrink:0;opacity:.95}
 
 /* ── STATUS BAR ─────────────────────────────────────── */
 .status-bar{
@@ -772,15 +776,7 @@ body{min-height:100vh}
 .scan-rescan-btn:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-light)}
 
 /* ── MANAGER BUTTON ──────────────────────────────────── */
-.manager-btn{
-  width:34px;height:34px;border-radius:var(--radius-xs);
-  background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.18);
-  color:rgba(255,255,255,.8);font-size:15px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  transition:all .15s;flex-shrink:0;margin-left:6px;
-}
-.manager-btn:hover{background:#EEF2FF;border-color:#6366F1;color:#6366F1}
-.manager-btn.unlocked{background:#EEF2FF;border-color:#6366F1;color:#6366F1}
+.manager-btn.unlocked{color:#FF9F1A}
 
 /* ── PIN OVERLAY ─────────────────────────────────────── */
 .pin-overlay{
@@ -1176,115 +1172,38 @@ body{min-height:100vh}
 <div class="app">
 
 <header class="app-header">
-  <div class="header-logo">
-    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 100 100">
-      <rect width="100" height="100" rx="22" fill="#FFFFFF"/>
-      <!-- Cart frame -->
-      <path d="M8 28 L18 28 L32 72 L78 72 L88 42 L26 42" stroke="#111" stroke-width="5.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-      <!-- Cart slats -->
-      <line x1="30" y1="52" x2="85" y2="52" stroke="#111" stroke-width="3"/>
-      <line x1="34" y1="62" x2="82" y2="62" stroke="#111" stroke-width="3"/>
-      <line x1="46" y1="42" x2="40" y2="72" stroke="#111" stroke-width="2.5"/>
-      <line x1="62" y1="42" x2="60" y2="72" stroke="#111" stroke-width="2.5"/>
-      <line x1="76" y1="42" x2="78" y2="72" stroke="#111" stroke-width="2.5"/>
-      <!-- Wheels -->
-      <circle cx="40" cy="82" r="7" fill="#111"/>
-      <circle cx="40" cy="82" r="3.5" fill="white"/>
-      <circle cx="70" cy="82" r="7" fill="#111"/>
-      <circle cx="70" cy="82" r="3.5" fill="white"/>
-      <!-- Person — head -->
-      <circle cx="84" cy="38" r="10" fill="#111"/>
-      <!-- Body -->
-      <path d="M84 48 L84 62" stroke="#111" stroke-width="7" stroke-linecap="round"/>
-      <!-- Lap -->
-      <path d="M72 62 L96 62" stroke="#111" stroke-width="7" stroke-linecap="round"/>
-      <!-- Legs -->
-      <path d="M72 62 L68 76" stroke="#111" stroke-width="6" stroke-linecap="round"/>
-      <path d="M96 62 L99 76" stroke="#111" stroke-width="6" stroke-linecap="round"/>
-      <!-- Thinking arm -->
-      <path d="M80 55 L73 60" stroke="#111" stroke-width="5.5" stroke-linecap="round"/>
-      <!-- Thought bubbles (ascending) -->
-      <circle cx="78" cy="28" r="3" fill="#FF9F1A"/>
-      <circle cx="74" cy="21" r="4.5" fill="#FF9F1A"/>
-      <!-- Thought cloud -->
-      <ellipse cx="64" cy="12" rx="13" ry="9" fill="#FF9F1A"/>
-      <ellipse cx="54" cy="16" rx="7" ry="5" fill="#FF9F1A"/>
-      <ellipse cx="74" cy="15" rx="8" ry="6" fill="#FF9F1A"/>
-      <!-- Question mark -->
-      <text x="64" y="17" font-family="Arial,sans-serif" font-size="13" font-weight="900" fill="white" text-anchor="middle">?</text>
+  <button class="hdr-icon-btn" id="manager-btn" onclick="openManagerLogin()" title="Manager Dashboard">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <rect y="3" width="20" height="2.2" rx="1.1" fill="currentColor"/>
+      <rect y="9" width="20" height="2.2" rx="1.1" fill="currentColor"/>
+      <rect y="15" width="20" height="2.2" rx="1.1" fill="currentColor"/>
     </svg>
-  </div>
-  <div class="header-text">
-    <h1>STOCK<span>r</span></h1>
-    <p id="header-sub">Loading products…</p>
+  </button>
+  <div class="hdr-wordmark">
+    ST<span class="hdr-wm-o">
+      <svg viewBox="0 0 22 22" width="22" height="22">
+        <circle cx="11" cy="11" r="11" fill="#FF9F1A"/>
+        <path d="M5 9.5h2.5l2.5 6.5h7l1.5-5H8" stroke="white" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="10" cy="17.5" r="1.2" fill="white"/>
+        <circle cx="15.5" cy="17.5" r="1.2" fill="white"/>
+      </svg>
+    </span>CK<span class="hdr-wm-r">r</span>
   </div>
   <div class="header-badge" id="hdr-badge">0 items</div>
-  <button class="manager-btn" id="manager-btn" onclick="openManagerLogin()" title="Manager Dashboard">🔑</button>
+  <p id="header-sub" style="display:none">Loading products…</p>
 </header>
 
-<!-- ── STOCKR HERO BANNER ───────────────────────────── -->
-<div class="stockr-hero">
-  <div class="stockr-hero-left">
-    <div class="stockr-wordmark">
-      ST<span class="wm-o">
-        <svg viewBox="0 0 34 34" width="34" height="34">
-          <circle cx="17" cy="17" r="17" fill="#FF9F1A"/>
-          <path d="M7 14 L10 14 L14 24 L26 24 L29 16 L11 16" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="15" cy="27.5" r="2" fill="white"/>
-          <circle cx="23" cy="27.5" r="2" fill="white"/>
-        </svg>
-      </span>CK<em class="wm-r">r</em>
+<!-- ── HERO CARD ─────────────────────────────────────── -->
+<div class="hero-card-wrap">
+  <div class="hero-card">
+    <div class="hero-card-text">
+      THINK.<br><span class="orange">CHOOSE.</span><br>ORDER.
     </div>
-    <div class="stockr-tagline">THINK. CHOOSE. ORDER.</div>
-  </div>
-  <div class="stockr-hero-right">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 155 125" width="155" height="125">
-      <defs>
-        <radialGradient id="glow" cx="38%" cy="65%" r="55%">
-          <stop offset="0%" stop-color="#B8860B" stop-opacity="0.35"/>
-          <stop offset="100%" stop-color="#0D0D0D" stop-opacity="0"/>
-        </radialGradient>
-      </defs>
-      <rect width="155" height="125" fill="url(#glow)"/>
-      <!-- Cart -->
-      <path d="M8 55 L17 55 L28 92 L90 92 L100 63 L28 63" stroke="rgba(255,255,255,0.9)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-      <!-- Cart slats -->
-      <line x1="31" y1="72" x2="97" y2="72" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
-      <line x1="33" y1="82" x2="94" y2="82" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
-      <line x1="46" y1="63" x2="40" y2="92" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
-      <line x1="62" y1="63" x2="60" y2="92" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
-      <line x1="78" y1="63" x2="79" y2="92" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
-      <!-- Cart wheels -->
-      <circle cx="38" cy="99" r="6" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="2.5"/>
-      <circle cx="80" cy="99" r="6" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="2.5"/>
-      <!-- Items in cart -->
-      <rect x="40" y="70" width="14" height="20" rx="2" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
-      <rect x="57" y="65" width="11" height="25" rx="2" fill="rgba(255,255,255,0.14)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/>
-      <rect x="71" y="68" width="14" height="22" rx="2" fill="rgba(255,255,255,0.16)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
-      <!-- Person head -->
-      <circle cx="128" cy="48" r="14" fill="rgba(255,255,255,0.92)"/>
-      <!-- Person body -->
-      <path d="M128 62 L128 82" stroke="rgba(255,255,255,0.9)" stroke-width="6" stroke-linecap="round"/>
-      <!-- Lap -->
-      <path d="M112 82 L144 82" stroke="rgba(255,255,255,0.9)" stroke-width="6" stroke-linecap="round"/>
-      <!-- Legs -->
-      <path d="M112 82 L107 100" stroke="rgba(255,255,255,0.85)" stroke-width="5.5" stroke-linecap="round"/>
-      <path d="M144 82 L148 100" stroke="rgba(255,255,255,0.85)" stroke-width="5.5" stroke-linecap="round"/>
-      <!-- Feet -->
-      <path d="M104 100 L115 100" stroke="rgba(255,255,255,0.85)" stroke-width="5" stroke-linecap="round"/>
-      <path d="M146 100 L153 100" stroke="rgba(255,255,255,0.85)" stroke-width="5" stroke-linecap="round"/>
-      <!-- Thinking arm -->
-      <path d="M121 72 L113 78" stroke="rgba(255,255,255,0.85)" stroke-width="5.5" stroke-linecap="round"/>
-      <!-- Thought bubbles -->
-      <circle cx="120" cy="36" r="3.5" fill="white" opacity="0.8"/>
-      <circle cx="115" cy="27" r="5" fill="white" opacity="0.9"/>
-      <!-- Thought cloud -->
-      <ellipse cx="103" cy="17" rx="16" ry="11" fill="white"/>
-      <ellipse cx="91" cy="22" rx="9" ry="7" fill="white"/>
-      <ellipse cx="117" cy="20" rx="10" ry="8" fill="white"/>
-      <!-- Orange ? -->
-      <text x="103" y="22" font-family="Arial,sans-serif" font-size="16" font-weight="900" fill="#FF9F1A" text-anchor="middle">?</text>
-    </svg>
+    <div class="hero-dots">
+      <span class="hero-dot active"></span>
+      <span class="hero-dot"></span>
+      <span class="hero-dot"></span>
+    </div>
   </div>
 </div>
 
