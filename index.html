@@ -819,6 +819,12 @@ body{min-height:100vh;background:#0D0D0D}
   background:#0D0D0D;z-index:200;overflow-y:auto;
 }
 .dash-overlay.show{display:block}
+/* Constrain overlay content to same 640px as the main app on desktop */
+.dash-overlay-hero,.dash-header,.dash-filter-bar,.dash-body,
+.orders-overlay .dash-overlay-hero,.orders-overlay .dash-header,
+.orders-search-bar,.dash-body#lookup-results{
+  max-width:640px;margin-left:auto;margin-right:auto;width:100%;
+}
 /* Hero image at top of each overlay (scrolls with content) */
 .dash-overlay-hero{
   background:url('./header.png') center/cover no-repeat #0D0D0D;
@@ -900,6 +906,7 @@ body{min-height:100vh;background:#0D0D0D}
 
 /* ── ORDER LOOKUP ────────────────────────────────────── */
 .orders-overlay{display:none;position:fixed;inset:0;background:#0D0D0D;z-index:250;overflow-y:auto}
+.orders-overlay>*{max-width:640px;margin-left:auto;margin-right:auto;width:100%}
 .orders-overlay.show{display:block}
 .orders-search-bar{
   background:#0D0D0D;border-bottom:1px solid rgba(255,255,255,.08);
