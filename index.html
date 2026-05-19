@@ -819,13 +819,19 @@ body{min-height:100vh;background:#0D0D0D}
   background:#0D0D0D;z-index:200;overflow-y:auto;
 }
 .dash-overlay.show{display:block}
-.dash-header{
+/* Hero image at top of each overlay (scrolls with content) */
+.dash-overlay-hero{
   background:url('./header.png') center/cover no-repeat #0D0D0D;
-  height:120px;
-  border-bottom:1px solid rgba(255,255,255,.08);
-  padding:14px 20px;display:flex;align-items:flex-start;gap:12px;
-  position:sticky;top:0;z-index:10;
+  height:210px;
   flex-shrink:0;
+}
+@media(min-width:480px){.dash-overlay-hero{height:260px}}
+.dash-header{
+  background:#0D0D0D;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  padding:14px 20px;display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:10;
+  box-shadow:0 2px 12px rgba(0,0,0,.4);
 }
 .dash-title{font-size:16px;font-weight:700;color:#fff}
 .dash-sub{font-size:12px;color:rgba(255,255,255,.55);margin-top:1px}
@@ -895,7 +901,7 @@ body{min-height:100vh;background:#0D0D0D}
 .rank-num{color:var(--text-tertiary);font-weight:700;font-size:12px;min-width:24px}
 
 /* ── ORDER LOOKUP ────────────────────────────────────── */
-.orders-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:250;overflow-y:auto}
+.orders-overlay{display:none;position:fixed;inset:0;background:#0D0D0D;z-index:250;overflow-y:auto}
 .orders-overlay.show{display:block}
 .orders-search-bar{
   background:var(--surface);border-bottom:1px solid var(--border);
@@ -1429,6 +1435,7 @@ body{min-height:100vh;background:#0D0D0D}
 
 <!-- MANAGER DASHBOARD -->
 <div class="dash-overlay" id="dash-overlay">
+  <div class="dash-overlay-hero"></div>
   <div class="dash-header">
     <button class="review-back-btn" onclick="closeDashboard()">← Back</button>
     <div>
@@ -1470,6 +1477,7 @@ body{min-height:100vh;background:#0D0D0D}
 
 <!-- ORDER LOOKUP OVERLAY -->
 <div class="orders-overlay" id="orders-overlay">
+  <div class="dash-overlay-hero"></div>
   <div class="dash-header">
     <button class="review-back-btn" onclick="closeOrderLookup()">← Dashboard</button>
     <div>
