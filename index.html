@@ -1474,7 +1474,7 @@ body{min-height:100vh;background:#0D0D0D}
 
   <!-- Filter bar -->
   <div class="dash-filter-bar">
-    <select class="dash-filter-select" id="dash-site-sel">
+    <select class="dash-filter-select" id="dash-site-sel" onchange="applyFilters()">
       <option value="">All Sites</option>
       <option>SD Withington</option><option>SD Wythenshawe</option>
       <option>SD Cheadle</option><option>SD Newcastle</option>
@@ -4117,7 +4117,7 @@ function applyFilters() {
         '<div class="dash-empty">Could not load dashboard. Ensure the Apps Script is deployed and try again.</div>';
       return;
     }
-    loadChartJS().then(() => renderDashboard(data, site, from, to));
+    loadChartJS().then(() => renderDashboard(data, site, from, to)).catch(() => { _dashLoading = false; });
   };
 
   const s = document.createElement('script');
