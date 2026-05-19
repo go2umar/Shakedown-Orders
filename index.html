@@ -71,14 +71,13 @@ body{min-height:100vh}
 .app-header{
   background:url('./header.png') center/cover no-repeat #0D0D0D;
   height:210px;
-  position:sticky;top:0;z-index:100;
   display:flex;align-items:flex-start;justify-content:space-between;
   padding:10px 14px;
   border-bottom:none;
+  width:100%;
 }
 @media(min-width:480px){
-  /* On wider screens show more of the image by increasing height */
-  .app-header{height:260px;background-position:center center}
+  .app-header{height:260px}
 }
 .hdr-icon-btn{
   width:44px;height:44px;border:none;background:rgba(0,0,0,.25);
