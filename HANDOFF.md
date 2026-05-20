@@ -22,9 +22,7 @@ The app is fully functional and branded as **Stockr**. Core ordering, recall, cr
 - **PIN** — cross-device sync via Apps Script `PropertiesService`; change PIN UI in dashboard
 - **Branding** — Stockr name, dark theme (`#0D0D0D` + orange `#FF9F1A`), custom brand header image, splash screen, PWA manifest
 
-**Pending manual steps (not yet deployed):**
-- Several recent `stockr.js` changes need to be pasted into `Code.gs` and redeployed as a new version
-- The corrupt header row in the **Orders Summary** sheet needs to be manually deleted (row containing "Order ID" in column A, between ORD-0056 and ORD-0057)
+**All changes are fully deployed and live.** Backend redeployed and corrupt row deleted.
 
 ---
 
@@ -81,10 +79,8 @@ The app is fully functional and branded as **Stockr**. Core ordering, recall, cr
 
 ## 6. Next Step
 
-**Deploy the pending backend changes** — paste `stockr.js` into `Code.gs` in the Apps Script editor and redeploy with a new version. This activates:
-- Cross-device PIN sync (`get_pin` / `set_pin`)
-- Dashboard date filter fix (Date object handling)
-- Corrupt row filtering (`ORD-\d+` check)
-- WhatsApp-friendly separators (`-----`)
+Everything is deployed and clean. The next session can focus on new features or any issues that surface in live use. Likely candidates:
 
-Then **delete the corrupt header row** from the Orders Summary sheet (the row with "Order ID" in column A between ORD-0056 and ORD-0057) to clean up the monthly trend chart permanently.
+- Further WhatsApp message formatting improvements based on real-world feedback
+- Any edge cases in the recall / credit flows found during daily use
+- Performance or UX improvements to the manager dashboard
