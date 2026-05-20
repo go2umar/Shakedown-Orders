@@ -36,7 +36,7 @@ function doGet(e) {
   return handleProductsGet(e);
 }
 
-// ── Products handler (original logic) ───────────────────────────────
+// ── Products handler (original logic) ---------------------──────────
 function handleProductsGet(e) {
   try {
     const ss      = SpreadsheetApp.getActiveSpreadsheet();
@@ -665,7 +665,7 @@ function doPost(e) {
     logWs.getRange(logWs.getLastRow() + 1, 1, logRows.length, cols).setValues(logRows);
     siteWs.getRange(siteWs.getLastRow() + 1, 1, logRows.length, cols).setValues(logRows);
 
-    // ── One summary row per order ──────────────────────────────────────
+    // ── One summary row per order ---------------------─────────────────
     const summaryWs  = getOrCreateSummarySheet(ss);
     const totalValue = allItems.reduce((sum, i) => sum + i.total, 0);
     const sumRow     = [[
@@ -760,7 +760,7 @@ function buildTelegramText(site, items, notes, deliveryDate, orderId, timeStr, l
   if (label.includes('ADDITION')) msg += `*+ ADDITION*\n`;
   msg += `Ref: ${orderId} | ${timeStr}\n`;
   if (deliveryDate) msg += `Delivery: ${deliveryDate}\n`;
-  msg += `─────────────────────\n`;
+  msg += `---------------------\n`;
   const hasCategories = items.some(i => i.category);
   if (hasCategories) {
     const catMap = {};
@@ -786,7 +786,7 @@ function buildTelegramText(site, items, notes, deliveryDate, orderId, timeStr, l
       msg += `• ${it.name}  —  ${q} ${pluraliseUnit(it.unit, it.qty)}${it.note ? `  (${it.note})` : ''}\n`;
     });
   }
-  msg += `─────────────────────`;
+  msg += `---------------------`;
   if (notes) msg += `\n📝 Notes: ${notes}`;
   return msg;
 }
@@ -1548,7 +1548,7 @@ function migrateHistoricalData() {
     siteRows[site].push([timeStr, site, itemName, unit, qty, supplier, price, total, notes, delivDate, tgStatus, orderIdStr, dateOnly, monthYear]);
   }
 
-  // ── Rebuild Orders Summary ──────────────────────────────────────
+  // ── Rebuild Orders Summary ---------------------─────────────────
   let sumWs = ss.getSheetByName('Orders Summary');
   if (!sumWs) {
     sumWs = ss.insertSheet('Orders Summary');
@@ -1579,7 +1579,7 @@ function migrateHistoricalData() {
   }
   Logger.log('Orders Summary: ' + summaryRows.length + ' orders written.');
 
-  // ── Rebuild site-specific sheets ────────────────────────────────
+  // ── Rebuild site-specific sheets ---------------------───────────
   ALL_SITES.forEach(site => {
     const rows = siteRows[site];
     let sheet  = ss.getSheetByName(site);
