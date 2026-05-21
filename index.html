@@ -3839,7 +3839,7 @@ function renderOrderItems(orderId, site, items, container) {
 
   // ── Add Item — appears above the confirm button so it's always visible ───
   const addSection = document.createElement('div');
-  addSection.style.cssText = 'border-top:1px solid #F2F2F7';
+  addSection.style.cssText = 'border-top:1px solid #F2F2F7;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.05);margin-top:8px';
 
   const addHdr = document.createElement('div');
   addHdr.style.cssText = 'padding:12px 16px 4px;font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--text-tertiary)';
