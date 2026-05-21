@@ -3616,6 +3616,82 @@ function renderOrderItems(orderId, site, items, container) {
   const displayItems = isRecall ? items.filter(i => !i.removed && i.qty > 0) : items;
 
   const wrap  = document.createElement('div'); wrap.style.cssText = 'overflow-x:auto;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.05)';
+
+  // ── Delivery date bar (manager view only) ────────────────────────
+  if (!isRecall && items[0]) {
+    const metaBar = document.createElement('div');
+    metaBar.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);background:#FAFAFA;flex-wrap:wrap;border-radius:var(--radius) var(--radius) 0 0';
+
+    const dateLabel = document.createElement('span');
+    dateLabel.style.cssText = 'font-size:13px;color:var(--text-secondary);flex:1';
+    dateLabel.innerHTML = '🗓 Delivery: <strong style="color:var(--text-primary)">' + (items[0].delivDate || '—') + '</strong>';
+
+    const editBtn = document.createElement('button');
+    editBtn.style.cssText = 'padding:4px 12px;background:var(--bg);border:1.5px solid var(--border-strong);border-radius:var(--radius-xs);font-family:var(--font);font-size:11px;font-weight:600;color:var(--text-secondary);cursor:pointer;flex-shrink:0';
+    editBtn.textContent = '✏ Change date';
+
+    const editForm = document.createElement('div');
+    editForm.style.cssText = 'display:none;align-items:center;gap:8px;width:100%;flex-wrap:wrap;padding-top:8px';
+
+    // Convert dd/MM/yyyy → yyyy-MM-dd for the date input
+    const rawDate = items[0].delivDate || '';
+    const dp = rawDate.split('/');
+    const isoDate = dp.length === 3 ? dp[2]+'-'+dp[1]+'-'+dp[0] : '';
+
+    const dateIn = document.createElement('input');
+    dateIn.type = 'date'; dateIn.value = isoDate;
+    dateIn.style.cssText = 'padding:7px 10px;border:1.5px solid var(--border-strong);border-radius:var(--radius-xs);font-family:var(--font);font-size:13px;color:var(--text-primary);background:var(--surface);outline:none;flex:1;min-width:140px';
+    dateIn.onfocus = () => dateIn.style.borderColor = 'var(--brand)';
+    dateIn.onblur  = () => dateIn.style.borderColor = 'var(--border-strong)';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.style.cssText = 'padding:7px 16px;background:var(--brand);color:#fff;border:none;border-radius:var(--radius-xs);font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0';
+    saveBtn.textContent = 'Save';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.style.cssText = 'padding:7px 12px;background:none;border:1.5px solid var(--border-strong);border-radius:var(--radius-xs);font-family:var(--font);font-size:12px;color:var(--text-secondary);cursor:pointer;flex-shrink:0';
+    cancelBtn.textContent = 'Cancel';
+
+    editBtn.onclick = () => {
+      editForm.style.display = 'flex';
+      editBtn.style.display = 'none';
+    };
+    cancelBtn.onclick = () => {
+      editForm.style.display = 'none';
+      editBtn.style.display = '';
+    };
+    saveBtn.onclick = async () => {
+      const val = dateIn.value;
+      if (!val) { dateIn.focus(); return; }
+      saveBtn.textContent = 'Saving…'; saveBtn.disabled = true;
+      try {
+        const res = await fetch(SCRIPT_URL, {
+          method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'data=' + encodeURIComponent(JSON.stringify({ action: 'change_delivery_date', orderId, delivDate: val }))
+        });
+        const d = await res.json();
+        if (d.ok) {
+          const parts = val.split('-');
+          const fmt = parts[2]+'/'+parts[1]+'/'+parts[0];
+          dateLabel.innerHTML = '🗓 Delivery: <strong style="color:var(--text-primary)">' + fmt + '</strong>';
+          editForm.style.display = 'none';
+          editBtn.style.display = '';
+          saveBtn.textContent = 'Save'; saveBtn.disabled = false;
+        } else {
+          alert('Error: ' + (d.error || 'Could not change date.'));
+          saveBtn.textContent = 'Save'; saveBtn.disabled = false;
+        }
+      } catch(e) {
+        alert('Connection error.');
+        saveBtn.textContent = 'Save'; saveBtn.disabled = false;
+      }
+    };
+
+    editForm.appendChild(dateIn); editForm.appendChild(saveBtn); editForm.appendChild(cancelBtn);
+    metaBar.appendChild(dateLabel); metaBar.appendChild(editBtn); metaBar.appendChild(editForm);
+    wrap.appendChild(metaBar);
+  }
+
   const table = document.createElement('table'); table.className = 'order-items-table';
   const colHdr = isRecall
     ? '<th>Item</th><th>Qty</th><th>Unit</th><th>Price (£)</th><th>Total (£)</th><th>Action</th>'
