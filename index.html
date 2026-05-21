@@ -3615,7 +3615,7 @@ function renderOrderItems(orderId, site, items, container) {
   // Staff recall view: hide removed items (qty=0). Manager view: show all with badges.
   const displayItems = isRecall ? items.filter(i => !i.removed && i.qty > 0) : items;
 
-  const wrap  = document.createElement('div'); wrap.style.overflowX = 'auto';
+  const wrap  = document.createElement('div'); wrap.style.cssText = 'overflow-x:auto;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.05)';
   const table = document.createElement('table'); table.className = 'order-items-table';
   const colHdr = isRecall
     ? '<th>Item</th><th>Qty</th><th>Unit</th><th>Price (£)</th><th>Total (£)</th><th>Action</th>'
