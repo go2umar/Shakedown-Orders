@@ -3892,9 +3892,9 @@ function renderOrderItems(orderId, site, items, container) {
   // ── Recall & Resend (within 30 min only) ─────────────────────
   if (isWithin30Min(submitted)) {
     const recallBar = document.createElement('div');
-    recallBar.style.cssText = 'padding:14px 16px;background:#FFF8E7;border-top:1px solid #F5D58A;';
+    recallBar.style.cssText = 'padding:20px 20px;background:#FFF8E7;border-top:1px solid #F5D58A;border-radius:0 0 var(--radius) var(--radius);';
     const recallNote = document.createElement('div');
-    recallNote.style.cssText = 'font-size:12px;color:#B45309;font-weight:600;margin-bottom:8px';
+    recallNote.style.cssText = 'font-size:12px;color:#B45309;font-weight:600;margin-bottom:14px;line-height:1.5';
     recallNote.textContent = isRecall
       ? '⏱ Adjust quantities, remove items above, or search above to add new items — then confirm to resend to Telegram'
       : '⏱ Within 30 min — you can recall this order';
