@@ -3699,6 +3699,43 @@ function renderOrderItems(orderId, site, items, container) {
   table.innerHTML = '<thead><tr>' + colHdr + '</tr></thead>';
   const tbody = document.createElement('tbody');
 
+  // ── Staged credits — collected here, saved in one batch on Save ──
+  const stagedCredits = {}; // key: "name|price" → {itemName,qty,unit,price,reason}
+  const saveSection   = document.createElement('div');
+  saveSection.style.cssText = 'margin-top:8px';
+
+  const refreshSaveBtn = () => {
+    const credits = Object.values(stagedCredits);
+    saveSection.innerHTML = '';
+    if (!credits.length) return;
+    const saveBtn = document.createElement('button');
+    saveBtn.style.cssText = 'width:100%;padding:14px;background:#6366F1;color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,.35);transition:all .15s';
+    saveBtn.textContent = 'Save ' + credits.length + ' Credit' + (credits.length > 1 ? 's' : '') + ' & Update Telegram →';
+    saveBtn.onmouseenter = () => saveBtn.style.background = '#4F46E5';
+    saveBtn.onmouseleave = () => saveBtn.style.background = '#6366F1';
+    saveBtn.onclick = async () => {
+      saveBtn.textContent = 'Saving…'; saveBtn.disabled = true;
+      try {
+        const res = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+          body:'data='+encodeURIComponent(JSON.stringify({action:'batch_credit',site,orderRef:orderId,credits})) });
+        const d = await res.json();
+        if (d.ok) {
+          saveSection.innerHTML = '<div style="padding:12px 16px;background:#F0FBF5;border:1px solid var(--prep-border);border-radius:var(--radius);font-size:13px;font-weight:600;color:var(--prep)">✓ '
+            + credits.length + ' credit' + (credits.length > 1 ? 's' : '') + ' saved & Telegram updated</div>';
+        } else {
+          alert('Error: '+(d.error||'Could not save credits.'));
+          saveBtn.textContent = 'Save '+credits.length+' Credit'+(credits.length>1?'s':'')+' & Update Telegram →';
+          saveBtn.disabled = false;
+        }
+      } catch(e) {
+        alert('Connection error.');
+        saveBtn.textContent = 'Save '+credits.length+' Credit'+(credits.length>1?'s':'')+' & Update Telegram →';
+        saveBtn.disabled = false;
+      }
+    };
+    saveSection.appendChild(saveBtn);
+  };
+
   displayItems.forEach(item => {
     const tr = document.createElement('tr');
     tr.dataset.itemRow = item.name; // used by the filter search below
@@ -3862,19 +3899,19 @@ function renderOrderItems(orderId, site, items, container) {
       const reasonSel  = formDiv.querySelector('select');
       const otherInput = formDiv.querySelector('.credit-other-input');
       reasonSel.onchange = () => { otherInput.style.display = reasonSel.value === 'Other' ? 'block' : 'none'; if (reasonSel.value === 'Other') otherInput.focus(); };
-      formDiv.querySelector('.credit-inline-confirm').onclick = async () => {
+      formDiv.querySelector('.credit-inline-confirm').onclick = () => {
         const qty    = parseFloat(formDiv.querySelector('input[type=number]').value) || 0;
         const reason = reasonSel.value === 'Other' ? (otherInput.value.trim() || 'Other') : reasonSel.value;
         if (qty <= 0) { formDiv.querySelector('input').focus(); return; }
-        const confirmBtn = formDiv.querySelector('.credit-inline-confirm');
-        confirmBtn.textContent = 'Saving…'; confirmBtn.disabled = true;
-        try {
-          const res = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-            body:'data='+encodeURIComponent(JSON.stringify({action:'record_credit',site,orderRef:orderId,itemName:item.name,qty,unit:item.unit,price:item.price,reason})) });
-          const d = await res.json();
-          if (d.ok) { inlineForm.style.display='none'; tr.style.opacity='.4'; creditBtn.textContent='✓ Credited'; creditBtn.disabled=true; }
-          else { alert('Error: '+(d.error||'Could not record credit.')); confirmBtn.textContent='Confirm Credit'; confirmBtn.disabled=false; }
-        } catch(e) { alert('Connection error.'); confirmBtn.textContent='Confirm Credit'; confirmBtn.disabled=false; }
+        // Stage — no network call yet
+        const key = item.name + '|' + (parseFloat(item.price) || 0).toFixed(4);
+        stagedCredits[key] = { itemName: item.name, qty, unit: item.unit, price: item.price, reason };
+        inlineForm.style.display = 'none';
+        tr.style.opacity = '.5';
+        creditBtn.textContent = '⏳ ' + qty + ' staged';
+        creditBtn.style.cssText += ';background:#EEF2FF;color:#6366F1;border-color:#A5B4FC';
+        creditBtn.disabled = true;
+        refreshSaveBtn();
       };
       formDiv.querySelector('.credit-inline-cancel').onclick = () => { inlineForm.style.display = 'none'; };
       creditBtn.onclick = () => { inlineForm.style.display = inlineForm.style.display === 'none' ? 'table-row' : 'none'; };
@@ -3995,6 +4032,9 @@ function renderOrderItems(orderId, site, items, container) {
     recallBar.appendChild(recallNote); recallBar.appendChild(recallBtn);
     container.appendChild(recallBar);
   }
+
+  // Save section always appended last so it sits below everything
+  if (!isRecall) container.appendChild(saveSection);
 }
 
 function buildAddItemRow(product, nonRecallConfig) {
