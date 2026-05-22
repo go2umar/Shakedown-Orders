@@ -3693,9 +3693,8 @@ function renderOrderItems(orderId, site, items, container) {
   }
 
   const table = document.createElement('table'); table.className = 'order-items-table';
-  const colHdr = isRecall
-    ? '<th>Item</th><th>Qty</th><th>Unit</th><th>Price (£)</th><th>Total (£)</th><th>Action</th>'
-    : '<th>Item</th><th>Qty</th><th>Unit</th><th>Price (£)</th><th>Total (£)</th><th>Supplier</th><th>Action</th>';
+  const colHdr = '<th>Item</th><th>Qty</th><th>Unit</th><th>Price (£)</th><th>Total (£)</th><th>Action</th>';
+  const colCount = 6;
   table.innerHTML = '<thead><tr>' + colHdr + '</tr></thead>';
   const tbody = document.createElement('tbody');
 
@@ -3743,9 +3742,7 @@ function renderOrderItems(orderId, site, items, container) {
 
     // Base cells (same for all views)
     const isAddition = item.tgStatus && item.tgStatus.includes('recall addition');
-    const baseCells = isRecall
-      ? [item.name, item.qty, item.unit, '£'+item.price, '£'+item.total]
-      : [item.name, item.qty, item.unit, '£'+item.price, '£'+item.total, item.supplier||'—'];
+    const baseCells = [item.name, item.qty, item.unit, '£'+item.price, '£'+item.total];
     baseCells.forEach((c, idx) => {
       const td = document.createElement('td');
       td.textContent = c;
@@ -3786,7 +3783,7 @@ function renderOrderItems(orderId, site, items, container) {
           const inlineForm = document.createElement('tr');
           inlineForm.style.display = 'none';
           inlineForm.dataset.formRow = item.name;
-          const formTd = document.createElement('td'); formTd.colSpan = 7; formTd.style.padding = '0';
+          const formTd = document.createElement('td'); formTd.colSpan = colCount; formTd.style.padding = '0';
           const formDiv = document.createElement('div'); formDiv.className = 'credit-inline-form open';
           formDiv.innerHTML = `
             <div class="cif-title">Credit: ${item.name}</div>
@@ -3838,12 +3835,49 @@ function renderOrderItems(orderId, site, items, container) {
       }
 
     } else if (item.fullyCredited) {
-      // ── Fully credited — just show badge, no further action ──────
+      // ── Fully credited — badge + Reverse Credit button ───────────
       const badge = document.createElement('span');
-      badge.style.cssText = 'font-size:11px;font-weight:700;color:var(--prep);background:var(--prep-bg);padding:3px 8px;border-radius:6px;border:1px solid var(--prep-border);white-space:nowrap';
-      badge.textContent = '✓ Item Credited';
+      badge.style.cssText = 'display:block;font-size:11px;font-weight:700;color:var(--prep);background:var(--prep-bg);padding:3px 8px;border-radius:6px;border:1px solid var(--prep-border);white-space:nowrap;margin-bottom:5px';
+      badge.textContent = '✓ Credited';
       actionTd.appendChild(badge);
       tr.style.opacity = '.5';
+      const reverseBtn = document.createElement('button');
+      reverseBtn.className = 'credit-item-btn';
+      reverseBtn.style.cssText = 'display:block;width:100%;background:#FEF2F2;color:var(--brand);border-color:#FBBCBC';
+      reverseBtn.textContent = '↩ Reverse';
+      const reverseForm = document.createElement('tr');
+      reverseForm.style.display = 'none';
+      reverseForm.dataset.formRow = item.name;
+      const reverseTd = document.createElement('td'); reverseTd.colSpan = colCount; reverseTd.style.padding = '0';
+      const reverseDiv = document.createElement('div'); reverseDiv.className = 'credit-inline-form open';
+      reverseDiv.style.cssText = 'background:#FEF9F9;border-top:1px solid #FBBCBC';
+      reverseDiv.innerHTML = `
+        <div class="cif-title" style="color:var(--brand)">Reverse credit: ${item.name}</div>
+        <div class="cif-inputs"><label style="color:var(--brand)">This will restore the item and update Telegram</label></div>
+        <div class="cif-btns">
+          <button class="credit-inline-confirm" style="background:var(--brand)">Confirm Reverse</button>
+          <button class="credit-inline-cancel">Cancel</button>
+        </div>`;
+      reverseDiv.querySelector('.credit-inline-confirm').onclick = async () => {
+        const confirmBtn = reverseDiv.querySelector('.credit-inline-confirm');
+        confirmBtn.textContent = 'Reversing…'; confirmBtn.disabled = true;
+        try {
+          const res = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+            body:'data='+encodeURIComponent(JSON.stringify({action:'reverse_credit',site,orderRef:orderId,itemName:item.name,price:item.price})) });
+          const d = await res.json();
+          if (d.ok) {
+            reverseForm.style.display = 'none'; tr.style.opacity = '';
+            badge.remove(); reverseBtn.textContent = '✓ Reversed'; reverseBtn.disabled = true;
+            reverseBtn.style.background = 'var(--prep-bg)'; reverseBtn.style.color = 'var(--prep)'; reverseBtn.style.borderColor = 'var(--prep-border)';
+          } else { alert('Error: '+(d.error||'Could not reverse credit.')); confirmBtn.textContent='Confirm Reverse'; confirmBtn.disabled=false; }
+        } catch(e) { alert('Connection error.'); confirmBtn.textContent='Confirm Reverse'; confirmBtn.disabled=false; }
+      };
+      reverseDiv.querySelector('.credit-inline-cancel').onclick = () => { reverseForm.style.display = 'none'; };
+      reverseBtn.onclick = () => { reverseForm.style.display = reverseForm.style.display === 'none' ? 'table-row' : 'none'; };
+      actionTd.appendChild(reverseBtn); tr.appendChild(actionTd);
+      reverseTd.appendChild(reverseDiv); reverseForm.appendChild(reverseTd);
+      tbody.appendChild(tr); tbody.appendChild(reverseForm);
+      return;
 
     } else if (isRecall) {
       // ── Recall/staff view — qty input + remove ───────────────────
@@ -3878,7 +3912,7 @@ function renderOrderItems(orderId, site, items, container) {
       const creditForm = document.createElement('tr');
       creditForm.style.display = 'none';
       creditForm.dataset.formRow = item.name;
-      const creditTd = document.createElement('td'); creditTd.colSpan = 7; creditTd.style.padding = '0';
+      const creditTd = document.createElement('td'); creditTd.colSpan = colCount; creditTd.style.padding = '0';
       const creditDiv = document.createElement('div'); creditDiv.className = 'credit-inline-form open';
       const maxQ = item.creditedQty > 0 ? netQty : item.qty;
       creditDiv.innerHTML = `
@@ -3937,22 +3971,22 @@ function renderOrderItems(orderId, site, items, container) {
       // ── Change Qty button + immediate form ───────────────────────
       const changeQtyBtn = document.createElement('button');
       changeQtyBtn.className = 'credit-item-btn';
-      changeQtyBtn.style.cssText = 'background:#EEF2FF;color:#6366F1;border-color:#A5B4FC;margin-left:5px';
+      changeQtyBtn.style.cssText = 'display:block;width:100%;margin-top:5px';
       changeQtyBtn.textContent = 'Change Qty';
+      creditBtn.style.cssText = 'display:block;width:100%';
       const changeQtyForm = document.createElement('tr');
       changeQtyForm.style.display = 'none';
       changeQtyForm.dataset.formRow = item.name;
-      const changeQtyTd = document.createElement('td'); changeQtyTd.colSpan = 7; changeQtyTd.style.padding = '0';
+      const changeQtyTd = document.createElement('td'); changeQtyTd.colSpan = colCount; changeQtyTd.style.padding = '0';
       const changeQtyDiv = document.createElement('div'); changeQtyDiv.className = 'credit-inline-form open';
-      changeQtyDiv.style.cssText = 'background:#EEF2FF;border-top:1px solid #A5B4FC';
       changeQtyDiv.innerHTML = `
-        <div class="cif-title" style="color:#6366F1">Change qty: ${item.name}</div>
+        <div class="cif-title">Change qty: ${item.name}</div>
         <div class="cif-inputs">
-          <label style="color:#6366F1">New qty</label>
+          <label>New qty</label>
           <input type="number" class="credit-inline-input" style="width:70px" value="${netQty}" min="0.5" step="0.5">
         </div>
         <div class="cif-btns">
-          <button class="credit-inline-confirm" style="background:#6366F1">Confirm</button>
+          <button class="credit-inline-confirm">Confirm</button>
           <button class="credit-inline-cancel">Cancel</button>
         </div>`;
       changeQtyDiv.querySelector('.credit-inline-confirm').onclick = async () => {
