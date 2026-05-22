@@ -3833,16 +3833,18 @@ function renderOrderItems(orderId, site, items, container) {
       actionTd.appendChild(qtyInp); actionTd.appendChild(removeBtn);
 
     } else {
-      // ── Manager view — credit button + inline form ────────────────
+      // ── Manager view — Credit + Add Qty buttons with inline forms ──
+
+      // ── Credit button & form ──────────────────────────────────────
       const creditBtn = document.createElement('button');
       creditBtn.className = 'credit-item-btn'; creditBtn.textContent = 'Credit';
-      const inlineForm = document.createElement('tr');
-      inlineForm.style.display = 'none';
-      inlineForm.dataset.formRow = item.name; // separate attr so filter doesn't touch it
-      const formTd = document.createElement('td'); formTd.colSpan = 7; formTd.style.padding = '0';
-      const formDiv = document.createElement('div'); formDiv.className = 'credit-inline-form open';
+      const creditForm = document.createElement('tr');
+      creditForm.style.display = 'none';
+      creditForm.dataset.formRow = item.name;
+      const creditFormTd = document.createElement('td'); creditFormTd.colSpan = 7; creditFormTd.style.padding = '0';
+      const creditDiv = document.createElement('div'); creditDiv.className = 'credit-inline-form open';
       const maxQ = item.creditedQty > 0 ? netQty : item.qty;
-      formDiv.innerHTML = `
+      creditDiv.innerHTML = `
         <div class="cif-title">Crediting: ${item.name}</div>
         <div class="cif-inputs">
           <label>Qty</label>
@@ -3859,28 +3861,80 @@ function renderOrderItems(orderId, site, items, container) {
           <button class="credit-inline-confirm">Confirm Credit</button>
           <button class="credit-inline-cancel">Cancel</button>
         </div>`;
-      const reasonSel  = formDiv.querySelector('select');
-      const otherInput = formDiv.querySelector('.credit-other-input');
+      const reasonSel  = creditDiv.querySelector('select');
+      const otherInput = creditDiv.querySelector('.credit-other-input');
       reasonSel.onchange = () => { otherInput.style.display = reasonSel.value === 'Other' ? 'block' : 'none'; if (reasonSel.value === 'Other') otherInput.focus(); };
-      formDiv.querySelector('.credit-inline-confirm').onclick = async () => {
-        const qty    = parseFloat(formDiv.querySelector('input[type=number]').value) || 0;
+      creditDiv.querySelector('.credit-inline-confirm').onclick = async () => {
+        const qty    = parseFloat(creditDiv.querySelector('input[type=number]').value) || 0;
         const reason = reasonSel.value === 'Other' ? (otherInput.value.trim() || 'Other') : reasonSel.value;
-        if (qty <= 0) { formDiv.querySelector('input').focus(); return; }
-        const confirmBtn = formDiv.querySelector('.credit-inline-confirm');
+        if (qty <= 0) { creditDiv.querySelector('input').focus(); return; }
+        const confirmBtn = creditDiv.querySelector('.credit-inline-confirm');
         confirmBtn.textContent = 'Saving…'; confirmBtn.disabled = true;
         try {
           const res = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
             body:'data='+encodeURIComponent(JSON.stringify({action:'record_credit',site,orderRef:orderId,itemName:item.name,qty,unit:item.unit,price:item.price,reason})) });
           const d = await res.json();
-          if (d.ok) { inlineForm.style.display='none'; tr.style.opacity='.4'; creditBtn.textContent='✓ Credited'; creditBtn.disabled=true; }
+          if (d.ok) { creditForm.style.display='none'; tr.style.opacity='.4'; creditBtn.textContent='✓ Credited'; creditBtn.disabled=true; }
           else { alert('Error: '+(d.error||'Could not record credit.')); confirmBtn.textContent='Confirm Credit'; confirmBtn.disabled=false; }
         } catch(e) { alert('Connection error.'); confirmBtn.textContent='Confirm Credit'; confirmBtn.disabled=false; }
       };
-      formDiv.querySelector('.credit-inline-cancel').onclick = () => { inlineForm.style.display = 'none'; };
-      creditBtn.onclick = () => { inlineForm.style.display = inlineForm.style.display === 'none' ? 'table-row' : 'none'; };
-      actionTd.appendChild(creditBtn); tr.appendChild(actionTd);
-      formTd.appendChild(formDiv); inlineForm.appendChild(formTd);
-      tbody.appendChild(tr); tbody.appendChild(inlineForm);
+      creditDiv.querySelector('.credit-inline-cancel').onclick = () => { creditForm.style.display = 'none'; };
+      creditBtn.onclick = () => {
+        addQtyForm.style.display = 'none';
+        creditForm.style.display = creditForm.style.display === 'none' ? 'table-row' : 'none';
+      };
+
+      // ── Add Qty button & form ─────────────────────────────────────
+      const addQtyBtn = document.createElement('button');
+      addQtyBtn.className = 'credit-item-btn';
+      addQtyBtn.style.cssText = 'background:#EEF2FF;color:#6366F1;border-color:#A5B4FC;margin-left:5px';
+      addQtyBtn.textContent = '+ Qty';
+      const addQtyForm = document.createElement('tr');
+      addQtyForm.style.display = 'none';
+      addQtyForm.dataset.formRow = item.name;
+      const addQtyTd = document.createElement('td'); addQtyTd.colSpan = 7; addQtyTd.style.padding = '0';
+      const addQtyDiv = document.createElement('div'); addQtyDiv.className = 'credit-inline-form open';
+      addQtyDiv.style.cssText = 'background:#EEF2FF;border-top:1px solid #A5B4FC';
+      addQtyDiv.innerHTML = `
+        <div class="cif-title" style="color:#6366F1">Add qty: ${item.name}</div>
+        <div class="cif-inputs">
+          <label style="color:#6366F1">Extra qty</label>
+          <input type="number" class="credit-inline-input" style="width:70px" min="0.5" step="0.5" placeholder="0">
+        </div>
+        <div class="cif-btns">
+          <button class="credit-inline-confirm" style="background:#6366F1">Confirm</button>
+          <button class="credit-inline-cancel">Cancel</button>
+        </div>`;
+      addQtyDiv.querySelector('.credit-inline-confirm').onclick = async () => {
+        const addQty = parseFloat(addQtyDiv.querySelector('input[type=number]').value) || 0;
+        if (addQty <= 0) { addQtyDiv.querySelector('input').focus(); return; }
+        const confirmBtn = addQtyDiv.querySelector('.credit-inline-confirm');
+        confirmBtn.textContent = 'Saving…'; confirmBtn.disabled = true;
+        try {
+          const res = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+            body:'data='+encodeURIComponent(JSON.stringify({action:'increase_qty',site,orderRef:orderId,itemName:item.name,addQty,unit:item.unit,price:item.price})) });
+          const d = await res.json();
+          if (d.ok) {
+            addQtyForm.style.display = 'none';
+            // Update qty + total cells in the row
+            tr.cells[1].textContent = d.newQty;
+            tr.cells[4].textContent = '£' + d.newTotal;
+            item.qty = d.newQty;
+            addQtyBtn.textContent = '✓ Updated'; addQtyBtn.disabled = true;
+            confirmBtn.textContent = 'Confirm'; confirmBtn.disabled = false;
+          } else { alert('Error: '+(d.error||'Could not increase qty.')); confirmBtn.textContent='Confirm'; confirmBtn.disabled=false; }
+        } catch(e) { alert('Connection error.'); confirmBtn.textContent='Confirm'; confirmBtn.disabled=false; }
+      };
+      addQtyDiv.querySelector('.credit-inline-cancel').onclick = () => { addQtyForm.style.display = 'none'; };
+      addQtyBtn.onclick = () => {
+        creditForm.style.display = 'none';
+        addQtyForm.style.display = addQtyForm.style.display === 'none' ? 'table-row' : 'none';
+      };
+
+      actionTd.appendChild(creditBtn); actionTd.appendChild(addQtyBtn); tr.appendChild(actionTd);
+      creditFormTd.appendChild(creditDiv); creditForm.appendChild(creditFormTd);
+      addQtyTd.appendChild(addQtyDiv); addQtyForm.appendChild(addQtyTd);
+      tbody.appendChild(tr); tbody.appendChild(creditForm); tbody.appendChild(addQtyForm);
       return; // skip the tr.appendChild(actionTd) below
     }
 
