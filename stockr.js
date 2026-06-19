@@ -171,13 +171,18 @@ function handleDashboardGet(e) {
     }
     orders.sort((a,b) => b.submitted.localeCompare(a.submitted));
 
+    // Parse col M (index 12) — written as dd/MM/yyyy string but Sheets may read it back as a Date object
+    const parseLogDate = raw => raw instanceof Date
+      ? new Date(raw.getFullYear(), raw.getMonth(), raw.getDate())
+      : parseDDMMYYYY((raw || '').toString().trim());
+
     const logData = logWs ? logWs.getDataRange().getValues() : [];
     const itemTotals = {}, itemSpend = {};
     for (let i = 1; i < logData.length; i++) {
       const row     = logData[i];
       const rowSite = (row[1] || '').toString().trim();
       if (site && rowSite !== site) continue;
-      const rowDate = parseDDMMYYYY((row[12] || '').toString());
+      const rowDate = parseLogDate(row[12]);
       if (fromDate && rowDate && rowDate < fromDate) continue;
       if (toDate   && rowDate && rowDate > toDate)   continue;
       const name  = (row[2] || '').toString().trim();
@@ -238,7 +243,7 @@ function handleDashboardGet(e) {
       const row     = logData[i];
       const rowSite = (row[1] || '').toString().trim();
       if (site && rowSite !== site) continue;
-      const rowDate = parseDDMMYYYY((row[12] || '').toString());
+      const rowDate = parseLogDate(row[12]);
       if (fromDate && rowDate && rowDate < fromDate) continue;
       if (toDate   && rowDate && rowDate > toDate)   continue;
       const sup   = (row[5]  || '').toString().trim() || 'Unknown';
