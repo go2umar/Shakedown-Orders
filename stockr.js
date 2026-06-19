@@ -309,13 +309,23 @@ function handleDashboardGet(e) {
                      qty: r[4], unit: r[5], price: r[6], total: r[7], reason: r[8] });
     }
 
+    // All unique categories from Price List + overrides, in standard order then alpha, Other last
+    const allCatSet = new Set(Object.values(catLookupDash));
+    allCatSet.add('Other');
+    const catOrderBase = ['Raw','Sauces','Potted Sauces','Fresh','Frozen','BOH','Packaging'];
+    const categories = [
+      ...catOrderBase.filter(c => allCatSet.has(c)),
+      ...[...allCatSet].filter(c => !catOrderBase.includes(c) && c !== 'Other').sort(),
+      'Other'
+    ];
+
     const json = JSON.stringify({
       ok:true, site:site||'all', days,
       stats:{ orders:totalOrders, items:totalItems, value:Math.round(totalValue*100)/100,
               avg: totalOrders ? Math.round((totalItems/totalOrders)*10)/10 : 0 },
       bySite, byMonth:byMonthArr, bySupplier,
       orders:orders.slice(0,150), totalCount:orders.length,
-      failures, topItems, credits, unpriced, byMonthBySite, itemBreakdown
+      failures, topItems, credits, unpriced, byMonthBySite, itemBreakdown, categories
     });
     const cb = params.callback;
     if (cb) return ContentService.createTextOutput(cb+'('+json+')').setMimeType(ContentService.MimeType.JAVASCRIPT);
