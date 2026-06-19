@@ -187,26 +187,28 @@ function handleDashboardGet(e) {
       itemTotals[name] = (itemTotals[name] || 0) + qty;
       itemSpend[name]  = Math.round(((itemSpend[name] || 0) + total) * 100) / 100;
     }
-    // Build VAT lookup from Price List (col J = index 9)
-    const vatLookup = {};
+    // Build VAT and category lookup from Price List (col J = index 9, col H = index 7)
+    const vatLookup = {}, catLookupDash = {};
     const priceWsDash = ss.getSheetByName('Price List');
     if (priceWsDash) {
       const prRowsDash = priceWsDash.getDataRange().getValues();
       for (let i = 3; i < prRowsDash.length; i++) {
         const n = (prRowsDash[i][0] || '').toString().trim();
         if (!n || n.startsWith('KEY')) continue;
-        vatLookup[n] = (prRowsDash[i][9] || '').toString().trim();
+        vatLookup[n]     = (prRowsDash[i][9] || '').toString().trim();
+        catLookupDash[n] = (prRowsDash[i][7] || '').toString().trim() || 'Other';
       }
     }
 
-    // All items in period with VAT — sorted alphabetically for the cost breakdown table
+    // All items in period with VAT and category — for the cost breakdown table
     const itemBreakdown = Object.entries(itemTotals)
       .sort((a,b) => a[0].localeCompare(b[0]))
       .map(([name, qty]) => {
-        const spend = Math.round((itemSpend[name] || 0) * 100) / 100;
-        const vat   = vatLookup[name] || '';
+        const spend    = Math.round((itemSpend[name] || 0) * 100) / 100;
+        const vat      = vatLookup[name] || '';
+        const category = catLookupDash[name] || 'Other';
         const totalCost = vat.includes('20%') ? Math.round(spend * 1.2 * 100) / 100 : spend;
-        return { name, qty: Math.round(qty * 10) / 10, spend, vat, totalCost };
+        return { name, qty: Math.round(qty * 10) / 10, spend, vat, totalCost, category };
       });
 
     // Include both qty and spend so the frontend can sort either way

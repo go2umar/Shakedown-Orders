@@ -4607,61 +4607,83 @@ function renderDashboard(data, siteFilter, from, to) {
     };
   }
 
-  // ── 5b. ITEM COST BREAKDOWN (with VAT) ────────────────────────
+  // ── 5b. ITEM COST BREAKDOWN (with VAT, categories, totals) ───
   if (data.itemBreakdown && data.itemBreakdown.length) {
+    const BD_CAT_ORDER = ['Raw','Sauces','Potted Sauces','Fresh','Frozen','BOH'];
     let bdCurrentSort = 'qty';
 
-    function getBdSorted() {
-      return data.itemBreakdown.slice().sort((a, b) => {
-        if (bdCurrentSort === 'cost')  return b.spend - a.spend;
-        if (bdCurrentSort === 'total') return b.totalCost - a.totalCost;
-        return b.qty - a.qty;
+    function groupBdByCat(rows) {
+      const groups = {};
+      rows.forEach(it => { const c = it.category||'Other'; if (!groups[c]) groups[c]=[]; groups[c].push(it); });
+      return Object.entries(groups).sort(([a],[b]) => {
+        const ai=BD_CAT_ORDER.indexOf(a), bi=BD_CAT_ORDER.indexOf(b);
+        if (ai!==-1&&bi!==-1) return ai-bi;
+        if (ai!==-1) return -1; if (bi!==-1) return 1;
+        return a.localeCompare(b);
       });
     }
 
-    // Title row
+    function bdCalcTotals(rows) {
+      const exVAT  = rows.reduce((s,it)=>s+it.spend,0);
+      const incVAT = rows.reduce((s,it)=>s+it.totalCost,0);
+      return { exVAT:Math.round(exVAT*100)/100, vat:Math.round((incVAT-exVAT)*100)/100, incVAT:Math.round(incVAT*100)/100 };
+    }
+
+    function bdFmt(n) { return '£'+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+    function getBdSorted() {
+      return data.itemBreakdown.slice().sort((a,b) => {
+        if (bdCurrentSort==='cost')  return b.spend-a.spend;
+        if (bdCurrentSort==='total') return b.totalCost-a.totalCost;
+        return b.qty-a.qty;
+      });
+    }
+
+    // ── Title + sort buttons
     const bdTitle = document.createElement('div');
     bdTitle.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin:20px 0 4px;padding-left:2px';
     const bdTitleEl = document.createElement('div');
     bdTitleEl.className = 'dash-section-title'; bdTitleEl.style.margin = '0';
     bdTitleEl.textContent = 'Item Cost Breakdown';
-    const bdToggleWrap = document.createElement('div');
-    bdToggleWrap.style.cssText = 'display:flex;gap:4px';
-    const bdBtnQty   = document.createElement('button');
-    const bdBtnCost  = document.createElement('button');
-    const bdBtnTotal = document.createElement('button');
-    [bdBtnQty, bdBtnCost, bdBtnTotal].forEach(b => {
-      b.style.cssText = 'padding:4px 10px;border-radius:20px;border:1.5px solid var(--border-strong);background:var(--bg);font-family:var(--font);font-size:11px;font-weight:600;color:var(--text-secondary);cursor:pointer;transition:all .15s';
-    });
-    bdBtnQty.textContent = 'By Qty'; bdBtnCost.textContent = 'By Cost'; bdBtnTotal.textContent = 'By Total';
-    bdBtnQty.style.background = '#6366F1'; bdBtnQty.style.borderColor = '#6366F1'; bdBtnQty.style.color = '#fff';
-    bdToggleWrap.append(bdBtnQty, bdBtnCost, bdBtnTotal);
+    const bdToggleWrap = document.createElement('div'); bdToggleWrap.style.cssText = 'display:flex;gap:4px';
+    const bdBtnQty=document.createElement('button'), bdBtnCost=document.createElement('button'), bdBtnTotal=document.createElement('button');
+    [bdBtnQty,bdBtnCost,bdBtnTotal].forEach(b=>{b.style.cssText='padding:4px 10px;border-radius:20px;border:1.5px solid var(--border-strong);background:var(--bg);font-family:var(--font);font-size:11px;font-weight:600;color:var(--text-secondary);cursor:pointer;transition:all .15s'});
+    bdBtnQty.textContent='By Qty'; bdBtnCost.textContent='By Cost'; bdBtnTotal.textContent='By Total';
+    bdBtnQty.style.background='#6366F1'; bdBtnQty.style.borderColor='#6366F1'; bdBtnQty.style.color='#fff';
+    bdToggleWrap.append(bdBtnQty,bdBtnCost,bdBtnTotal);
     bdTitle.appendChild(bdTitleEl); bdTitle.appendChild(bdToggleWrap);
     body.appendChild(bdTitle);
 
-    // Export buttons row
+    // ── Export buttons
     const bdExportWrap = document.createElement('div');
     bdExportWrap.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;padding-left:2px';
 
-    function bdExportBtn(label, onclick) {
+    function mkBdExportBtn(label, fn) {
       const btn = document.createElement('button');
       btn.textContent = '↓ ' + label;
       btn.style.cssText = 'padding:4px 12px;border-radius:20px;border:1.5px solid var(--border-strong);background:var(--bg);font-family:var(--font);font-size:11px;font-weight:600;color:var(--text-secondary);cursor:pointer;transition:all .15s';
-      btn.onmouseenter = () => { btn.style.borderColor='var(--brand)'; btn.style.color='var(--brand)'; btn.style.background='var(--brand-light)'; };
-      btn.onmouseleave = () => { btn.style.borderColor='var(--border-strong)'; btn.style.color='var(--text-secondary)'; btn.style.background='var(--bg)'; };
-      btn.onclick = onclick;
-      return btn;
+      btn.onmouseenter=()=>{btn.style.borderColor='var(--brand)';btn.style.color='var(--brand)';btn.style.background='var(--brand-light)'};
+      btn.onmouseleave=()=>{btn.style.borderColor='var(--border-strong)';btn.style.color='var(--text-secondary)';btn.style.background='var(--bg)'};
+      btn.onclick = fn; return btn;
     }
 
     function bdCSV() {
       const rows = getBdSorted();
-      const lines = [['Item','Total Qty','Cost (£)','VAT','Total Cost (£)'].join(',')];
-      rows.forEach(it => lines.push([
-        '"' + it.name.replace(/"/g,'""') + '"', it.qty,
-        it.spend.toFixed(2),
-        '"' + (it.vat||'').replace(/"/g,'""') + '"',
-        it.totalCost.toFixed(2)
-      ].join(',')));
+      const groups = groupBdByCat(rows);
+      const t = bdCalcTotals(rows);
+      const q = s => '"' + String(s).replace(/"/g,'""') + '"';
+      const lines = [q('Item Cost Breakdown'), ''];
+      lines.push([q('Item'),q('Total Qty'),q('Cost (£)'),q('VAT'),q('Total Cost (£)')].join(','));
+      groups.forEach(([cat, items]) => {
+        const ct = bdCalcTotals(items);
+        lines.push(''); lines.push(q('=== ' + cat.toUpperCase() + ' ==='));
+        items.forEach(it => lines.push([q(it.name), it.qty, it.spend.toFixed(2), q(it.vat||'—'), it.totalCost.toFixed(2)].join(',')));
+        lines.push([q('Subtotal — '+cat),'',ct.exVAT.toFixed(2),'',ct.incVAT.toFixed(2)].join(','));
+      });
+      lines.push(''); lines.push(q('TOTALS'));
+      lines.push([q('Total Cost (ex VAT)'),'',t.exVAT.toFixed(2),'',''].join(','));
+      lines.push([q('Total VAT'),'','','',t.vat.toFixed(2)].join(','));
+      lines.push([q('Total Cost (inc VAT)'),'','','',t.incVAT.toFixed(2)].join(','));
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([lines.join('\n')], {type:'text/csv'}));
       a.download = 'item-cost-breakdown.csv'; a.click(); URL.revokeObjectURL(a.href);
@@ -4669,35 +4691,84 @@ function renderDashboard(data, siteFilter, from, to) {
 
     function bdExcel() {
       const rows = getBdSorted();
-      let html = '<table><thead><tr><th>Item</th><th>Total Qty</th><th>Cost (£)</th><th>VAT</th><th>Total Cost (£)</th></tr></thead><tbody>';
-      rows.forEach(it => { html += `<tr><td>${it.name}</td><td>${it.qty}</td><td>${it.spend.toFixed(2)}</td><td>${it.vat||''}</td><td>${it.totalCost.toFixed(2)}</td></tr>`; });
-      html += '</tbody></table>';
+      const groups = groupBdByCat(rows);
+      const t = bdCalcTotals(rows);
+      let h = `<html><head><meta charset="utf-8"><style>
+        body{font-family:Arial,sans-serif;font-size:12px}
+        table{border-collapse:collapse;width:100%}
+        th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}
+        .cat{background:#1a1a2e;color:#fff;font-weight:700;font-size:13px}
+        .col-hdr th{background:#f0f0f0;font-weight:700}
+        .sub td{background:#f5f5f5;font-weight:700;font-style:italic;border-top:2px solid #ccc}
+        .spacer td{border:none;padding:3px}
+        .tot-hdr td{background:#111;color:#fff;font-weight:700;font-size:13px}
+        .tot-row td{background:#fffbf0;font-weight:600}
+        .tot-final td{background:#FF9F1A;color:#fff;font-weight:700;font-size:13px}
+      </style></head><body>
+      <h2 style="font-family:Arial;margin-bottom:4px">Item Cost Breakdown</h2>
+      <p style="font-family:Arial;font-size:11px;color:#666;margin-bottom:14px">Generated ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</p>
+      <table>`;
+      groups.forEach(([cat, items]) => {
+        const ct = bdCalcTotals(items);
+        h += `<tr><td class="cat" colspan="5">${cat.toUpperCase()}</td></tr>`;
+        h += `<tr class="col-hdr"><th>Item</th><th>Total Qty</th><th>Cost (£)</th><th>VAT</th><th>Total Cost (£)</th></tr>`;
+        items.forEach(it => { h += `<tr><td>${it.name}</td><td>${it.qty}</td><td>${it.spend.toFixed(2)}</td><td>${it.vat||'—'}</td><td>${it.totalCost.toFixed(2)}</td></tr>`; });
+        h += `<tr class="sub"><td>Subtotal — ${cat}</td><td></td><td>${ct.exVAT.toFixed(2)}</td><td></td><td>${ct.incVAT.toFixed(2)}</td></tr>`;
+        h += `<tr class="spacer"><td colspan="5"></td></tr>`;
+      });
+      h += `<tr class="tot-hdr"><td colspan="5">TOTALS</td></tr>`;
+      h += `<tr class="tot-row"><td>Total Cost (ex VAT)</td><td></td><td>${t.exVAT.toFixed(2)}</td><td></td><td></td></tr>`;
+      h += `<tr class="tot-row"><td>Total VAT (20% on applicable items)</td><td></td><td></td><td></td><td>${t.vat.toFixed(2)}</td></tr>`;
+      h += `<tr class="tot-final"><td>Total Cost (inc VAT)</td><td></td><td></td><td></td><td>${t.incVAT.toFixed(2)}</td></tr>`;
+      h += `</table></body></html>`;
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([html], {type:'application/vnd.ms-excel'}));
+      a.href = URL.createObjectURL(new Blob([h], {type:'application/vnd.ms-excel'}));
       a.download = 'item-cost-breakdown.xls'; a.click(); URL.revokeObjectURL(a.href);
     }
 
     function bdPDF() {
       const rows = getBdSorted();
+      const groups = groupBdByCat(rows);
+      const t = bdCalcTotals(rows);
       let trs = '';
-      rows.forEach(it => { trs += `<tr><td>${it.name}</td><td>${it.qty}</td><td>£${it.spend.toFixed(2)}</td><td>${it.vat||'—'}</td><td>£${it.totalCost.toFixed(2)}</td></tr>`; });
-      const win = window.open('', '_blank');
-      win.document.write(`<!DOCTYPE html><html><head><title>Item Cost Breakdown</title>
-        <style>body{font-family:sans-serif;font-size:12px;padding:20px}h2{font-size:16px;margin-bottom:12px}
-        table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}
-        th{background:#f0f0f0;font-weight:700}tr:nth-child(even){background:#f9f9f9}
-        @media print{button{display:none}}</style></head>
-        <body><h2>Item Cost Breakdown</h2>
-        <table><thead><tr><th>Item</th><th>Total Qty</th><th>Cost (£)</th><th>VAT</th><th>Total Cost (£)</th></tr></thead>
-        <tbody>${trs}</tbody></table>
-        <script>window.onload=()=>window.print()<\/script></body></html>`);
+      groups.forEach(([cat, items]) => {
+        const ct = bdCalcTotals(items);
+        trs += `<tr class="cat-hdr"><td colspan="5">${cat.toUpperCase()}</td></tr>`;
+        trs += `<tr class="col-hdr"><th>Item</th><th>Qty</th><th>Cost (£)</th><th>VAT</th><th>Total Cost (£)</th></tr>`;
+        items.forEach(it => { trs += `<tr><td>${it.name}</td><td>${it.qty}</td><td>£${it.spend.toFixed(2)}</td><td>${it.vat||'—'}</td><td>£${it.totalCost.toFixed(2)}</td></tr>`; });
+        trs += `<tr class="subtotal"><td><em>Subtotal — ${cat}</em></td><td></td><td>£${ct.exVAT.toFixed(2)}</td><td></td><td>£${ct.incVAT.toFixed(2)}</td></tr>`;
+        trs += `<tr class="spacer"><td colspan="5"></td></tr>`;
+      });
+      trs += `<tr class="tot-hdr"><td colspan="5">TOTALS</td></tr>`;
+      trs += `<tr class="tot-ex"><td>Total Cost (ex VAT)</td><td></td><td>£${t.exVAT.toFixed(2)}</td><td></td><td></td></tr>`;
+      trs += `<tr class="tot-vat"><td>Total VAT (20% on applicable items)</td><td></td><td></td><td></td><td>£${t.vat.toFixed(2)}</td></tr>`;
+      trs += `<tr class="tot-final"><td>Total Cost (inc VAT)</td><td></td><td></td><td></td><td>£${t.incVAT.toFixed(2)}</td></tr>`;
+      const win = window.open('','_blank');
+      win.document.write(`<!DOCTYPE html><html><head><title>Item Cost Breakdown</title><style>
+        body{font-family:Arial,sans-serif;font-size:11px;padding:24px;color:#111}
+        h2{font-size:18px;margin-bottom:2px} .sub-h{font-size:11px;color:#666;margin-bottom:16px}
+        table{border-collapse:collapse;width:100%}
+        td,th{border:1px solid #ccc;padding:5px 8px;text-align:left}
+        .cat-hdr td{background:#1a1a2e;color:#fff;font-weight:700;font-size:12px;letter-spacing:.5px;border-color:#1a1a2e}
+        .col-hdr th{background:#f0f0f0;font-weight:700;font-size:11px}
+        .subtotal td{background:#f5f5f5;font-weight:700;font-style:italic;border-top:2px solid #ddd}
+        .spacer td{border:none;padding:5px;background:#fff}
+        .tot-hdr td{background:#111;color:#fff;font-weight:700;font-size:12px;letter-spacing:.5px;border-color:#111}
+        .tot-ex td,.tot-vat td{background:#fffbf0;font-weight:600}
+        .tot-final td{background:#FF9F1A;color:#fff;font-weight:700;font-size:13px;border-color:#e88f0a}
+        @media print{@page{margin:15mm}}
+      </style></head><body>
+      <h2>Item Cost Breakdown</h2>
+      <div class="sub-h">Generated ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div>
+      <table><tbody>${trs}</tbody></table>
+      <script>window.onload=()=>window.print()<\/script></body></html>`);
       win.document.close();
     }
 
-    bdExportWrap.append(bdExportBtn('CSV', bdCSV), bdExportBtn('Excel', bdExcel), bdExportBtn('PDF', bdPDF));
+    bdExportWrap.append(mkBdExportBtn('CSV',bdCSV), mkBdExportBtn('Excel',bdExcel), mkBdExportBtn('PDF',bdPDF));
     body.appendChild(bdExportWrap);
 
-    // Table card
+    // ── Table card
     const bdCard = mkCard('');
     const bdTableWrap = document.createElement('div'); bdTableWrap.className = 'dash-table-wrap';
     bdCard.appendChild(bdTableWrap);
@@ -4705,25 +4776,60 @@ function renderDashboard(data, siteFilter, from, to) {
 
     function renderBreakdownTable(sortBy) {
       bdCurrentSort = sortBy;
+      const rows = getBdSorted();
+      const groups = groupBdByCat(rows);
+      const t = bdCalcTotals(rows);
+      const table = document.createElement('table'); table.className = 'dash-table';
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th>Item</th><th>Total Qty</th><th>Cost (£)</th><th>VAT</th><th>Total Cost (£)</th></tr>';
+      table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+      groups.forEach(([cat, items]) => {
+        const ct = bdCalcTotals(items);
+        // Category header
+        const catTr = document.createElement('tr');
+        catTr.innerHTML = `<td colspan="5" style="background:#1a1a2e;color:#fff;font-weight:700;font-size:11px;letter-spacing:.6px;padding:8px 14px;text-transform:uppercase;border-color:#1a1a2e">${cat}</td>`;
+        tbody.appendChild(catTr);
+        // Item rows
+        items.forEach(it => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${it.name}</td><td>${it.qty}</td><td>${bdFmt(it.spend)}</td><td style="font-size:11px;color:var(--text-secondary)">${it.vat||'—'}</td><td><strong>${bdFmt(it.totalCost)}</strong></td>`;
+          tbody.appendChild(tr);
+        });
+        // Subtotal
+        const stTr = document.createElement('tr');
+        stTr.style.cssText = 'background:#fafafa;border-top:2px solid var(--border)';
+        stTr.innerHTML = `<td style="font-weight:700;font-style:italic;color:var(--text-secondary);font-size:12px">Subtotal — ${cat}</td><td></td><td style="font-weight:700">${bdFmt(ct.exVAT)}</td><td></td><td style="font-weight:700">${bdFmt(ct.incVAT)}</td>`;
+        tbody.appendChild(stTr);
+        // Spacer
+        const spacer = document.createElement('tr');
+        spacer.innerHTML = `<td colspan="5" style="border:none;padding:3px;background:var(--bg)"></td>`;
+        tbody.appendChild(spacer);
+      });
+      // Totals
+      const totHdr = document.createElement('tr');
+      totHdr.innerHTML = `<td colspan="5" style="background:#111;color:#fff;font-weight:700;letter-spacing:.6px;padding:8px 14px;text-transform:uppercase;font-size:11px;border-color:#111">Totals</td>`;
+      tbody.appendChild(totHdr);
+      [[`Total Cost (ex VAT)`,bdFmt(t.exVAT),2],[`Total VAT (20% on applicable items)`,'',4],[`Total Cost (inc VAT)`,'',4]].forEach(([label,val,col],i) => {
+        const vals = [label,'','','',''];
+        if (i===0) vals[2]=val; else if(i===1) vals[4]=bdFmt(t.vat); else vals[4]='<strong style="font-size:14px;color:#FF9F1A">'+bdFmt(t.incVAT)+'</strong>';
+        const tr = document.createElement('tr');
+        tr.style.background = i===2 ? '#fff4e0' : '#fffbf0';
+        tr.innerHTML = vals.map(v=>`<td>${v}</td>`).join('');
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
       bdTableWrap.innerHTML = '';
-      bdTableWrap.appendChild(mkTable(
-        ['Item', 'Total Qty', 'Cost (£)', 'VAT', 'Total Cost (£)'],
-        getBdSorted().map(it => [
-          it.name, it.qty,
-          '£' + it.spend.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2}),
-          it.vat || '—',
-          '<strong>£' + it.totalCost.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2}) + '</strong>'
-        ])
-      ));
+      bdTableWrap.appendChild(table);
     }
 
-    function bdSetActive(active) {
-      [bdBtnQty, bdBtnCost, bdBtnTotal].forEach(b => { b.style.background='var(--bg)'; b.style.borderColor='var(--border-strong)'; b.style.color='var(--text-secondary)'; });
-      active.style.background='#6366F1'; active.style.borderColor='#6366F1'; active.style.color='#fff';
+    function bdSetActive(b) {
+      [bdBtnQty,bdBtnCost,bdBtnTotal].forEach(x=>{x.style.background='var(--bg)';x.style.borderColor='var(--border-strong)';x.style.color='var(--text-secondary)'});
+      b.style.background='#6366F1'; b.style.borderColor='#6366F1'; b.style.color='#fff';
     }
-    bdBtnQty.onclick   = () => { renderBreakdownTable('qty');   bdSetActive(bdBtnQty);   };
-    bdBtnCost.onclick  = () => { renderBreakdownTable('cost');  bdSetActive(bdBtnCost);  };
-    bdBtnTotal.onclick = () => { renderBreakdownTable('total'); bdSetActive(bdBtnTotal); };
+    bdBtnQty.onclick   = ()=>{ renderBreakdownTable('qty');   bdSetActive(bdBtnQty);   };
+    bdBtnCost.onclick  = ()=>{ renderBreakdownTable('cost');  bdSetActive(bdBtnCost);  };
+    bdBtnTotal.onclick = ()=>{ renderBreakdownTable('total'); bdSetActive(bdBtnTotal); };
 
     renderBreakdownTable('qty');
   }
