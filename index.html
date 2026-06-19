@@ -4885,8 +4885,8 @@ function renderDashboard(data, siteFilter, from, to) {
               try {
                 const res = await fetch(SCRIPT_URL, {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ action: 'save_item_override', itemName: it.name, category: newCat, vat: newVat })
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  body: 'data=' + encodeURIComponent(JSON.stringify({ action: 'save_item_override', itemName: it.name, category: newCat, vat: newVat }))
                 });
                 const json = await res.json();
                 if (json.ok) {
