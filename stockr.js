@@ -2362,6 +2362,84 @@ function migrateHistoricalData() {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// SYNC ORDERS SUMMARY — run manually from the Apps Script editor to
+// bring all historical Orders Summary totals in line with the Order Log.
+//
+// How to run:
+//   1. Open Apps Script editor
+//   2. Select "syncOrdersSummary" from the function dropdown
+//   3. Click Run
+//   4. Check Logs (View → Logs) to see what was corrected
+//
+// Safe to run multiple times — skips rows that are already correct.
+// ════════════════════════════════════════════════════════════════════
+function syncOrdersSummary() {
+  const ss     = SpreadsheetApp.getActiveSpreadsheet();
+  const logWs  = ss.getSheetByName('Order Log');
+  const sumWs  = ss.getSheetByName('Orders Summary');
+  const credWs = ss.getSheetByName('Credits');
+
+  if (!logWs || !sumWs) {
+    Logger.log('ERROR: Order Log or Orders Summary sheet not found.');
+    return;
+  }
+
+  // Step 1 — Sum Order Log totals per order (active rows only, qty > 0)
+  const logTotals = {};
+  const logData   = logWs.getDataRange().getValues();
+  for (let i = 1; i < logData.length; i++) {
+    const row     = logData[i];
+    const orderId = (row[11] || '').toString().trim();
+    if (!orderId) continue;
+    const qty   = parseFloat(row[4]) || 0;
+    const total = parseFloat(row[7]) || 0;
+    if (qty <= 0) continue;
+    logTotals[orderId] = Math.round(((logTotals[orderId] || 0) + total) * 100) / 100;
+  }
+
+  // Step 2 — Subtract batch credits
+  // Skip "Order Recalled" credits — those already zeroed the Order Log qty.
+  if (credWs) {
+    const credData = credWs.getDataRange().getValues();
+    for (let i = 1; i < credData.length; i++) {
+      const r       = credData[i];
+      const reason  = (r[8] || '').toString().trim();
+      if (reason === 'Order Recalled') continue;
+      const orderId = (r[2] || '').toString().trim();
+      const cTotal  = parseFloat(r[7]) || 0;
+      if (!orderId || cTotal <= 0) continue;
+      if (logTotals[orderId] !== undefined) {
+        logTotals[orderId] = Math.round((logTotals[orderId] - cTotal) * 100) / 100;
+      }
+    }
+  }
+
+  // Step 3 — Write corrected totals back to Orders Summary
+  const sumData = sumWs.getDataRange().getValues();
+  let updated = 0, skipped = 0;
+
+  for (let i = 1; i < sumData.length; i++) {
+    const orderId = (sumData[i][0] || '').toString().trim();
+    if (!orderId || !/^ORD-/.test(orderId)) continue;
+
+    const currentVal = Math.round((parseFloat(sumData[i][6]) || 0) * 100) / 100;
+    const correctVal = logTotals[orderId] !== undefined
+      ? Math.max(0, Math.round(logTotals[orderId] * 100) / 100)
+      : 0;
+
+    if (Math.abs(correctVal - currentVal) >= 0.01) {
+      sumWs.getRange(i + 1, 7).setValue(correctVal);
+      Logger.log('Fixed ' + orderId + ': £' + currentVal.toFixed(2) + ' → £' + correctVal.toFixed(2));
+      updated++;
+    } else {
+      skipped++;
+    }
+  }
+
+  Logger.log('✅ Sync complete. ' + updated + ' orders corrected, ' + skipped + ' already correct.');
+}
+
+// ════════════════════════════════════════════════════════════════════
 // SETUP — run ONCE after pasting this script and deploying as Web App
 // ════════════════════════════════════════════════════════════════════
 function setupTrigger() {
