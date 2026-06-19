@@ -171,7 +171,11 @@ function handleDashboardGet(e) {
     }
     orders.sort((a,b) => b.submitted.localeCompare(a.submitted));
 
-    // Parse col M (index 12) — written as dd/MM/yyyy string but Sheets may read it back as a Date object
+    // Use the same order IDs as Orders Summary — guarantees itemBreakdown
+    // totals match exactly regardless of date format or credit timing.
+    const filteredOrderIds = new Set(orders.map(o => o.orderId));
+
+    // Parse col M (index 12) for the supplier loop (still needs date filtering)
     const parseLogDate = raw => raw instanceof Date
       ? new Date(raw.getFullYear(), raw.getMonth(), raw.getDate())
       : parseDDMMYYYY((raw || '').toString().trim());
@@ -180,11 +184,8 @@ function handleDashboardGet(e) {
     const itemTotals = {}, itemSpend = {};
     for (let i = 1; i < logData.length; i++) {
       const row     = logData[i];
-      const rowSite = (row[1] || '').toString().trim();
-      if (site && rowSite !== site) continue;
-      const rowDate = parseLogDate(row[12]);
-      if (fromDate && rowDate && rowDate < fromDate) continue;
-      if (toDate   && rowDate && rowDate > toDate)   continue;
+      const orderId = (row[11] || '').toString().trim();
+      if (!filteredOrderIds.has(orderId)) continue;
       const name  = (row[2] || '').toString().trim();
       const qty   = parseFloat(row[4]) || 0;
       const total = parseFloat(row[7]) || 0;
@@ -192,20 +193,17 @@ function handleDashboardGet(e) {
       itemTotals[name] = (itemTotals[name] || 0) + qty;
       itemSpend[name]  = Math.round(((itemSpend[name] || 0) + total) * 100) / 100;
     }
-    // Subtract batch credits from itemSpend so figures match Orders Summary.
+    // Subtract batch credits for orders in the filtered set.
     // Recall credits are excluded — they already reduced Order Log qty to 0.
     const credWsDash = ss.getSheetByName('Credits');
     if (credWsDash) {
       const credRowsDash = credWsDash.getDataRange().getValues();
       for (let i = 1; i < credRowsDash.length; i++) {
         const r = credRowsDash[i];
-        const reason = (r[8] || '').toString().trim();
+        const reason  = (r[8] || '').toString().trim();
         if (reason === 'Order Recalled') continue;
-        const cSite = (r[1] || '').toString().trim();
-        if (site && cSite !== site) continue;
-        const cDate = parseLogDate(r[9]);
-        if (fromDate && cDate && cDate < fromDate) continue;
-        if (toDate   && cDate && cDate > toDate)   continue;
+        const credOid = (r[2] || '').toString().trim();
+        if (!filteredOrderIds.has(credOid)) continue;
         const cName  = (r[3] || '').toString().trim();
         const cTotal = parseFloat(r[7]) || 0;
         const cQty   = parseFloat(r[4]) || 0;
