@@ -4814,8 +4814,98 @@ function renderDashboard(data, siteFilter, from, to) {
         // Item rows
         items.forEach(it => {
           const va = bdVatAmt(it);
+          const needsEdit = !it.vat || it.category === 'Other';
           const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${it.name}</td><td>${it.qty}</td><td>${bdFmt(it.spend)}</td><td style="font-size:11px;color:var(--text-secondary)">${it.vat||'—'}</td><td style="color:${va>0?'#92400E':'var(--text-tertiary)'}">${va>0?bdFmt(va):'—'}</td><td><strong>${bdFmt(it.totalCost)}</strong></td>`;
+
+          // Name cell with edit button
+          const tdName = document.createElement('td');
+          const nameSpan = document.createElement('span'); nameSpan.textContent = it.name;
+          const editBtn = document.createElement('button');
+          editBtn.textContent = '✎';
+          editBtn.title = 'Fix category or VAT treatment';
+          editBtn.style.cssText = `margin-left:8px;padding:1px 6px;border-radius:4px;border:1px solid ${needsEdit?'#F59E0B':'var(--border-strong)'};background:${needsEdit?'#FFF8E7':'var(--bg)'};color:${needsEdit?'#B45309':'var(--text-tertiary)'};font-size:11px;cursor:pointer;vertical-align:middle;font-family:var(--font);transition:all .15s`;
+          tdName.append(nameSpan, editBtn);
+
+          const tdQty    = document.createElement('td'); tdQty.textContent = it.qty;
+          const tdCost   = document.createElement('td'); tdCost.textContent = bdFmt(it.spend);
+          const tdVatTrt = document.createElement('td'); tdVatTrt.style.cssText = 'font-size:11px;color:var(--text-secondary)'; tdVatTrt.textContent = it.vat||'—';
+          const tdVatAmt = document.createElement('td'); tdVatAmt.style.color = va>0?'#92400E':'var(--text-tertiary)'; tdVatAmt.textContent = va>0?bdFmt(va):'—';
+          const tdTotal  = document.createElement('td'); tdTotal.innerHTML = `<strong>${bdFmt(it.totalCost)}</strong>`;
+          tr.append(tdName, tdQty, tdCost, tdVatTrt, tdVatAmt, tdTotal);
+
+          editBtn.addEventListener('click', () => {
+            const editTr = document.createElement('tr');
+            editTr.style.background = '#F0F4FF';
+            const editTd = document.createElement('td');
+            editTd.colSpan = 6;
+            editTd.style.cssText = 'padding:10px 14px;border-top:2px solid #6366F1';
+
+            const form = document.createElement('div');
+            form.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+
+            const nameLabel = document.createElement('span');
+            nameLabel.style.cssText = 'font-size:12px;font-weight:600;flex:1;min-width:120px;color:var(--text-primary)';
+            nameLabel.textContent = it.name;
+
+            const selStyle = 'padding:6px 10px;border:1.5px solid var(--border-strong);border-radius:var(--radius-xs);font-family:var(--font);font-size:12px;background:var(--bg);color:var(--text-primary);outline:none;cursor:pointer';
+
+            const catSel = document.createElement('select'); catSel.style.cssText = selStyle;
+            ['Raw','Sauces','Potted Sauces','Fresh','Frozen','BOH','Other'].forEach(c => {
+              const o = document.createElement('option'); o.value = c; o.textContent = c;
+              if (it.category === c) o.selected = true;
+              catSel.appendChild(o);
+            });
+
+            const vatSel = document.createElement('select'); vatSel.style.cssText = selStyle;
+            [['','— VAT not set —'],['No VAT','No VAT'],['20% (VAT on Income)','20% (VAT on Income)']].forEach(([val, label]) => {
+              const o = document.createElement('option'); o.value = val; o.textContent = label;
+              if (it.vat === val || (!it.vat && val === '')) o.selected = true;
+              vatSel.appendChild(o);
+            });
+
+            const saveBtn = document.createElement('button');
+            saveBtn.textContent = 'Save';
+            saveBtn.style.cssText = 'padding:6px 16px;background:#6366F1;color:#fff;border:none;border-radius:var(--radius-xs);font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap';
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.style.cssText = 'padding:6px 12px;background:none;border:1.5px solid var(--border-strong);border-radius:var(--radius-xs);font-family:var(--font);font-size:12px;color:var(--text-secondary);cursor:pointer';
+
+            form.append(nameLabel, catSel, vatSel, saveBtn, cancelBtn);
+            editTd.appendChild(form);
+            editTr.appendChild(editTd);
+            tr.replaceWith(editTr);
+
+            cancelBtn.addEventListener('click', () => editTr.replaceWith(tr));
+
+            saveBtn.addEventListener('click', async () => {
+              saveBtn.textContent = 'Saving…'; saveBtn.disabled = true;
+              const newCat = catSel.value || 'Other';
+              const newVat = vatSel.value;
+              try {
+                const res = await fetch(SCRIPT_URL, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'save_item_override', itemName: it.name, category: newCat, vat: newVat })
+                });
+                const json = await res.json();
+                if (json.ok) {
+                  const entry = data.itemBreakdown.find(x => x.name === it.name);
+                  if (entry) {
+                    entry.category  = newCat;
+                    entry.vat       = newVat;
+                    entry.totalCost = newVat.includes('20%') ? Math.round(entry.spend * 1.2 * 100) / 100 : entry.spend;
+                  }
+                  renderBreakdownTable(bdCurrentSort);
+                } else {
+                  saveBtn.textContent = 'Error — retry'; saveBtn.disabled = false;
+                }
+              } catch(e) {
+                saveBtn.textContent = 'Error — retry'; saveBtn.disabled = false;
+              }
+            });
+          });
+
           tbody.appendChild(tr);
         });
         // Subtotal row — warm amber tint

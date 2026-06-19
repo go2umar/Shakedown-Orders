@@ -199,6 +199,19 @@ function handleDashboardGet(e) {
         catLookupDash[n] = (prRowsDash[i][7] || '').toString().trim() || 'Other';
       }
     }
+    // Apply manual overrides (takes precedence over Price List)
+    const overrideWsDash = ss.getSheetByName('Item Overrides');
+    if (overrideWsDash) {
+      const overrideRows = overrideWsDash.getDataRange().getValues();
+      for (let i = 1; i < overrideRows.length; i++) {
+        const n = (overrideRows[i][0] || '').toString().trim();
+        if (!n) continue;
+        const oCat = (overrideRows[i][1] || '').toString().trim();
+        const oVat = (overrideRows[i][2] || '').toString().trim();
+        if (oCat) catLookupDash[n] = oCat;
+        if (oVat) vatLookup[n]     = oVat;
+      }
+    }
 
     // All items in period with VAT and category — for the cost breakdown table
     const itemBreakdown = Object.entries(itemTotals)
@@ -605,6 +618,7 @@ function doPost(e) {
     if ((payload.action || '') === 'add_to_order')         return handleAddToOrder(payload);
     if ((payload.action || '') === 'recall_order')         return handleRecallOrder(payload);
     if ((payload.action || '') === 'change_delivery_date') return handleChangeDeliveryDate(payload);
+    if ((payload.action || '') === 'save_item_override')   return handleSaveItemOverride(payload);
 
     const site      = (payload.site      || '').trim();
     const orderType = (payload.orderType || '').trim();
@@ -2310,4 +2324,43 @@ function setupTrigger() {
     .create();
 
   Logger.log('✅ Triggers ready. Deploy as Web App for the form to work.');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SAVE ITEM OVERRIDE — manager sets category / VAT treatment manually
+// for items whose names no longer match the Price List.
+// Stored in "Item Overrides" sheet; applied on every dashboard load.
+// ════════════════════════════════════════════════════════════════════
+function handleSaveItemOverride(payload) {
+  try {
+    const itemName = (payload.itemName || '').trim();
+    const category = (payload.category || '').trim();
+    const vat      = (payload.vat      || '').trim();
+
+    if (!itemName) return jsonResponse({ ok: false, error: 'Missing itemName.' });
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let ws = ss.getSheetByName('Item Overrides');
+    if (!ws) {
+      ws = ss.insertSheet('Item Overrides');
+      ws.appendRow(['Item Name', 'Category', 'VAT Treatment']);
+      ws.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#E8F0FE');
+      ws.setFrozenRows(1);
+    }
+
+    const data = ws.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if ((data[i][0] || '').toString().trim() === itemName) {
+        ws.getRange(i + 1, 2).setValue(category);
+        ws.getRange(i + 1, 3).setValue(vat);
+        return jsonResponse({ ok: true });
+      }
+    }
+    ws.appendRow([itemName, category, vat]);
+    return jsonResponse({ ok: true });
+
+  } catch(err) {
+    Logger.log('handleSaveItemOverride error: ' + err);
+    return jsonResponse({ ok: false, error: err.toString() });
+  }
 }
