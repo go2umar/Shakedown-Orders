@@ -192,6 +192,29 @@ function handleDashboardGet(e) {
       itemTotals[name] = (itemTotals[name] || 0) + qty;
       itemSpend[name]  = Math.round(((itemSpend[name] || 0) + total) * 100) / 100;
     }
+    // Subtract batch credits from itemSpend so figures match Orders Summary.
+    // Recall credits are excluded — they already reduced Order Log qty to 0.
+    const credWsDash = ss.getSheetByName('Credits');
+    if (credWsDash) {
+      const credRowsDash = credWsDash.getDataRange().getValues();
+      for (let i = 1; i < credRowsDash.length; i++) {
+        const r = credRowsDash[i];
+        const reason = (r[8] || '').toString().trim();
+        if (reason === 'Order Recalled') continue;
+        const cSite = (r[1] || '').toString().trim();
+        if (site && cSite !== site) continue;
+        const cDate = parseLogDate(r[9]);
+        if (fromDate && cDate && cDate < fromDate) continue;
+        if (toDate   && cDate && cDate > toDate)   continue;
+        const cName  = (r[3] || '').toString().trim();
+        const cTotal = parseFloat(r[7]) || 0;
+        const cQty   = parseFloat(r[4]) || 0;
+        if (!cName || cTotal <= 0) continue;
+        if (itemSpend[cName]  !== undefined) itemSpend[cName]  = Math.round((itemSpend[cName]  - cTotal) * 100) / 100;
+        if (itemTotals[cName] !== undefined) itemTotals[cName] = Math.round((itemTotals[cName] - cQty)   * 100) / 100;
+      }
+    }
+
     // Build VAT and category lookup from Price List (col J = index 9, col H = index 7)
     const vatLookup = {}, catLookupDash = {};
     const priceWsDash = ss.getSheetByName('Price List');
