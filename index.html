@@ -4609,7 +4609,7 @@ function renderDashboard(data, siteFilter, from, to) {
 
   // ── 5b. ITEM COST BREAKDOWN (with VAT, categories, totals) ───
   if (data.itemBreakdown && data.itemBreakdown.length) {
-    const BD_CAT_ORDER = ['Raw','Sauces','Potted Sauces','Fresh','Frozen','BOH'];
+    const BD_CAT_ORDER = ['Raw','Sauces','Potted Sauces','Fresh','Frozen','BOH','Packaging'];
     let bdCurrentSort = 'qty';
 
     function groupBdByCat(rows) {
@@ -4850,7 +4850,7 @@ function renderDashboard(data, siteFilter, from, to) {
             const selStyle = 'padding:6px 10px;border:1.5px solid var(--border-strong);border-radius:var(--radius-xs);font-family:var(--font);font-size:12px;background:var(--bg);color:var(--text-primary);outline:none;cursor:pointer';
 
             const catSel = document.createElement('select'); catSel.style.cssText = selStyle;
-            ['Raw','Sauces','Potted Sauces','Fresh','Frozen','BOH','Other'].forEach(c => {
+            ['Raw','Sauces','Potted Sauces','Fresh','Frozen','BOH','Packaging','Other'].forEach(c => {
               const o = document.createElement('option'); o.value = c; o.textContent = c;
               if (it.category === c) o.selected = true;
               catSel.appendChild(o);
