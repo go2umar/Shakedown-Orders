@@ -1447,6 +1447,25 @@ function handleSetItemPrice(payload) {
           }
         }
       }
+
+      // Recalculate Orders Summary total from the updated Order Log
+      const sumWs = ss.getSheetByName('Orders Summary');
+      if (sumWs) {
+        const freshLog = logWs.getDataRange().getValues();
+        let newValue = 0;
+        for (let i = 1; i < freshLog.length; i++) {
+          if ((freshLog[i][11] || '').toString().trim() !== orderId) continue;
+          const qty   = parseFloat(freshLog[i][4]) || 0;
+          const total = parseFloat(freshLog[i][7]) || 0;
+          if (qty > 0) newValue += total;
+        }
+        const sumData = sumWs.getDataRange().getValues();
+        for (let i = 1; i < sumData.length; i++) {
+          if ((sumData[i][0] || '').toString().trim() !== orderId) continue;
+          sumWs.getRange(i + 1, 7).setValue(Math.round(newValue * 100) / 100);
+          break;
+        }
+      }
     }
 
     return jsonResponse({ ok: true, updated });
