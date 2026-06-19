@@ -4630,6 +4630,7 @@ function renderDashboard(data, siteFilter, from, to) {
     }
 
     function bdFmt(n) { return '£'+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+    function bdVatAmt(it) { return Math.round((it.totalCost-it.spend)*100)/100; }
 
     function getBdSorted() {
       return data.itemBreakdown.slice().sort((a,b) => {
@@ -4638,6 +4639,13 @@ function renderDashboard(data, siteFilter, from, to) {
         return b.qty-a.qty;
       });
     }
+
+    // Colours
+    const BD_CAT_BG='#4B5563', BD_CAT_TEXT='#ffffff';
+    const BD_SUB_BG='#F3F4F6', BD_SUB_TEXT='#374151';
+    const BD_TOT_HDR_BG='#2D2D2D', BD_TOT_HDR_TEXT='#fff';
+    const BD_TOT_BG='#FAFAFA';
+    const BD_FINAL_BG='#FF9F1A', BD_FINAL_TEXT='#0D0D0D';
 
     // ── Title + sort buttons
     const bdTitle = document.createElement('div');
@@ -4667,23 +4675,27 @@ function renderDashboard(data, siteFilter, from, to) {
       btn.onclick = fn; return btn;
     }
 
+    // 6 columns: Item | Qty | Cost (£) | VAT Treatment | VAT Amount (£) | Total Cost (£)
     function bdCSV() {
       const rows = getBdSorted();
       const groups = groupBdByCat(rows);
       const t = bdCalcTotals(rows);
       const q = s => '"' + String(s).replace(/"/g,'""') + '"';
       const lines = [q('Item Cost Breakdown'), ''];
-      lines.push([q('Item'),q('Total Qty'),q('Cost (£)'),q('VAT'),q('Total Cost (£)')].join(','));
+      lines.push([q('Item'),q('Total Qty'),q('Cost (£)'),q('VAT Treatment'),q('VAT Amount (£)'),q('Total Cost (£)')].join(','));
       groups.forEach(([cat, items]) => {
         const ct = bdCalcTotals(items);
         lines.push(''); lines.push(q('=== ' + cat.toUpperCase() + ' ==='));
-        items.forEach(it => lines.push([q(it.name), it.qty, it.spend.toFixed(2), q(it.vat||'—'), it.totalCost.toFixed(2)].join(',')));
-        lines.push([q('Subtotal — '+cat),'',ct.exVAT.toFixed(2),'',ct.incVAT.toFixed(2)].join(','));
+        items.forEach(it => {
+          const va = bdVatAmt(it);
+          lines.push([q(it.name), it.qty, it.spend.toFixed(2), q(it.vat||'—'), va>0?va.toFixed(2):'—', it.totalCost.toFixed(2)].join(','));
+        });
+        lines.push([q('Subtotal — '+cat),'',ct.exVAT.toFixed(2),'',ct.vat.toFixed(2),ct.incVAT.toFixed(2)].join(','));
       });
       lines.push(''); lines.push(q('TOTALS'));
-      lines.push([q('Total Cost (ex VAT)'),'',t.exVAT.toFixed(2),'',''].join(','));
-      lines.push([q('Total VAT'),'','','',t.vat.toFixed(2)].join(','));
-      lines.push([q('Total Cost (inc VAT)'),'','','',t.incVAT.toFixed(2)].join(','));
+      lines.push([q('Total Cost (ex VAT)'),'',t.exVAT.toFixed(2),'','',''].join(','));
+      lines.push([q('Total VAT'),'','','',t.vat.toFixed(2),''].join(','));
+      lines.push([q('Total Cost (inc VAT)'),'','','','',t.incVAT.toFixed(2)].join(','));
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([lines.join('\n')], {type:'text/csv'}));
       a.download = 'item-cost-breakdown.csv'; a.click(); URL.revokeObjectURL(a.href);
@@ -4693,33 +4705,37 @@ function renderDashboard(data, siteFilter, from, to) {
       const rows = getBdSorted();
       const groups = groupBdByCat(rows);
       const t = bdCalcTotals(rows);
+      const dateStr = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
       let h = `<html><head><meta charset="utf-8"><style>
         body{font-family:Arial,sans-serif;font-size:12px}
         table{border-collapse:collapse;width:100%}
-        th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}
-        .cat{background:#1a1a2e;color:#fff;font-weight:700;font-size:13px}
-        .col-hdr th{background:#f0f0f0;font-weight:700}
-        .sub td{background:#f5f5f5;font-weight:700;font-style:italic;border-top:2px solid #ccc}
-        .spacer td{border:none;padding:3px}
-        .tot-hdr td{background:#111;color:#fff;font-weight:700;font-size:13px}
-        .tot-row td{background:#fffbf0;font-weight:600}
-        .tot-final td{background:#FF9F1A;color:#fff;font-weight:700;font-size:13px}
+        th,td{border:1px solid #ddd;padding:6px 10px;text-align:left}
+        .cat td{background:#4B5563;color:#fff;font-weight:700;font-size:13px;border-color:#374151}
+        .col-hdr th{background:#F4F4F6;font-weight:700;color:#444}
+        .sub td{background:#F3F4F6;color:#374151;font-weight:700;border-top:2px solid #D1D5DB}
+        .spacer td{border:none;padding:4px;background:#F9F9F9}
+        .tot-hdr td{background:#2D2D2D;color:#fff;font-weight:700;font-size:13px;border-color:#2D2D2D}
+        .tot-row td{background:#FAFAFA;color:#333}
+        .tot-final td{background:#FF9F1A;color:#0D0D0D;font-weight:700;font-size:13px;border-color:#E8870A}
       </style></head><body>
-      <h2 style="font-family:Arial;margin-bottom:4px">Item Cost Breakdown</h2>
-      <p style="font-family:Arial;font-size:11px;color:#666;margin-bottom:14px">Generated ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</p>
+      <h2 style="font-family:Arial;margin-bottom:2px">Item Cost Breakdown</h2>
+      <p style="font-family:Arial;font-size:11px;color:#666;margin-bottom:14px">Generated ${dateStr}</p>
       <table>`;
       groups.forEach(([cat, items]) => {
         const ct = bdCalcTotals(items);
-        h += `<tr><td class="cat" colspan="5">${cat.toUpperCase()}</td></tr>`;
-        h += `<tr class="col-hdr"><th>Item</th><th>Total Qty</th><th>Cost (£)</th><th>VAT</th><th>Total Cost (£)</th></tr>`;
-        items.forEach(it => { h += `<tr><td>${it.name}</td><td>${it.qty}</td><td>${it.spend.toFixed(2)}</td><td>${it.vat||'—'}</td><td>${it.totalCost.toFixed(2)}</td></tr>`; });
-        h += `<tr class="sub"><td>Subtotal — ${cat}</td><td></td><td>${ct.exVAT.toFixed(2)}</td><td></td><td>${ct.incVAT.toFixed(2)}</td></tr>`;
-        h += `<tr class="spacer"><td colspan="5"></td></tr>`;
+        h += `<tr class="cat"><td colspan="6">${cat.toUpperCase()}</td></tr>`;
+        h += `<tr class="col-hdr"><th>Item</th><th>Total Qty</th><th>Cost (£)</th><th>VAT Treatment</th><th>VAT Amount (£)</th><th>Total Cost (£)</th></tr>`;
+        items.forEach(it => {
+          const va = bdVatAmt(it);
+          h += `<tr><td>${it.name}</td><td>${it.qty}</td><td>${it.spend.toFixed(2)}</td><td>${it.vat||'—'}</td><td>${va>0?va.toFixed(2):'—'}</td><td>${it.totalCost.toFixed(2)}</td></tr>`;
+        });
+        h += `<tr class="sub"><td>Subtotal — ${cat}</td><td></td><td>${ct.exVAT.toFixed(2)}</td><td></td><td>${ct.vat.toFixed(2)}</td><td>${ct.incVAT.toFixed(2)}</td></tr>`;
+        h += `<tr class="spacer"><td colspan="6"></td></tr>`;
       });
-      h += `<tr class="tot-hdr"><td colspan="5">TOTALS</td></tr>`;
-      h += `<tr class="tot-row"><td>Total Cost (ex VAT)</td><td></td><td>${t.exVAT.toFixed(2)}</td><td></td><td></td></tr>`;
-      h += `<tr class="tot-row"><td>Total VAT (20% on applicable items)</td><td></td><td></td><td></td><td>${t.vat.toFixed(2)}</td></tr>`;
-      h += `<tr class="tot-final"><td>Total Cost (inc VAT)</td><td></td><td></td><td></td><td>${t.incVAT.toFixed(2)}</td></tr>`;
+      h += `<tr class="tot-hdr"><td colspan="6">TOTALS</td></tr>`;
+      h += `<tr class="tot-row"><td>Total Cost (ex VAT)</td><td></td><td>${t.exVAT.toFixed(2)}</td><td></td><td></td><td></td></tr>`;
+      h += `<tr class="tot-row"><td>Total VAT (20% on applicable items)</td><td></td><td></td><td></td><td>${t.vat.toFixed(2)}</td><td></td></tr>`;
+      h += `<tr class="tot-final"><td>Total Cost (inc VAT)</td><td></td><td></td><td></td><td></td><td>${t.incVAT.toFixed(2)}</td></tr>`;
       h += `</table></body></html>`;
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([h], {type:'application/vnd.ms-excel'}));
@@ -4730,36 +4746,40 @@ function renderDashboard(data, siteFilter, from, to) {
       const rows = getBdSorted();
       const groups = groupBdByCat(rows);
       const t = bdCalcTotals(rows);
+      const dateStr = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
       let trs = '';
       groups.forEach(([cat, items]) => {
         const ct = bdCalcTotals(items);
-        trs += `<tr class="cat-hdr"><td colspan="5">${cat.toUpperCase()}</td></tr>`;
-        trs += `<tr class="col-hdr"><th>Item</th><th>Qty</th><th>Cost (£)</th><th>VAT</th><th>Total Cost (£)</th></tr>`;
-        items.forEach(it => { trs += `<tr><td>${it.name}</td><td>${it.qty}</td><td>£${it.spend.toFixed(2)}</td><td>${it.vat||'—'}</td><td>£${it.totalCost.toFixed(2)}</td></tr>`; });
-        trs += `<tr class="subtotal"><td><em>Subtotal — ${cat}</em></td><td></td><td>£${ct.exVAT.toFixed(2)}</td><td></td><td>£${ct.incVAT.toFixed(2)}</td></tr>`;
-        trs += `<tr class="spacer"><td colspan="5"></td></tr>`;
+        trs += `<tr class="cat-hdr"><td colspan="6">${cat.toUpperCase()}</td></tr>`;
+        trs += `<tr class="col-hdr"><th>Item</th><th>Qty</th><th>Cost (£)</th><th>VAT Treatment</th><th>VAT Amount (£)</th><th>Total Cost (£)</th></tr>`;
+        items.forEach(it => {
+          const va = bdVatAmt(it);
+          trs += `<tr><td>${it.name}</td><td>${it.qty}</td><td>£${it.spend.toFixed(2)}</td><td>${it.vat||'—'}</td><td>${va>0?'£'+va.toFixed(2):'—'}</td><td>£${it.totalCost.toFixed(2)}</td></tr>`;
+        });
+        trs += `<tr class="subtotal"><td>Subtotal — ${cat}</td><td></td><td>£${ct.exVAT.toFixed(2)}</td><td></td><td>£${ct.vat.toFixed(2)}</td><td>£${ct.incVAT.toFixed(2)}</td></tr>`;
+        trs += `<tr class="spacer"><td colspan="6"></td></tr>`;
       });
-      trs += `<tr class="tot-hdr"><td colspan="5">TOTALS</td></tr>`;
-      trs += `<tr class="tot-ex"><td>Total Cost (ex VAT)</td><td></td><td>£${t.exVAT.toFixed(2)}</td><td></td><td></td></tr>`;
-      trs += `<tr class="tot-vat"><td>Total VAT (20% on applicable items)</td><td></td><td></td><td></td><td>£${t.vat.toFixed(2)}</td></tr>`;
-      trs += `<tr class="tot-final"><td>Total Cost (inc VAT)</td><td></td><td></td><td></td><td>£${t.incVAT.toFixed(2)}</td></tr>`;
+      trs += `<tr class="tot-hdr"><td colspan="6">TOTALS</td></tr>`;
+      trs += `<tr class="tot-row"><td>Total Cost (ex VAT)</td><td></td><td>£${t.exVAT.toFixed(2)}</td><td></td><td></td><td></td></tr>`;
+      trs += `<tr class="tot-row"><td>Total VAT (20% on applicable items)</td><td></td><td></td><td></td><td>£${t.vat.toFixed(2)}</td><td></td></tr>`;
+      trs += `<tr class="tot-final"><td>Total Cost (inc VAT)</td><td></td><td></td><td></td><td></td><td>£${t.incVAT.toFixed(2)}</td></tr>`;
       const win = window.open('','_blank');
       win.document.write(`<!DOCTYPE html><html><head><title>Item Cost Breakdown</title><style>
         body{font-family:Arial,sans-serif;font-size:11px;padding:24px;color:#111}
-        h2{font-size:18px;margin-bottom:2px} .sub-h{font-size:11px;color:#666;margin-bottom:16px}
+        h2{font-size:18px;margin-bottom:2px}.sub-h{font-size:11px;color:#666;margin-bottom:16px}
         table{border-collapse:collapse;width:100%}
-        td,th{border:1px solid #ccc;padding:5px 8px;text-align:left}
-        .cat-hdr td{background:#1a1a2e;color:#fff;font-weight:700;font-size:12px;letter-spacing:.5px;border-color:#1a1a2e}
-        .col-hdr th{background:#f0f0f0;font-weight:700;font-size:11px}
-        .subtotal td{background:#f5f5f5;font-weight:700;font-style:italic;border-top:2px solid #ddd}
-        .spacer td{border:none;padding:5px;background:#fff}
-        .tot-hdr td{background:#111;color:#fff;font-weight:700;font-size:12px;letter-spacing:.5px;border-color:#111}
-        .tot-ex td,.tot-vat td{background:#fffbf0;font-weight:600}
-        .tot-final td{background:#FF9F1A;color:#fff;font-weight:700;font-size:13px;border-color:#e88f0a}
+        td,th{border:1px solid #ddd;padding:5px 8px;text-align:left}
+        .cat-hdr td{background:#4B5563;color:#fff;font-weight:700;font-size:12px;letter-spacing:.5px;border-color:#374151}
+        .col-hdr th{background:#F4F4F6;font-weight:700;font-size:10px;color:#444;letter-spacing:.3px}
+        .subtotal td{background:#F3F4F6;color:#374151;font-weight:700;border-top:2px solid #D1D5DB}
+        .spacer td{border:none;padding:5px;background:#F9F9F9}
+        .tot-hdr td{background:#2D2D2D;color:#fff;font-weight:700;font-size:12px;letter-spacing:.5px;border-color:#2D2D2D}
+        .tot-row td{background:#FAFAFA;font-weight:600}
+        .tot-final td{background:#FF9F1A;color:#0D0D0D;font-weight:700;font-size:13px;border-color:#E8870A}
         @media print{@page{margin:15mm}}
       </style></head><body>
       <h2>Item Cost Breakdown</h2>
-      <div class="sub-h">Generated ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div>
+      <div class="sub-h">Generated ${dateStr}</div>
       <table><tbody>${trs}</tbody></table>
       <script>window.onload=()=>window.print()<\/script></body></html>`);
       win.document.close();
@@ -4781,43 +4801,54 @@ function renderDashboard(data, siteFilter, from, to) {
       const t = bdCalcTotals(rows);
       const table = document.createElement('table'); table.className = 'dash-table';
       const thead = document.createElement('thead');
-      thead.innerHTML = '<tr><th>Item</th><th>Total Qty</th><th>Cost (£)</th><th>VAT</th><th>Total Cost (£)</th></tr>';
+      thead.innerHTML = '<tr><th>Item</th><th>Total Qty</th><th>Cost (£)</th><th>VAT Treatment</th><th>VAT Amount (£)</th><th>Total Cost (£)</th></tr>';
       table.appendChild(thead);
       const tbody = document.createElement('tbody');
+
       groups.forEach(([cat, items]) => {
         const ct = bdCalcTotals(items);
-        // Category header
+        // Category header — orange
         const catTr = document.createElement('tr');
-        catTr.innerHTML = `<td colspan="5" style="background:#1a1a2e;color:#fff;font-weight:700;font-size:11px;letter-spacing:.6px;padding:8px 14px;text-transform:uppercase;border-color:#1a1a2e">${cat}</td>`;
+        catTr.innerHTML = `<td colspan="6" style="background:${BD_CAT_BG};color:${BD_CAT_TEXT};font-weight:700;font-size:11px;letter-spacing:.7px;padding:8px 14px;text-transform:uppercase;border-color:#374151">${cat}</td>`;
         tbody.appendChild(catTr);
         // Item rows
         items.forEach(it => {
+          const va = bdVatAmt(it);
           const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${it.name}</td><td>${it.qty}</td><td>${bdFmt(it.spend)}</td><td style="font-size:11px;color:var(--text-secondary)">${it.vat||'—'}</td><td><strong>${bdFmt(it.totalCost)}</strong></td>`;
+          tr.innerHTML = `<td>${it.name}</td><td>${it.qty}</td><td>${bdFmt(it.spend)}</td><td style="font-size:11px;color:var(--text-secondary)">${it.vat||'—'}</td><td style="color:${va>0?'#92400E':'var(--text-tertiary)'}">${va>0?bdFmt(va):'—'}</td><td><strong>${bdFmt(it.totalCost)}</strong></td>`;
           tbody.appendChild(tr);
         });
-        // Subtotal
+        // Subtotal row — warm amber tint
         const stTr = document.createElement('tr');
-        stTr.style.cssText = 'background:#fafafa;border-top:2px solid var(--border)';
-        stTr.innerHTML = `<td style="font-weight:700;font-style:italic;color:var(--text-secondary);font-size:12px">Subtotal — ${cat}</td><td></td><td style="font-weight:700">${bdFmt(ct.exVAT)}</td><td></td><td style="font-weight:700">${bdFmt(ct.incVAT)}</td>`;
+        stTr.style.cssText = `background:${BD_SUB_BG};border-top:2px solid #D1D5DB`;
+        stTr.innerHTML = `<td style="font-weight:700;color:${BD_SUB_TEXT};font-size:12px">Subtotal — ${cat}</td><td></td><td style="font-weight:700;color:${BD_SUB_TEXT}">${bdFmt(ct.exVAT)}</td><td></td><td style="font-weight:700;color:${BD_SUB_TEXT}">${bdFmt(ct.vat)}</td><td style="font-weight:700;color:${BD_SUB_TEXT}">${bdFmt(ct.incVAT)}</td>`;
         tbody.appendChild(stTr);
         // Spacer
         const spacer = document.createElement('tr');
-        spacer.innerHTML = `<td colspan="5" style="border:none;padding:3px;background:var(--bg)"></td>`;
+        spacer.innerHTML = `<td colspan="6" style="border:none;padding:3px;background:var(--bg)"></td>`;
         tbody.appendChild(spacer);
       });
-      // Totals
+
+      // Totals header — dark charcoal
       const totHdr = document.createElement('tr');
-      totHdr.innerHTML = `<td colspan="5" style="background:#111;color:#fff;font-weight:700;letter-spacing:.6px;padding:8px 14px;text-transform:uppercase;font-size:11px;border-color:#111">Totals</td>`;
+      totHdr.innerHTML = `<td colspan="6" style="background:${BD_TOT_HDR_BG};color:${BD_TOT_HDR_TEXT};font-weight:700;letter-spacing:.7px;padding:8px 14px;text-transform:uppercase;font-size:11px;border-color:${BD_TOT_HDR_BG}">Totals</td>`;
       tbody.appendChild(totHdr);
-      [[`Total Cost (ex VAT)`,bdFmt(t.exVAT),2],[`Total VAT (20% on applicable items)`,'',4],[`Total Cost (inc VAT)`,'',4]].forEach(([label,val,col],i) => {
-        const vals = [label,'','','',''];
-        if (i===0) vals[2]=val; else if(i===1) vals[4]=bdFmt(t.vat); else vals[4]='<strong style="font-size:14px;color:#FF9F1A">'+bdFmt(t.incVAT)+'</strong>';
-        const tr = document.createElement('tr');
-        tr.style.background = i===2 ? '#fff4e0' : '#fffbf0';
-        tr.innerHTML = vals.map(v=>`<td>${v}</td>`).join('');
-        tbody.appendChild(tr);
-      });
+      // ex-VAT row
+      const exRow = document.createElement('tr');
+      exRow.style.background = BD_TOT_BG;
+      exRow.innerHTML = `<td style="font-weight:600">Total Cost (ex VAT)</td><td></td><td style="font-weight:700">${bdFmt(t.exVAT)}</td><td></td><td></td><td></td>`;
+      tbody.appendChild(exRow);
+      // VAT row
+      const vatRow = document.createElement('tr');
+      vatRow.style.background = BD_TOT_BG;
+      vatRow.innerHTML = `<td style="font-weight:600">Total VAT (20% on applicable items)</td><td></td><td></td><td></td><td style="font-weight:700">${bdFmt(t.vat)}</td><td></td>`;
+      tbody.appendChild(vatRow);
+      // Grand total — orange
+      const finalRow = document.createElement('tr');
+      finalRow.style.cssText = `background:${BD_FINAL_BG};border-top:2px solid #E8870A`;
+      finalRow.innerHTML = `<td style="font-weight:700;color:${BD_FINAL_TEXT}">Total Cost (inc VAT)</td><td></td><td></td><td></td><td></td><td style="font-weight:700;font-size:14px;color:${BD_FINAL_TEXT}">${bdFmt(t.incVAT)}</td>`;
+      tbody.appendChild(finalRow);
+
       table.appendChild(tbody);
       bdTableWrap.innerHTML = '';
       bdTableWrap.appendChild(table);
