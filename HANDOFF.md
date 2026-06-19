@@ -27,7 +27,7 @@ All features are fully implemented in both files. Frontend auto-deploys on push.
 - **Reverse Credit** — deletes all credit entries for a fully-credited item, restores Orders Summary, rebuilds TG silently
 - **Change Delivery Date** — updates Order Log, site sheet, and Orders Summary; rebuilds TG (delete+resend)
 - **Manager dashboard** — stats, charts, spend by site/supplier, order lookup with site+date filter, top items, credits log, unpriced items, failed Telegram log
-- **Item Cost Breakdown** — new dashboard section showing all items grouped by category with VAT treatment, VAT amount per item, subtotals per category, and grand totals (ex-VAT / VAT / inc-VAT). Exports to CSV, Excel (.xls), and PDF
+- **Item Cost Breakdown** — dashboard section showing all items grouped by category with VAT treatment, VAT amount per item, subtotals per category, and grand totals (ex-VAT / VAT / inc-VAT). Exports to CSV, Excel (.xls), and PDF
 - **Item Override** — manager can manually fix category and VAT treatment per item via inline edit button (✎) in the cost breakdown table; saved to "Item Overrides" sheet; applied on every dashboard load
 - **PIN** — cross-device sync via Apps Script `PropertiesService`; Change PIN modal in dashboard
 - **Branding** — Stockr name, dark theme (`#0D0D0D` bg + `#FF9F1A` orange), `header.png`, splash screen, PWA manifest (`icon.png`)
@@ -70,6 +70,12 @@ All features are fully implemented in both files. Frontend auto-deploys on push.
 | `save_item_override` | `handleSaveItemOverride` |
 | `credit` | `handleCreditPost` (legacy, single-item) |
 | `set_pin` | `handleSetPin` |
+
+### Utility functions (run manually from Apps Script editor)
+| Function | Purpose |
+|----------|---------|
+| `syncOrdersSummary()` | Recalculates every order's total from the Order Log and subtracts batch credits — fixes all historical Orders Summary data in one run. Safe to run multiple times. |
+| `setupTrigger()` | Run once after initial deploy to set up price edit trigger and monthly archive trigger |
 
 ---
 
@@ -120,7 +126,13 @@ All four Price List lookups skip rows where col F (`active`) is not `yes`. Inact
 - **Batch credits subtracted**: Credits sheet entries with reason ≠ `'Order Recalled'` are subtracted from itemSpend/itemTotals for orders in the filtered set. Recall credits are skipped because they already zeroed the Order Log qty.
 
 ### `handleSetItemPrice` — must update Orders Summary
-When a manager sets a price for an unpriced item, the handler updates Order Log and site sheet AND recalculates Orders Summary from the updated Order Log. **This was a bug in earlier versions** — Orders Summary was not updated, causing a permanent gap between itemBreakdown totals and all other dashboard figures.
+When a manager sets a price for an unpriced item, the handler updates Order Log and site sheet AND recalculates Orders Summary from the updated Order Log. Earlier versions skipped the Orders Summary update, causing a permanent gap. Fixed. Historical data corrected by running `syncOrdersSummary()`.
+
+### `syncOrdersSummary()` — how it works
+1. Sums Order Log `Total (£)` per order ID (skipping qty ≤ 0 rows)
+2. Subtracts batch credits (Credits sheet entries where reason ≠ `'Order Recalled'`)
+3. Writes the corrected value to Orders Summary col G for any row where the difference is ≥ £0.01
+4. Logs every change to Apps Script Logs (View → Logs)
 
 ### `parseLogDate` helper (in `handleDashboardGet`)
 Google Sheets reads col M (dd/MM/yyyy date string) back as a Date object. `parseLogDate` handles both cases for the supplier breakdown loop.
@@ -177,8 +189,8 @@ Google Sheets reads col M (dd/MM/yyyy date string) back as a Date object. `parse
 | `origTime = (row[0] || '').toString()` | Produced long JS Date string in Telegram; fixed with `fmtTimestamp()` |
 | `colSpan = 7` with Supplier column | Action column overflowed screen; removed Supplier column, now 6 columns |
 | `Content-Type: application/json` for POST | Triggers CORS preflight that GAS can't handle; always use form-encoded |
-| Date-filtering Order Log by col M string | Sheets returns col M as a Date object, `parseDDMMYYYY` returns null, filter never fires — items from all time included. Fixed by filtering Order Log via order IDs from Orders Summary instead |
-| `handleSetItemPrice` not updating Orders Summary | Priced items updated Order Log but left Orders Summary stale, causing a permanent spend discrepancy. Fixed by recalculating Orders Summary after every price set |
+| Date-filtering Order Log by col M string | Sheets returns col M as a Date object, `parseDDMMYYYY` returns null, filter never fires — all historical rows included. Fixed by filtering Order Log via order IDs from Orders Summary instead |
+| `handleSetItemPrice` not updating Orders Summary | Priced items updated Order Log but left Orders Summary stale, causing a permanent spend discrepancy. Fixed + historical data corrected via `syncOrdersSummary()` |
 | Orange category header rows in cost breakdown | User preferred grey; changed to slate grey `#4B5563` |
 | Hardcoded category list in dropdown | New categories silently missing; now reads `data.categories` from backend dynamically |
 
@@ -186,14 +198,7 @@ Google Sheets reads col M (dd/MM/yyyy date string) back as a Date object. `parse
 
 ## 9. Next Session — Start Here
 
-1. **Redeploy backend** — the current `stockr.js` has several fixes not yet in the live `Code.gs`:
-   - Item Cost Breakdown (`itemBreakdown`, `categories` in dashboard response)
-   - `handleSaveItemOverride` handler
-   - Order Log date filter fix (order ID-based filtering)
-   - Credit subtraction fix
-   - `handleSetItemPrice` Orders Summary fix
-2. **Verify totals match** — after redeploy, check that Item Cost Breakdown ex-VAT total matches Orders Summary total spend for the same period.
-3. **Historical Orders Summary gap** — orders where `handleSetItemPrice` was used before the fix have stale Orders Summary totals. To correct: open those orders in Order Lookup and use "Change Qty" (even same qty) to trigger a recalculation.
+Backend and frontend are fully in sync. All historical Orders Summary totals have been corrected by running `syncOrdersSummary()`. Numbers match across all dashboard panels.
 
 ### Likely next feature candidates
 - WhatsApp message formatting improvements based on real-world use
