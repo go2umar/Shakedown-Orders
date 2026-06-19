@@ -187,6 +187,28 @@ function handleDashboardGet(e) {
       itemTotals[name] = (itemTotals[name] || 0) + qty;
       itemSpend[name]  = Math.round(((itemSpend[name] || 0) + total) * 100) / 100;
     }
+    // Build VAT lookup from Price List (col J = index 9)
+    const vatLookup = {};
+    const priceWsDash = ss.getSheetByName('Price List');
+    if (priceWsDash) {
+      const prRowsDash = priceWsDash.getDataRange().getValues();
+      for (let i = 3; i < prRowsDash.length; i++) {
+        const n = (prRowsDash[i][0] || '').toString().trim();
+        if (!n || n.startsWith('KEY')) continue;
+        vatLookup[n] = (prRowsDash[i][9] || '').toString().trim();
+      }
+    }
+
+    // All items in period with VAT — sorted alphabetically for the cost breakdown table
+    const itemBreakdown = Object.entries(itemTotals)
+      .sort((a,b) => a[0].localeCompare(b[0]))
+      .map(([name, qty]) => {
+        const spend = Math.round((itemSpend[name] || 0) * 100) / 100;
+        const vat   = vatLookup[name] || '';
+        const totalCost = vat.includes('20%') ? Math.round(spend * 1.2 * 100) / 100 : spend;
+        return { name, qty: Math.round(qty * 10) / 10, spend, vat, totalCost };
+      });
+
     // Include both qty and spend so the frontend can sort either way
     const topItems = Object.entries(itemTotals).sort((a,b) => b[1]-a[1]).slice(0,50)
       .map(([name,qty]) => ({
@@ -278,7 +300,7 @@ function handleDashboardGet(e) {
               avg: totalOrders ? Math.round((totalItems/totalOrders)*10)/10 : 0 },
       bySite, byMonth:byMonthArr, bySupplier,
       orders:orders.slice(0,150), totalCount:orders.length,
-      failures, topItems, credits, unpriced, byMonthBySite
+      failures, topItems, credits, unpriced, byMonthBySite, itemBreakdown
     });
     const cb = params.callback;
     if (cb) return ContentService.createTextOutput(cb+'('+json+')').setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -398,9 +420,11 @@ function handleGetOrders(e) {
           delivDate: rawD9 instanceof Date ? Utilities.formatDate(rawD9, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rawD9||'').toString().trim()
         });
       }
-      // Check Credits sheet — mark items that have been partially or fully credited
+      // Check Credits sheet — mark items that have been partially or fully credited.
       // Key by "name|price" so credits at the old price don't bleed onto rows
       // of the same item added later at a different price.
+      // Credits are consumed row-by-row (in Order Log order) so that a re-added
+      // item of the same name/price is not marked credited by the original credit.
       const credWs = ss.getSheetByName('Credits');
       if (credWs) {
         const credData  = credWs.getDataRange().getValues();
@@ -415,10 +439,16 @@ function handleGetOrders(e) {
           const key   = n + '|' + price;
           creditMap[key] = (creditMap[key] || 0) + q;
         }
+        // Consume credits in the same order the items appear in the log
+        // so re-added rows don't inherit credits meant for the original row
+        const remaining = Object.assign({}, creditMap);
         items.forEach(item => {
-          const key          = item.name + '|' + (parseFloat(item.price) || 0).toFixed(4);
-          item.creditedQty   = Math.round((creditMap[key] || 0) * 10) / 10;
-          item.fullyCredited = item.creditedQty >= item.qty;
+          const key   = item.name + '|' + (parseFloat(item.price) || 0).toFixed(4);
+          const avail = remaining[key] || 0;
+          const used  = Math.min(avail, item.qty);
+          remaining[key]     = Math.max(0, avail - item.qty);
+          item.creditedQty   = Math.round(used * 10) / 10;
+          item.fullyCredited = used >= item.qty;
         });
       }
 
@@ -564,11 +594,15 @@ function doPost(e) {
       payload = JSON.parse(e.postData.contents);
     }
 
-    if ((payload.action || '') === 'set_pin')         return handleSetPin(payload);
-    if ((payload.action || '') === 'record_credit')  return handleCreditPost(payload);
-    if ((payload.action || '') === 'set_item_price') return handleSetItemPrice(payload);
-    if ((payload.action || '') === 'add_to_order')   return handleAddToOrder(payload);
-    if ((payload.action || '') === 'recall_order')   return handleRecallOrder(payload);
+    if ((payload.action || '') === 'set_pin')               return handleSetPin(payload);
+    if ((payload.action || '') === 'record_credit')        return handleCreditPost(payload);
+    if ((payload.action || '') === 'batch_credit')         return handleBatchCredit(payload);
+    if ((payload.action || '') === 'change_qty')           return handleChangeQty(payload);
+    if ((payload.action || '') === 'reverse_credit')       return handleReverseCredit(payload);
+    if ((payload.action || '') === 'set_item_price')       return handleSetItemPrice(payload);
+    if ((payload.action || '') === 'add_to_order')         return handleAddToOrder(payload);
+    if ((payload.action || '') === 'recall_order')         return handleRecallOrder(payload);
+    if ((payload.action || '') === 'change_delivery_date') return handleChangeDeliveryDate(payload);
 
     const site      = (payload.site      || '').trim();
     const orderType = (payload.orderType || '').trim();
@@ -777,7 +811,7 @@ function buildTelegramText(site, items, notes, deliveryDate, orderId, timeStr, l
       msg += `*${cat}*\n`;
       sortItems(catMap[cat]).forEach(it => {
         const q = it.qty % 1 === 0 ? Math.round(it.qty) : it.qty;
-        msg += `• ${it.name}  —  ${q} ${pluraliseUnit(it.unit, it.qty)}${it.note ? `  (${it.note})` : ''}\n`;
+        msg += `• ${it.name}  —  ${q} ${pluraliseUnit(it.unit, it.qty)}${it.note ? `  (${it.note})` : ''}${it.creditAnnotation ? `  *${it.creditAnnotation}*` : ''}\n`;
       });
     });
   } else {
@@ -911,6 +945,13 @@ function handleAddToOrder(payload) {
       if (n) catLookup[n] = (prRows[i][7] || '').toString().trim() || 'Other';
     }
 
+    // Build credit map for this order so credited items are excluded from Telegram
+    // Key: "name|price.toFixed(4)" — matches the crediting logic in handleGetOrders
+    // Mutable copy so credits are consumed row-by-row — prevents the same
+    // credit amount from being applied to both an original row AND a
+    // re-added row of the same item at the same price.
+    const remainingCredits = Object.assign({}, buildCreditMap(ss, orderId));
+
     // Find original order's meta + read all existing items from Order Log
     const logData = logWs.getDataRange().getValues();
     let origTime = '', origDeliv = '', origNotes = '', origDate = '', origMonth = '';
@@ -919,7 +960,7 @@ function handleAddToOrder(payload) {
       const row = logData[i];
       if ((row[11] || '').toString().trim() !== orderId) continue;
       if (!origTime) {
-        origTime  = (row[0]  || '').toString();
+        origTime  = fmtTimestamp(row[0]);
         origNotes = (row[8]  || '').toString();
         const rd  = row[9];
         origDeliv = rd instanceof Date ? Utilities.formatDate(rd, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rd||'').toString();
@@ -929,11 +970,18 @@ function handleAddToOrder(payload) {
         origMonth = rd3 instanceof Date ? Utilities.formatDate(rd3, Session.getScriptTimeZone(), 'MMM-yyyy') : (rd3||'').toString();
       }
       const qty2 = parseFloat(row[4]) || 0;
-      if (qty2 <= 0) continue;
-      const name2 = (row[2] || '').toString().trim();
-      const unit2 = (row[3] || '').toString().trim();
+      if (qty2 <= 0) continue; // removed during recall
+      const name2  = (row[2] || '').toString().trim();
+      const unit2  = (row[3] || '').toString().trim();
+      const price2 = parseFloat(row[6]) || 0;
+      const key2   = name2 + '|' + price2.toFixed(4);
+      const avail  = remainingCredits[key2] || 0;
+      const creditedQty = Math.min(avail, qty2);
+      remainingCredits[key2] = Math.max(0, avail - qty2); // consume
+      if (creditedQty >= qty2) continue; // fully credited — exclude from Telegram
+      const activeQty = Math.round((qty2 - creditedQty) * 100) / 100;
       const tg    = (row[10] || '').toString();
-      const item2 = { name: name2, unit: unit2, qty: qty2, category: catLookup[name2] || 'Other' };
+      const item2 = { name: name2, unit: unit2, qty: activeQty, category: catLookup[name2] || 'Other' };
       if (tg.includes('Prep') && tg.includes('Stock')) { prepItems.push(item2); stockItems.push(item2); }
       else if (tg.includes('Prep'))  prepItems.push(item2);
       else                           stockItems.push(item2);
@@ -1383,6 +1431,169 @@ function handleSetPin(payload) {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// BATCH CREDIT — logs multiple credits in one call, then rebuilds the
+// Telegram message with credited items annotated inline.
+// ════════════════════════════════════════════════════════════════════
+function handleBatchCredit(payload) {
+  try {
+    const orderId = (payload.orderRef || '').trim();
+    const site    = (payload.site     || '').trim();
+    const credits = payload.credits   || [];
+
+    if (!orderId || !site || !credits.length) {
+      return jsonResponse({ ok: false, error: 'Missing required fields.' });
+    }
+
+    const ss       = SpreadsheetApp.getActiveSpreadsheet();
+    const stamp    = new Date();
+    const timeStr  = Utilities.formatDate(stamp, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+    const dateOnly = Utilities.formatDate(stamp, Session.getScriptTimeZone(), 'dd/MM/yyyy');
+    const monthYr  = Utilities.formatDate(stamp, Session.getScriptTimeZone(), 'MMM-yyyy');
+
+    // ── Log all credits to Credits sheet ─────────────────────────
+    let credWs = ss.getSheetByName('Credits');
+    if (!credWs) {
+      credWs = ss.insertSheet('Credits');
+      credWs.appendRow(['Timestamp','Site','Order ID','Item Name','Qty','Unit','Price (£)','Total (£)','Reason','Date','Month-Year']);
+    }
+    let totalCreditValue = 0;
+    credits.forEach(c => {
+      const qty   = parseFloat(c.qty)   || 0;
+      const price = parseFloat(c.price) || 0;
+      const total = Math.round(price * qty * 100) / 100;
+      totalCreditValue += total;
+      credWs.appendRow([timeStr, site, orderId, c.itemName, qty, c.unit, price, total, c.reason, dateOnly, monthYr]);
+    });
+
+    // ── Deduct credit total from Orders Summary ───────────────────
+    const sumWs = ss.getSheetByName('Orders Summary');
+    if (sumWs && totalCreditValue > 0) {
+      const sumData = sumWs.getDataRange().getValues();
+      for (let i = 1; i < sumData.length; i++) {
+        if ((sumData[i][0] || '').toString().trim() !== orderId) continue;
+        const current = parseFloat(sumData[i][6]) || 0;
+        sumWs.getRange(i + 1, 7).setValue(Math.round(Math.max(0, current - totalCreditValue) * 100) / 100);
+        break;
+      }
+    }
+
+    // ── Build category lookup ─────────────────────────────────────
+    const catLookup = {};
+    const priceWs = ss.getSheetByName('Price List');
+    if (priceWs) {
+      const prRows = priceWs.getDataRange().getValues();
+      for (let i = 3; i < prRows.length; i++) {
+        const n = (prRows[i][0] || '').toString().trim();
+        if (n) catLookup[n] = (prRows[i][7] || '').toString().trim() || 'Other';
+      }
+    }
+
+    // ── Build credit + reason maps (all credits for this order) ──
+    // Mutable copy consumed row-by-row so re-added items aren't double-credited
+    const remainingCredits = Object.assign({}, buildCreditMap(ss, orderId));
+    const reasonMap = {}; // name → most-recent reason
+    const credData  = credWs.getDataRange().getValues();
+    for (let i = 1; i < credData.length; i++) {
+      if ((credData[i][2] || '').toString().trim() !== orderId) continue;
+      reasonMap[(credData[i][3] || '').toString().trim()] = (credData[i][8] || '').toString().trim();
+    }
+
+    // ── Read all items from Order Log; annotate credited ones ─────
+    const logWs = ss.getSheetByName('Order Log');
+    if (!logWs) return jsonResponse({ ok: false, error: 'Order Log not found.' });
+    const logData = logWs.getDataRange().getValues();
+    let origTime = '', origDeliv = '', origNotes = '';
+    const prepItems = [], stockItems = [];
+
+    for (let i = 1; i < logData.length; i++) {
+      const row = logData[i];
+      if ((row[11] || '').toString().trim() !== orderId) continue;
+      if (!origTime) {
+        origTime  = fmtTimestamp(row[0]);
+        origNotes = (row[8] || '').toString();
+        const rd  = row[9];
+        origDeliv = rd instanceof Date ? Utilities.formatDate(rd, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rd||'').toString();
+      }
+      const qty2 = parseFloat(row[4]) || 0;
+      if (qty2 <= 0) continue; // removed during recall
+
+      const name2  = (row[2]  || '').toString().trim();
+      const unit2  = (row[3]  || '').toString().trim();
+      const price2 = parseFloat(row[6]) || 0;
+      const key2   = name2 + '|' + price2.toFixed(4);
+      const avail  = remainingCredits[key2] || 0;
+      const creditedQty = Math.min(avail, qty2);
+      remainingCredits[key2] = Math.max(0, avail - qty2); // consume so re-added rows aren't affected
+      const reason = reasonMap[name2] || '';
+      const tg     = (row[10] || '').toString();
+
+      // Build inline annotation for credited items
+      let creditAnnotation = '';
+      if (creditedQty >= qty2) {
+        creditAnnotation = '✕ fully credited' + (reason ? ': ' + reason : '');
+      } else if (creditedQty > 0) {
+        creditAnnotation = '✕ ' + creditedQty + ' ' + unit2 + ' credited' + (reason ? ': ' + reason : '');
+      }
+
+      // Fully credited rows still appear in the message (with annotation); re-added rows show normally
+      const displayQty = creditedQty >= qty2 ? qty2 : Math.max(0, Math.round((qty2 - creditedQty) * 100) / 100);
+      const item2 = { name: name2, unit: unit2, qty: displayQty, category: catLookup[name2] || 'Other', creditAnnotation };
+      if (tg.includes('Prep') && tg.includes('Stock')) { prepItems.push(item2); stockItems.push(item2); }
+      else if (tg.includes('Prep'))  prepItems.push(item2);
+      else                           stockItems.push(item2);
+    }
+
+    // ── Delete + resend Telegram ──────────────────────────────────
+    let oldPrepMsgId = null, oldStockMsgId = null;
+    const tgWs = ss.getSheetByName('TG Messages');
+    if (tgWs) {
+      const tgData = tgWs.getDataRange().getValues();
+      for (let i = 1; i < tgData.length; i++) {
+        if ((tgData[i][0] || '').toString().trim() !== orderId) continue;
+        oldPrepMsgId  = tgData[i][2] ? String(tgData[i][2]) : null;
+        oldStockMsgId = tgData[i][3] ? String(tgData[i][3]) : null;
+        break;
+      }
+    }
+    const updatedTimeStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+    let newPrepMsgId = oldPrepMsgId, newStockMsgId = oldStockMsgId;
+
+    // Credits use edit-first (silent update, no new notification).
+    // Fall back to delete+resend only if the edit fails, and to a fresh
+    // send as a last resort so the group always gets the updated info.
+    const editOrSend = (chatId, oldMsgId, items, label) => {
+      const text = buildTelegramText(site, items, origNotes, origDeliv, orderId, origTime, label);
+      if (oldMsgId) {
+        const edited = editTelegramMessage(chatId, oldMsgId, text);
+        if (edited) return { ok: true, messageId: parseInt(oldMsgId) };
+        // Edit failed — delete old and resend
+        const deleted = deleteTelegramMessage(chatId, oldMsgId);
+        if (deleted) return sendTelegramText(chatId, text);
+      }
+      // No ID or all attempts failed — send new message
+      return sendTelegramText(chatId, text);
+    };
+
+    if (prepItems.length > 0) {
+      const r = editOrSend(PREP_GROUP_ID, oldPrepMsgId, prepItems, 'PREP');
+      if (r.messageId) newPrepMsgId = String(r.messageId);
+    }
+    if (stockItems.length > 0) {
+      const r = editOrSend(STOCK_GROUP_ID, oldStockMsgId, stockItems, 'STOCK');
+      if (r.messageId) newStockMsgId = String(r.messageId);
+    }
+    if (newPrepMsgId !== oldPrepMsgId || newStockMsgId !== oldStockMsgId) {
+      storeTelegramMsgIds(ss, orderId, site, newPrepMsgId, newStockMsgId, updatedTimeStr);
+    }
+
+    return jsonResponse({ ok: true, credited: credits.length });
+  } catch(err) {
+    Logger.log('handleBatchCredit error: ' + err);
+    return jsonResponse({ ok: false, error: err.toString() });
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
 // CREDIT RECORDER — logs items that couldn't be delivered
 // ════════════════════════════════════════════════════════════════════
 function handleCreditPost(payload) {
@@ -1463,8 +1674,483 @@ function onPriceEdit(e) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// HELPER
+// REVERSE CREDIT — manager only
+// Deletes all credit entries for an item in an order, restores the
+// Orders Summary total, and rebuilds the Telegram message without
+// the credit annotation.
 // ════════════════════════════════════════════════════════════════════
+function handleReverseCredit(payload) {
+  try {
+    const orderId  = (payload.orderRef || '').trim();
+    const site     = (payload.site     || '').trim();
+    const itemName = (payload.itemName || '').trim();
+    const price    = parseFloat(payload.price) || 0;
+
+    if (!orderId || !site || !itemName) {
+      return jsonResponse({ ok: false, error: 'Missing required fields.' });
+    }
+
+    const ss     = SpreadsheetApp.getActiveSpreadsheet();
+    const credWs = ss.getSheetByName('Credits');
+    if (!credWs) return jsonResponse({ ok: false, error: 'Credits sheet not found.' });
+
+    // Find and delete all matching credit rows (iterate bottom→top so indices stay valid)
+    const credData = credWs.getDataRange().getValues();
+    let reversedTotal = 0;
+    for (let i = credData.length - 1; i >= 1; i--) {
+      const r = credData[i];
+      if ((r[2] || '').toString().trim() !== orderId)   continue;
+      if ((r[3] || '').toString().trim() !== itemName)  continue;
+      if (Math.abs((parseFloat(r[6]) || 0) - price) > 0.01) continue;
+      reversedTotal += parseFloat(r[7]) || 0; // accumulate restored value
+      credWs.deleteRow(i + 1);
+    }
+
+    // Add reversed value back to Orders Summary
+    if (reversedTotal > 0) {
+      const sumWs = ss.getSheetByName('Orders Summary');
+      if (sumWs) {
+        const sumData = sumWs.getDataRange().getValues();
+        for (let i = 1; i < sumData.length; i++) {
+          if ((sumData[i][0] || '').toString().trim() !== orderId) continue;
+          const current = parseFloat(sumData[i][6]) || 0;
+          sumWs.getRange(i + 1, 7).setValue(Math.round((current + reversedTotal) * 100) / 100);
+          break;
+        }
+      }
+    }
+
+    // Rebuild Telegram (item now shows without credit annotation)
+    const catLookup = {};
+    const priceWs = ss.getSheetByName('Price List');
+    if (priceWs) {
+      const prRows = priceWs.getDataRange().getValues();
+      for (let i = 3; i < prRows.length; i++) {
+        const n = (prRows[i][0] || '').toString().trim();
+        if (n) catLookup[n] = (prRows[i][7] || '').toString().trim() || 'Other';
+      }
+    }
+
+    const remainingCredits = Object.assign({}, buildCreditMap(ss, orderId));
+    const logWs = ss.getSheetByName('Order Log');
+    if (!logWs) return jsonResponse({ ok: true }); // sheets updated, TG best-effort
+    const logData = logWs.getDataRange().getValues();
+    let origTime = '', origDeliv = '', origNotes = '';
+    const prepItems = [], stockItems = [];
+
+    for (let i = 1; i < logData.length; i++) {
+      const row = logData[i];
+      if ((row[11] || '').toString().trim() !== orderId) continue;
+      if (!origTime) {
+        origTime  = fmtTimestamp(row[0]);
+        origNotes = (row[8] || '').toString();
+        const rd  = row[9];
+        origDeliv = rd instanceof Date ? Utilities.formatDate(rd, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rd||'').toString();
+      }
+      const qty2 = parseFloat(row[4]) || 0;
+      if (qty2 <= 0) continue;
+      const name2  = (row[2]  || '').toString().trim();
+      const unit2  = (row[3]  || '').toString().trim();
+      const price2 = parseFloat(row[6]) || 0;
+      const key2   = name2 + '|' + price2.toFixed(4);
+      const avail  = remainingCredits[key2] || 0;
+      const credited = Math.min(avail, qty2);
+      remainingCredits[key2] = Math.max(0, avail - qty2);
+      if (credited >= qty2) continue;
+      const activeQty = Math.round((qty2 - credited) * 100) / 100;
+      const tg = (row[10] || '').toString();
+      const item2 = { name: name2, unit: unit2, qty: activeQty, category: catLookup[name2] || 'Other' };
+      if (tg.includes('Prep') && tg.includes('Stock')) { prepItems.push(item2); stockItems.push(item2); }
+      else if (tg.includes('Prep')) prepItems.push(item2);
+      else stockItems.push(item2);
+    }
+
+    let oldPrepMsgId = null, oldStockMsgId = null;
+    const tgWs = ss.getSheetByName('TG Messages');
+    if (tgWs) {
+      const tgData = tgWs.getDataRange().getValues();
+      for (let i = 1; i < tgData.length; i++) {
+        if ((tgData[i][0] || '').toString().trim() !== orderId) continue;
+        oldPrepMsgId  = tgData[i][2] ? String(tgData[i][2]) : null;
+        oldStockMsgId = tgData[i][3] ? String(tgData[i][3]) : null;
+        break;
+      }
+    }
+
+    const updatedTimeStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+    let newPrepMsgId = oldPrepMsgId, newStockMsgId = oldStockMsgId;
+
+    const editOrSend = (chatId, oldMsgId, items, label) => {
+      const text = buildTelegramText(site, items, origNotes, origDeliv, orderId, origTime, label);
+      if (oldMsgId) {
+        const edited = editTelegramMessage(chatId, oldMsgId, text);
+        if (edited) return { ok: true, messageId: parseInt(oldMsgId) };
+        const deleted = deleteTelegramMessage(chatId, oldMsgId);
+        if (deleted) return sendTelegramText(chatId, text);
+      }
+      return sendTelegramText(chatId, text);
+    };
+
+    if (prepItems.length > 0) {
+      const r = editOrSend(PREP_GROUP_ID, oldPrepMsgId, prepItems, 'PREP');
+      if (r.messageId) newPrepMsgId = String(r.messageId);
+    }
+    if (stockItems.length > 0) {
+      const r = editOrSend(STOCK_GROUP_ID, oldStockMsgId, stockItems, 'STOCK');
+      if (r.messageId) newStockMsgId = String(r.messageId);
+    }
+    if (newPrepMsgId !== oldPrepMsgId || newStockMsgId !== oldStockMsgId) {
+      storeTelegramMsgIds(ss, orderId, site, newPrepMsgId, newStockMsgId, updatedTimeStr);
+    }
+
+    return jsonResponse({ ok: true, reversedTotal });
+  } catch(err) {
+    Logger.log('handleReverseCredit error: ' + err);
+    return jsonResponse({ ok: false, error: err.toString() });
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// CHANGE QTY — manager only
+// Sets an item to a new quantity directly, adjusting the Order Log,
+// site sheet, and Orders Summary. No credit entry is created — this
+// is for correcting a wrong order qty, not recording a delivery issue.
+// Telegram is rebuilt (delete+resend) so the group sees the correction.
+// ════════════════════════════════════════════════════════════════════
+function handleChangeQty(payload) {
+  try {
+    const orderId  = (payload.orderRef  || '').trim();
+    const site     = (payload.site      || '').trim();
+    const itemName = (payload.itemName  || '').trim();
+    const newQty   = parseFloat(payload.newQty) || 0;
+    const price    = parseFloat(payload.price)  || 0;
+
+    if (!orderId || !site || !itemName || newQty <= 0) {
+      return jsonResponse({ ok: false, error: 'Missing required fields.' });
+    }
+
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const logWs = ss.getSheetByName('Order Log');
+    if (!logWs) return jsonResponse({ ok: false, error: 'Order Log not found.' });
+
+    // Find and update the row in Order Log
+    const logData  = logWs.getDataRange().getValues();
+    let origQty = -1, updatedSheetRow = -1;
+
+    for (let i = 1; i < logData.length; i++) {
+      const row = logData[i];
+      if ((row[11] || '').toString().trim() !== orderId) continue;
+      if ((row[2]  || '').toString().trim() !== itemName) continue;
+      if (Math.abs((parseFloat(row[6]) || 0) - price) > 0.01) continue;
+      origQty        = parseFloat(row[4]) || 0;
+      updatedSheetRow = i + 1;
+      break;
+    }
+
+    if (updatedSheetRow === -1) return jsonResponse({ ok: false, error: 'Item not found in order.' });
+
+    const newTotal  = Math.round(price * newQty  * 100) / 100;
+    const origTotal = Math.round(price * origQty * 100) / 100;
+    const diff      = Math.round((newTotal - origTotal) * 100) / 100; // + means more cost
+
+    logWs.getRange(updatedSheetRow, 5).setValue(newQty);
+    logWs.getRange(updatedSheetRow, 8).setValue(newTotal);
+
+    // Update site sheet
+    const siteWs = ss.getSheetByName(site);
+    if (siteWs) {
+      const siteData = siteWs.getDataRange().getValues();
+      for (let i = 1; i < siteData.length; i++) {
+        if ((siteData[i][11] || '').toString().trim() !== orderId) continue;
+        if ((siteData[i][2]  || '').toString().trim() !== itemName) continue;
+        if (Math.abs((parseFloat(siteData[i][6]) || 0) - price) > 0.01) continue;
+        siteWs.getRange(i + 1, 5).setValue(newQty);
+        siteWs.getRange(i + 1, 8).setValue(newTotal);
+        break;
+      }
+    }
+
+    // Update Orders Summary total
+    const sumWs = ss.getSheetByName('Orders Summary');
+    if (sumWs) {
+      const sumData = sumWs.getDataRange().getValues();
+      for (let i = 1; i < sumData.length; i++) {
+        if ((sumData[i][0] || '').toString().trim() !== orderId) continue;
+        const current = parseFloat(sumData[i][6]) || 0;
+        sumWs.getRange(i + 1, 7).setValue(Math.round(Math.max(0, current + diff) * 100) / 100);
+        break;
+      }
+    }
+
+    // ── Rebuild Telegram with updated qty ────────────────────────
+    const catLookup = {};
+    const priceWs = ss.getSheetByName('Price List');
+    if (priceWs) {
+      const prRows = priceWs.getDataRange().getValues();
+      for (let i = 3; i < prRows.length; i++) {
+        const n = (prRows[i][0] || '').toString().trim();
+        if (n) catLookup[n] = (prRows[i][7] || '').toString().trim() || 'Other';
+      }
+    }
+
+    const remainingCredits = Object.assign({}, buildCreditMap(ss, orderId));
+    const logData2 = logWs.getDataRange().getValues(); // re-read after update
+    let origTime = '', origDeliv = '', origNotes = '';
+    const prepItems = [], stockItems = [];
+
+    for (let i = 1; i < logData2.length; i++) {
+      const row = logData2[i];
+      if ((row[11] || '').toString().trim() !== orderId) continue;
+      if (!origTime) {
+        origTime  = fmtTimestamp(row[0]);
+        origNotes = (row[8] || '').toString();
+        const rd  = row[9];
+        origDeliv = rd instanceof Date ? Utilities.formatDate(rd, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rd||'').toString();
+      }
+      const qty2 = parseFloat(row[4]) || 0;
+      if (qty2 <= 0) continue;
+      const name2  = (row[2]  || '').toString().trim();
+      const unit2  = (row[3]  || '').toString().trim();
+      const price2 = parseFloat(row[6]) || 0;
+      const key2   = name2 + '|' + price2.toFixed(4);
+      const avail  = remainingCredits[key2] || 0;
+      const credited = Math.min(avail, qty2);
+      remainingCredits[key2] = Math.max(0, avail - qty2);
+      if (credited >= qty2) continue;
+      const activeQty = Math.round((qty2 - credited) * 100) / 100;
+      const tg = (row[10] || '').toString();
+      const item2 = { name: name2, unit: unit2, qty: activeQty, category: catLookup[name2] || 'Other' };
+      if (tg.includes('Prep') && tg.includes('Stock')) { prepItems.push(item2); stockItems.push(item2); }
+      else if (tg.includes('Prep')) prepItems.push(item2);
+      else stockItems.push(item2);
+    }
+
+    let oldPrepMsgId = null, oldStockMsgId = null;
+    const tgWs = ss.getSheetByName('TG Messages');
+    if (tgWs) {
+      const tgData = tgWs.getDataRange().getValues();
+      for (let i = 1; i < tgData.length; i++) {
+        if ((tgData[i][0] || '').toString().trim() !== orderId) continue;
+        oldPrepMsgId  = tgData[i][2] ? String(tgData[i][2]) : null;
+        oldStockMsgId = tgData[i][3] ? String(tgData[i][3]) : null;
+        break;
+      }
+    }
+
+    const updatedTimeStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+    let newPrepMsgId = oldPrepMsgId, newStockMsgId = oldStockMsgId;
+
+    const editOrSend = (chatId, oldMsgId, items, label) => {
+      const text = buildTelegramText(site, items, origNotes, origDeliv, orderId, origTime, label);
+      if (oldMsgId) {
+        const deleted = deleteTelegramMessage(chatId, oldMsgId);
+        if (deleted) return sendTelegramText(chatId, text);
+        const edited = editTelegramMessage(chatId, oldMsgId, text);
+        return { ok: edited, messageId: edited ? parseInt(oldMsgId) : null };
+      }
+      return sendTelegramText(chatId, text);
+    };
+
+    if (prepItems.length > 0) {
+      const r = editOrSend(PREP_GROUP_ID, oldPrepMsgId, prepItems, 'PREP');
+      if (r.messageId) newPrepMsgId = String(r.messageId);
+    }
+    if (stockItems.length > 0) {
+      const r = editOrSend(STOCK_GROUP_ID, oldStockMsgId, stockItems, 'STOCK');
+      if (r.messageId) newStockMsgId = String(r.messageId);
+    }
+    if (newPrepMsgId !== oldPrepMsgId || newStockMsgId !== oldStockMsgId) {
+      storeTelegramMsgIds(ss, orderId, site, newPrepMsgId, newStockMsgId, updatedTimeStr);
+    }
+
+    return jsonResponse({ ok: true, newQty, newTotal });
+  } catch(err) {
+    Logger.log('handleChangeQty error: ' + err);
+    return jsonResponse({ ok: false, error: err.toString() });
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// CHANGE DELIVERY DATE — manager only
+// Updates col J in Order Log + site sheet, then rebuilds the Telegram
+// message(s) with the new date using the same delete+resend pattern
+// as add_to_order so a fresh notification fires.
+// ════════════════════════════════════════════════════════════════════
+function handleChangeDeliveryDate(payload) {
+  try {
+    const orderId   = (payload.orderId   || '').trim();
+    const delivDate = (payload.delivDate || '').trim(); // YYYY-MM-DD from HTML date input
+
+    if (!orderId || !delivDate) {
+      return jsonResponse({ ok: false, error: 'Missing orderId or delivDate.' });
+    }
+
+    // Convert YYYY-MM-DD → dd/MM/yyyy (display / Telegram) and a Date object (Sheets)
+    const [y, m, d] = delivDate.split('-').map(Number);
+    if (!y || !m || !d) return jsonResponse({ ok: false, error: 'Invalid date format.' });
+    const dateObj  = new Date(y, m - 1, d);
+    const delivFmt = d.toString().padStart(2,'0') + '/' + m.toString().padStart(2,'0') + '/' + y;
+
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const logWs = ss.getSheetByName('Order Log');
+    if (!logWs) return jsonResponse({ ok: false, error: 'Order Log not found.' });
+
+    // Build category lookup from Price List
+    const catLookup = {};
+    const priceWs = ss.getSheetByName('Price List');
+    if (priceWs) {
+      const prRows = priceWs.getDataRange().getValues();
+      for (let i = 3; i < prRows.length; i++) {
+        const n = (prRows[i][0] || '').toString().trim();
+        if (n) catLookup[n] = (prRows[i][7] || '').toString().trim() || 'Other';
+      }
+    }
+
+    // Mutable credit copy — consumed row-by-row so re-added items aren't double-credited
+    const remainingCredits = Object.assign({}, buildCreditMap(ss, orderId));
+
+    // Read all rows for this order; collect items + meta
+    const logData = logWs.getDataRange().getValues();
+    let site = '', origTime = '', origNotes = '';
+    const prepItems = [], stockItems = [];
+    const logRowsToUpdate = [];
+
+    for (let i = 1; i < logData.length; i++) {
+      const row = logData[i];
+      if ((row[11] || '').toString().trim() !== orderId) continue;
+      logRowsToUpdate.push(i + 1);
+      if (!site) {
+        site       = (row[1]  || '').toString().trim();
+        origTime   = fmtTimestamp(row[0]);
+        origNotes  = (row[8]  || '').toString();
+      }
+      const qty2 = parseFloat(row[4]) || 0;
+      if (qty2 <= 0) continue; // removed during recall
+      const name2  = (row[2]  || '').toString().trim();
+      const unit2  = (row[3]  || '').toString().trim();
+      const price2 = parseFloat(row[6]) || 0;
+      const key2   = name2 + '|' + price2.toFixed(4);
+      const avail  = remainingCredits[key2] || 0;
+      const creditedQty = Math.min(avail, qty2);
+      remainingCredits[key2] = Math.max(0, avail - qty2); // consume
+      if (creditedQty >= qty2) continue; // fully credited — exclude from Telegram
+      const activeQty = Math.round((qty2 - creditedQty) * 100) / 100;
+      const tg    = (row[10] || '').toString();
+      const item2 = { name: name2, unit: unit2, qty: activeQty, category: catLookup[name2] || 'Other' };
+      if (tg.includes('Prep') && tg.includes('Stock')) { prepItems.push(item2); stockItems.push(item2); }
+      else if (tg.includes('Prep'))  prepItems.push(item2);
+      else                           stockItems.push(item2);
+    }
+
+    // ── Update sheets ────────────────────────────────────────────────
+    logRowsToUpdate.forEach(r => logWs.getRange(r, 10).setValue(dateObj));
+    if (site) {
+      const siteWs = ss.getSheetByName(site);
+      if (siteWs) {
+        const siteData = siteWs.getDataRange().getValues();
+        for (let i = 1; i < siteData.length; i++) {
+          if ((siteData[i][11] || '').toString().trim() === orderId)
+            siteWs.getRange(i + 1, 10).setValue(dateObj);
+        }
+      }
+      // Also update Orders Summary col E (Delivery Date)
+      const sumWs = ss.getSheetByName('Orders Summary');
+      if (sumWs) {
+        const sumData = sumWs.getDataRange().getValues();
+        for (let i = 1; i < sumData.length; i++) {
+          if ((sumData[i][0] || '').toString().trim() === orderId) {
+            sumWs.getRange(i + 1, 5).setValue(delivFmt);
+            break;
+          }
+        }
+      }
+    }
+
+    // ── Rebuild Telegram messages with new delivery date ─────────────
+    let oldPrepMsgId = null, oldStockMsgId = null;
+    const tgWs = ss.getSheetByName('TG Messages');
+    if (tgWs) {
+      const tgData = tgWs.getDataRange().getValues();
+      for (let i = 1; i < tgData.length; i++) {
+        if ((tgData[i][0] || '').toString().trim() !== orderId) continue;
+        oldPrepMsgId  = tgData[i][2] ? String(tgData[i][2]) : null;
+        oldStockMsgId = tgData[i][3] ? String(tgData[i][3]) : null;
+        break;
+      }
+    }
+
+    const updatedTimeStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+    let newPrepMsgId = oldPrepMsgId, newStockMsgId = oldStockMsgId;
+
+    const editOrSend = (chatId, oldMsgId, items, label) => {
+      const text = buildTelegramText(site, items, origNotes, delivFmt, orderId, origTime, label);
+      if (oldMsgId) {
+        const deleted = deleteTelegramMessage(chatId, oldMsgId);
+        if (deleted) return sendTelegramText(chatId, text);
+        const edited = editTelegramMessage(chatId, oldMsgId, text);
+        return { ok: edited, messageId: edited ? parseInt(oldMsgId) : null };
+      }
+      return sendTelegramText(chatId, text);
+    };
+
+    let prepTgOk = null, stockTgOk = null;
+    if (prepItems.length > 0) {
+      const r = editOrSend(PREP_GROUP_ID, oldPrepMsgId, prepItems, 'PREP');
+      prepTgOk = r.ok;
+      if (r.messageId) newPrepMsgId = String(r.messageId);
+    }
+    if (stockItems.length > 0) {
+      const r = editOrSend(STOCK_GROUP_ID, oldStockMsgId, stockItems, 'STOCK');
+      stockTgOk = r.ok;
+      if (r.messageId) newStockMsgId = String(r.messageId);
+    }
+
+    if (newPrepMsgId !== oldPrepMsgId || newStockMsgId !== oldStockMsgId) {
+      storeTelegramMsgIds(ss, orderId, site, newPrepMsgId, newStockMsgId, updatedTimeStr);
+    }
+
+    return jsonResponse({ ok: true, updated: logRowsToUpdate.length, telegram: { prep: prepTgOk, stock: stockTgOk } });
+  } catch(err) {
+    Logger.log('handleChangeDeliveryDate error: ' + err);
+    return jsonResponse({ ok: false, error: err.toString() });
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════════════
+
+// Formats a timestamp value from a sheet cell as "dd/MM/yy HH:mm".
+// Handles both Date objects (Google Sheets auto-conversion) and strings.
+function fmtTimestamp(raw) {
+  if (raw instanceof Date) {
+    return Utilities.formatDate(raw, Session.getScriptTimeZone(), 'dd/MM/yy HH:mm');
+  }
+  const s = (raw || '').toString().trim();
+  // Normalise stored "dd/MM/yyyy HH:mm" → "dd/MM/yy HH:mm"
+  const m = s.match(/^(\d{2}\/\d{2}\/)(\d{4})( \d{2}:\d{2})/);
+  return m ? m[1] + m[2].slice(2) + m[3] : s;
+}
+
+// Returns a map of "name|price.toFixed(4)" → total credited qty for an order.
+// Used when rebuilding Telegram messages so fully/partially credited items
+// are excluded or reduced correctly.
+function buildCreditMap(ss, orderId) {
+  const map = {};
+  const credWs = ss.getSheetByName('Credits');
+  if (!credWs) return map;
+  const credData = credWs.getDataRange().getValues();
+  for (let i = 1; i < credData.length; i++) {
+    if ((credData[i][2] || '').toString().trim() !== orderId) continue;
+    const name  = (credData[i][3] || '').toString().trim();
+    const price = parseFloat(credData[i][6]) || 0;
+    const qty   = parseFloat(credData[i][4]) || 0;
+    const key   = name + '|' + price.toFixed(4);
+    map[key] = (map[key] || 0) + qty;
+  }
+  return map;
+}
+
 function jsonResponse(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))

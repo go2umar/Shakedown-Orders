@@ -4607,6 +4607,127 @@ function renderDashboard(data, siteFilter, from, to) {
     };
   }
 
+  // ── 5b. ITEM COST BREAKDOWN (with VAT) ────────────────────────
+  if (data.itemBreakdown && data.itemBreakdown.length) {
+    let bdCurrentSort = 'qty';
+
+    function getBdSorted() {
+      return data.itemBreakdown.slice().sort((a, b) => {
+        if (bdCurrentSort === 'cost')  return b.spend - a.spend;
+        if (bdCurrentSort === 'total') return b.totalCost - a.totalCost;
+        return b.qty - a.qty;
+      });
+    }
+
+    // Title row
+    const bdTitle = document.createElement('div');
+    bdTitle.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin:20px 0 4px;padding-left:2px';
+    const bdTitleEl = document.createElement('div');
+    bdTitleEl.className = 'dash-section-title'; bdTitleEl.style.margin = '0';
+    bdTitleEl.textContent = 'Item Cost Breakdown';
+    const bdToggleWrap = document.createElement('div');
+    bdToggleWrap.style.cssText = 'display:flex;gap:4px';
+    const bdBtnQty   = document.createElement('button');
+    const bdBtnCost  = document.createElement('button');
+    const bdBtnTotal = document.createElement('button');
+    [bdBtnQty, bdBtnCost, bdBtnTotal].forEach(b => {
+      b.style.cssText = 'padding:4px 10px;border-radius:20px;border:1.5px solid var(--border-strong);background:var(--bg);font-family:var(--font);font-size:11px;font-weight:600;color:var(--text-secondary);cursor:pointer;transition:all .15s';
+    });
+    bdBtnQty.textContent = 'By Qty'; bdBtnCost.textContent = 'By Cost'; bdBtnTotal.textContent = 'By Total';
+    bdBtnQty.style.background = '#6366F1'; bdBtnQty.style.borderColor = '#6366F1'; bdBtnQty.style.color = '#fff';
+    bdToggleWrap.append(bdBtnQty, bdBtnCost, bdBtnTotal);
+    bdTitle.appendChild(bdTitleEl); bdTitle.appendChild(bdToggleWrap);
+    body.appendChild(bdTitle);
+
+    // Export buttons row
+    const bdExportWrap = document.createElement('div');
+    bdExportWrap.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;padding-left:2px';
+
+    function bdExportBtn(label, onclick) {
+      const btn = document.createElement('button');
+      btn.textContent = '↓ ' + label;
+      btn.style.cssText = 'padding:4px 12px;border-radius:20px;border:1.5px solid var(--border-strong);background:var(--bg);font-family:var(--font);font-size:11px;font-weight:600;color:var(--text-secondary);cursor:pointer;transition:all .15s';
+      btn.onmouseenter = () => { btn.style.borderColor='var(--brand)'; btn.style.color='var(--brand)'; btn.style.background='var(--brand-light)'; };
+      btn.onmouseleave = () => { btn.style.borderColor='var(--border-strong)'; btn.style.color='var(--text-secondary)'; btn.style.background='var(--bg)'; };
+      btn.onclick = onclick;
+      return btn;
+    }
+
+    function bdCSV() {
+      const rows = getBdSorted();
+      const lines = [['Item','Total Qty','Cost (£)','VAT','Total Cost (£)'].join(',')];
+      rows.forEach(it => lines.push([
+        '"' + it.name.replace(/"/g,'""') + '"', it.qty,
+        it.spend.toFixed(2),
+        '"' + (it.vat||'').replace(/"/g,'""') + '"',
+        it.totalCost.toFixed(2)
+      ].join(',')));
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([lines.join('\n')], {type:'text/csv'}));
+      a.download = 'item-cost-breakdown.csv'; a.click(); URL.revokeObjectURL(a.href);
+    }
+
+    function bdExcel() {
+      const rows = getBdSorted();
+      let html = '<table><thead><tr><th>Item</th><th>Total Qty</th><th>Cost (£)</th><th>VAT</th><th>Total Cost (£)</th></tr></thead><tbody>';
+      rows.forEach(it => { html += `<tr><td>${it.name}</td><td>${it.qty}</td><td>${it.spend.toFixed(2)}</td><td>${it.vat||''}</td><td>${it.totalCost.toFixed(2)}</td></tr>`; });
+      html += '</tbody></table>';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([html], {type:'application/vnd.ms-excel'}));
+      a.download = 'item-cost-breakdown.xls'; a.click(); URL.revokeObjectURL(a.href);
+    }
+
+    function bdPDF() {
+      const rows = getBdSorted();
+      let trs = '';
+      rows.forEach(it => { trs += `<tr><td>${it.name}</td><td>${it.qty}</td><td>£${it.spend.toFixed(2)}</td><td>${it.vat||'—'}</td><td>£${it.totalCost.toFixed(2)}</td></tr>`; });
+      const win = window.open('', '_blank');
+      win.document.write(`<!DOCTYPE html><html><head><title>Item Cost Breakdown</title>
+        <style>body{font-family:sans-serif;font-size:12px;padding:20px}h2{font-size:16px;margin-bottom:12px}
+        table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}
+        th{background:#f0f0f0;font-weight:700}tr:nth-child(even){background:#f9f9f9}
+        @media print{button{display:none}}</style></head>
+        <body><h2>Item Cost Breakdown</h2>
+        <table><thead><tr><th>Item</th><th>Total Qty</th><th>Cost (£)</th><th>VAT</th><th>Total Cost (£)</th></tr></thead>
+        <tbody>${trs}</tbody></table>
+        <script>window.onload=()=>window.print()<\/script></body></html>`);
+      win.document.close();
+    }
+
+    bdExportWrap.append(bdExportBtn('CSV', bdCSV), bdExportBtn('Excel', bdExcel), bdExportBtn('PDF', bdPDF));
+    body.appendChild(bdExportWrap);
+
+    // Table card
+    const bdCard = mkCard('');
+    const bdTableWrap = document.createElement('div'); bdTableWrap.className = 'dash-table-wrap';
+    bdCard.appendChild(bdTableWrap);
+    body.appendChild(bdCard);
+
+    function renderBreakdownTable(sortBy) {
+      bdCurrentSort = sortBy;
+      bdTableWrap.innerHTML = '';
+      bdTableWrap.appendChild(mkTable(
+        ['Item', 'Total Qty', 'Cost (£)', 'VAT', 'Total Cost (£)'],
+        getBdSorted().map(it => [
+          it.name, it.qty,
+          '£' + it.spend.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2}),
+          it.vat || '—',
+          '<strong>£' + it.totalCost.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2}) + '</strong>'
+        ])
+      ));
+    }
+
+    function bdSetActive(active) {
+      [bdBtnQty, bdBtnCost, bdBtnTotal].forEach(b => { b.style.background='var(--bg)'; b.style.borderColor='var(--border-strong)'; b.style.color='var(--text-secondary)'; });
+      active.style.background='#6366F1'; active.style.borderColor='#6366F1'; active.style.color='#fff';
+    }
+    bdBtnQty.onclick   = () => { renderBreakdownTable('qty');   bdSetActive(bdBtnQty);   };
+    bdBtnCost.onclick  = () => { renderBreakdownTable('cost');  bdSetActive(bdBtnCost);  };
+    bdBtnTotal.onclick = () => { renderBreakdownTable('total'); bdSetActive(bdBtnTotal); };
+
+    renderBreakdownTable('qty');
+  }
+
   // ── 6. ALL ORDERS ──────────────────────────────────────────────
   const orderCount = data.totalCount || 0;
   body.appendChild(makeSectionTitle('Orders (' + orderCount + (orderCount >= 150 ? '+' : '') + ')'));
