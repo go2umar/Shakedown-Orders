@@ -137,26 +137,25 @@ function handleDashboardGet(e) {
       if (!/^ORD-\d+$/.test((row[0] || '').toString().trim())) continue;
       const rowSite = (row[1] || '').toString().trim();
       if (site && rowSite !== site) continue;
-      const rawRowDate = row[10];
-      const rowDate = rawRowDate instanceof Date
-        ? new Date(rawRowDate.getFullYear(), rawRowDate.getMonth(), rawRowDate.getDate())
-        : parseDDMMYYYY((rawRowDate || '').toString().trim());
+      // Filter by Delivery Date (col E, index 4) — matches Order Lookup,
+      // so totals reconcile between the two screens. The "Date" column
+      // (index 10) is the submission date, not delivery date — don't use it here.
+      const rawD4  = row[4];
+      const rowDate = rawD4 instanceof Date
+        ? new Date(rawD4.getFullYear(), rawD4.getMonth(), rawD4.getDate())
+        : parseDDMMYYYY((rawD4 || '').toString().trim());
       if (fromDate && rowDate && rowDate < fromDate) continue;
       if (toDate   && rowDate && rowDate > toDate)   continue;
 
       const orderId   = (row[0]  || '').toString();
       const orderType = (row[2]  || '').toString();
       const submitted = (row[3]  || '').toString();
-      const rawD4     = row[4];
       const delivDate = rawD4 instanceof Date ? Utilities.formatDate(rawD4, Session.getScriptTimeZone(), 'dd/MM/yyyy') : (rawD4||'').toString().trim();
       const items     = parseInt(row[5])   || 0;
       const value     = parseFloat(row[6]) || 0;
       const prepTg    = (row[7]  || '').toString();
       const stockTg   = (row[8]  || '').toString();
-      const rawMonth  = row[11];
-      const monthYear = rawMonth instanceof Date
-        ? Utilities.formatDate(rawMonth, Session.getScriptTimeZone(), 'MMM-yyyy')
-        : (rawMonth || '').toString().trim();
+      const monthYear = rowDate ? Utilities.formatDate(rowDate, Session.getScriptTimeZone(), 'MMM-yyyy') : '';
       const hasFail   = prepTg.includes('❌') || stockTg.includes('❌');
 
       totalOrders++; totalItems += items; totalValue += value;
@@ -175,7 +174,8 @@ function handleDashboardGet(e) {
     // totals match exactly regardless of date format or credit timing.
     const filteredOrderIds = new Set(orders.map(o => o.orderId));
 
-    // Parse col M (index 12) for the supplier loop (still needs date filtering)
+    // Parse col J (index 9, Delivery Date) for the supplier loop — keeps it
+    // consistent with the Delivery Date filtering used for the main totals.
     const parseLogDate = raw => raw instanceof Date
       ? new Date(raw.getFullYear(), raw.getMonth(), raw.getDate())
       : parseDDMMYYYY((raw || '').toString().trim());
@@ -264,7 +264,7 @@ function handleDashboardGet(e) {
       const row     = logData[i];
       const rowSite = (row[1] || '').toString().trim();
       if (site && rowSite !== site) continue;
-      const rowDate = parseLogDate(row[12]);
+      const rowDate = parseLogDate(row[9]);
       if (fromDate && rowDate && rowDate < fromDate) continue;
       if (toDate   && rowDate && rowDate > toDate)   continue;
       const sup   = (row[5]  || '').toString().trim() || 'Unknown';
