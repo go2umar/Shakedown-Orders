@@ -542,10 +542,13 @@ function handleGetOrders(e) {
         value:     parseFloat(row[6]) || 0,
         prepTg:    (row[7]||'').toString().trim(),
         stockTg:   (row[8]||'').toString().trim(),
-        date:      rowDelivDate
+        date:      rowDelivDate,
+        _sortTime: rowDelivDateObj ? rowDelivDateObj.getTime() : 0
       });
     }
-    orders.sort((a, b) => b.submitted.localeCompare(a.submitted));
+    // Chronological by delivery date; same-day orders kept in submission order
+    orders.sort((a, b) => a._sortTime - b._sortTime || a.submitted.localeCompare(b.submitted));
+    orders.forEach(o => delete o._sortTime);
     return resp({ ok: true, mode: 'orders', orders });
 
   } catch(err) {
