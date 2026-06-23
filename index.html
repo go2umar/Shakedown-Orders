@@ -1512,14 +1512,14 @@ body{min-height:100vh;background:#0D0D0D}
     <button class="review-back-btn" onclick="closeOrderLookup()">← Dashboard</button>
     <div>
       <div class="dash-title">Order Lookup</div>
-      <div class="dash-sub" id="lookup-sub">Search by Order ID or by Site &amp; Date</div>
+      <div class="dash-sub" id="lookup-sub">Search by Order ID or by Site &amp; Date Range</div>
     </div>
   </div>
 
   <div class="orders-search-bar">
     <div class="orders-mode-tabs">
       <button class="orders-mode-tab active" id="lookup-tab-id"   onclick="setLookupMode('id')">By Order ID</button>
-      <button class="orders-mode-tab"        id="lookup-tab-date" onclick="setLookupMode('date')">By Site &amp; Delivery Date</button>
+      <button class="orders-mode-tab"        id="lookup-tab-date" onclick="setLookupMode('date')">By Site &amp; Delivery Date Range</button>
     </div>
 
     <!-- Search by Order ID -->
@@ -1529,8 +1529,8 @@ body{min-height:100vh;background:#0D0D0D}
       <button class="orders-search-btn" onclick="runLookup()">Search</button>
     </div>
 
-    <!-- Search by Site + Date -->
-    <div id="lookup-date-controls" style="display:none;gap:8px;width:100%;flex-wrap:wrap">
+    <!-- Search by Site + Date Range -->
+    <div id="lookup-date-controls" style="display:none;gap:8px;width:100%;flex-wrap:wrap;align-items:center">
       <select class="dash-filter-select" id="lookup-site">
         <option value="">All Sites</option>
         <option>SD Withington</option><option>SD Wythenshawe</option>
@@ -1539,13 +1539,15 @@ body{min-height:100vh;background:#0D0D0D}
         <option>DC Withington</option><option>DC Cheadle</option>
         <option>DC Oxford Road</option>
       </select>
-      <input type="date" class="dash-date-input" id="lookup-date" style="width:160px" title="Filter by delivery date">
+      <input type="date" class="dash-date-input" id="lookup-date-from" style="width:140px" title="From delivery date">
+      <span class="dash-range-sep">—</span>
+      <input type="date" class="dash-date-input" id="lookup-date-to" style="width:140px" title="To delivery date">
       <button class="orders-search-btn" onclick="runLookup()">Search</button>
     </div>
   </div>
 
   <div class="dash-body" id="lookup-results">
-    <div class="dash-empty" style="padding:40px">Enter an Order ID or select a site and date to search.</div>
+    <div class="dash-empty" style="padding:40px">Enter an Order ID or select a site and/or date range to search.</div>
   </div>
 </div>
 
@@ -3407,15 +3409,13 @@ function runLookup() {
     if (!id) { resultsEl.innerHTML = '<div class="dash-empty" style="padding:40px">Please enter an Order ID.</div>'; return; }
     params += '&orderId=' + encodeURIComponent(id);
   } else {
-    const site = document.getElementById('lookup-site').value;
-    const date = document.getElementById('lookup-date').value; // YYYY-MM-DD
-    if (!site && !date) { resultsEl.innerHTML = '<div class="dash-empty" style="padding:40px">Please select a site or date.</div>'; return; }
-    if (site) params += '&site=' + encodeURIComponent(site);
-    if (date) {
-      // Convert YYYY-MM-DD to DD/MM/YYYY for Apps Script
-      const [y,m,d] = date.split('-');
-      params += '&date=' + encodeURIComponent(d+'/'+m+'/'+y);
-    }
+    const site     = document.getElementById('lookup-site').value;
+    const dateFrom = document.getElementById('lookup-date-from').value; // YYYY-MM-DD
+    const dateTo   = document.getElementById('lookup-date-to').value;   // YYYY-MM-DD
+    if (!site && !dateFrom && !dateTo) { resultsEl.innerHTML = '<div class="dash-empty" style="padding:40px">Please select a site or date range.</div>'; return; }
+    if (site)     params += '&site='     + encodeURIComponent(site);
+    if (dateFrom) params += '&dateFrom=' + encodeURIComponent(dateFrom);
+    if (dateTo)   params += '&dateTo='   + encodeURIComponent(dateTo);
   }
 
   const old = document.getElementById('lookup-jsonp'); if (old) old.remove();

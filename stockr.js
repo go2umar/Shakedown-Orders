@@ -428,10 +428,11 @@ function parseDDMMYYYYHHMM(str) {
 // ── Order lookup — search by Order ID or by site + date ─────────────
 function handleGetOrders(e) {
   try {
-    const params  = (e && e.parameter) || {};
-    const orderId = (params.orderId || '').trim();
-    const site    = (params.site    || '').trim();
-    const date    = (params.date    || '').trim(); // DD/MM/YYYY
+    const params   = (e && e.parameter) || {};
+    const orderId  = (params.orderId  || '').trim();
+    const site     = (params.site     || '').trim();
+    const dateFrom = (params.dateFrom || '').trim(); // YYYY-MM-DD or DD/MM/YYYY
+    const dateTo   = (params.dateTo   || '').trim();
 
     const ss    = SpreadsheetApp.getActiveSpreadsheet();
     const logWs = ss.getSheetByName('Order Log');
@@ -510,8 +511,11 @@ function handleGetOrders(e) {
       return resp({ ok: true, mode: 'items', orderId, site: orderSite, items });
     }
 
-    // Search by site + date — return list of matching orders
+    // Search by site + delivery date range — return list of matching orders
     if (!sumWs) return resp({ ok: false, error: 'Orders Summary not found. Run migrateHistoricalData() first.' });
+    const fromD = dateFrom ? parseFlexDate(dateFrom) : null;
+    const toD   = dateTo   ? parseFlexDate(dateTo)   : null;
+    if (toD) toD.setHours(23, 59, 59, 999);
     const sumData = sumWs.getDataRange().getValues();
     const orders  = [];
     for (let i = 1; i < sumData.length; i++) {
@@ -522,8 +526,12 @@ function handleGetOrders(e) {
       const rowDelivDate = rawDelivDate instanceof Date
         ? Utilities.formatDate(rawDelivDate, Session.getScriptTimeZone(), 'dd/MM/yyyy')
         : (rawDelivDate||'').toString().trim();
+      const rowDelivDateObj = rawDelivDate instanceof Date
+        ? new Date(rawDelivDate.getFullYear(), rawDelivDate.getMonth(), rawDelivDate.getDate())
+        : parseDDMMYYYY(rowDelivDate);
       if (site && rowSite !== site) continue;
-      if (date && rowDelivDate !== date) continue;
+      if (fromD && rowDelivDateObj && rowDelivDateObj < fromD) continue;
+      if (toD   && rowDelivDateObj && rowDelivDateObj > toD)   continue;
       orders.push({
         orderId:   (row[0]||'').toString().trim(),
         site:      rowSite,
