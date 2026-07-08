@@ -1663,6 +1663,7 @@ let customRowCount = 1;
 
 // ── LOAD PRODUCTS via JSONP (avoids CORS entirely) ───────────────
 let loadTimeout = null;
+let errorTimeout = null;
 
 function loadProducts() {
   hideError();
@@ -1675,13 +1676,19 @@ function loadProducts() {
 
   // Set timeout for slow cold starts
   clearTimeout(loadTimeout);
+  clearTimeout(errorTimeout);
   loadTimeout = setTimeout(() => {
     document.getElementById('header-sub').textContent = 'Taking longer than usual — Apps Script may be waking up…';
   }, 5000);
+  // Hard timeout — show retry after 45s if GAS never responds
+  errorTimeout = setTimeout(() => {
+    showError('Could not load product list — Apps Script is taking too long. Tap Retry to try again.', true);
+  }, 45000);
 
   // JSONP request — bypasses CORS completely
   window._onProductsLoaded = function(data) {
     clearTimeout(loadTimeout);
+    clearTimeout(errorTimeout);
     if (data && data.ok && data.data) {
       SITE_DATA = data.data;
       document.getElementById('header-sub').textContent = 'Select quantities — leave blank to skip';
@@ -1696,9 +1703,10 @@ function loadProducts() {
 
   const script = document.createElement('script');
   script.id  = 'jsonp-script';
-  script.src = SCRIPT_URL + '?callback=_onProductsLoaded';
+  script.src = SCRIPT_URL + '?callback=_onProductsLoaded&_t=' + Date.now();
   script.onerror = () => {
     clearTimeout(loadTimeout);
+    clearTimeout(errorTimeout);
     showError('Could not load product list — you can still add unlisted items below, or tap Retry.', true);
   };
   document.head.appendChild(script);
@@ -2031,9 +2039,11 @@ function filterProducts(input, containerId) {
 
 // ── SUBMIT — sends as URL-encoded to avoid CORS preflight ────────
 async function submitOrder() {
-  // Disable immediately to prevent double-submit
+  // Disable both buttons immediately to prevent double-submit
   const submitBtn = document.getElementById('submit-btn');
+  const reviewSubmitBtn = document.getElementById('review-submit-btn');
   submitBtn.disabled = true;
+  if (reviewSubmitBtn) reviewSubmitBtn.classList.remove('ready');
   const site  = document.getElementById('site').value;
   const notes = document.getElementById('notes').value.trim();
   if (!site || !orderType) { showError('Please select your site and order type before submitting.', false); window.scrollTo(0,0); submitBtn.disabled=false; return; }
@@ -2097,6 +2107,7 @@ async function submitOrder() {
     } else {
       showError('Order failed: ' + (json.error || 'Please try again.'), false);
       document.getElementById('submit-btn').disabled = false;
+      if (reviewSubmitBtn) reviewSubmitBtn.classList.add('ready');
       window.scrollTo(0,0);
     }
   } catch(err) {
@@ -2108,6 +2119,7 @@ async function submitOrder() {
       : 'Connection error. Please check your internet and try again.';
     showError(msg, false);
     document.getElementById('submit-btn').disabled = false;
+    if (reviewSubmitBtn) reviewSubmitBtn.classList.add('ready');
     window.scrollTo(0,0);  // Scroll to top so error banner is visible
   }
 }

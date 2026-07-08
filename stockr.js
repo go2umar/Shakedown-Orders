@@ -2508,3 +2508,38 @@ function handleSaveItemOverride(payload) {
     return jsonResponse({ ok: false, error: err.toString() });
   }
 }
+
+// ════════════════════════════════════════════════════════════════════
+// WARMUP — keeps GAS from cold-starting during expected usage windows.
+// Run setupWarmupTriggers() once from the editor to install.
+// Times are approximate (GAS fires within a 1-hour window of atHour).
+// ════════════════════════════════════════════════════════════════════
+function warmup() {
+  SpreadsheetApp.getActiveSpreadsheet();
+  Logger.log('Warmup ping at ' + new Date());
+}
+
+function setupWarmupTriggers() {
+  // Remove only existing warmup triggers — leaves price-edit + archive untouched
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'warmup')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+
+  const schedule = [
+    { day: ScriptApp.WeekDay.SUNDAY,   hour: 17 }, // Sunday evening
+    { day: ScriptApp.WeekDay.MONDAY,   hour:  7 }, // Monday morning
+    { day: ScriptApp.WeekDay.TUESDAY,  hour: 17 }, // Tuesday evening
+    { day: ScriptApp.WeekDay.THURSDAY, hour:  7 }, // Thursday morning
+    { day: ScriptApp.WeekDay.THURSDAY, hour: 17 }, // Thursday evening
+  ];
+
+  schedule.forEach(({ day, hour }) => {
+    ScriptApp.newTrigger('warmup')
+      .timeBased()
+      .onWeekDay(day)
+      .atHour(hour)
+      .create();
+  });
+
+  Logger.log('✅ ' + schedule.length + ' warmup triggers created.');
+}
