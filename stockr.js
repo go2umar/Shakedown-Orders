@@ -7,7 +7,8 @@ const STOCK_GROUP_ID = '-5136469511';
 
 const ALL_SITES = [
   'SD Withington', 'SD Wythenshawe', 'SD Cheadle', 'SD Newcastle',
-  'SD EH 12', 'SD EH 15', 'DC Withington', 'DC Cheadle', 'DC Oxford Road'
+  'SD EH 12', 'SD EH 15', 'SD Teviot Place', 'SD Charlotte Street',
+  'DC Withington', 'DC Cheadle', 'DC Oxford Road'
 ];
 
 const LOG_HEADERS = [
@@ -44,15 +45,17 @@ function handleProductsGet(e) {
     const rows    = priceWs.getDataRange().getValues();
 
     const SITE_COLS = {
-      'SD Withington':  10,
-      'SD Wythenshawe': 11,
-      'SD Cheadle':     12,
-      'SD Newcastle':   13,
-      'SD EH 12':       14,
-      'SD EH 15':       15,
-      'DC Withington':  16,
-      'DC Cheadle':     17,
-      'DC Oxford Road': 18,
+      'SD Withington':    10,
+      'SD Wythenshawe':   11,
+      'SD Cheadle':       12,
+      'SD Newcastle':     13,
+      'SD EH 12':         14,
+      'SD EH 15':         15,
+      'SD Teviot Place':  19,
+      'SD Charlotte Street': 20,
+      'DC Withington':    16,
+      'DC Cheadle':       17,
+      'DC Oxford Road':   18,
     };
 
     const siteData = {};
