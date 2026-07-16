@@ -45,17 +45,17 @@ function handleProductsGet(e) {
     const rows    = priceWs.getDataRange().getValues();
 
     const SITE_COLS = {
-      'SD Withington':    10,
-      'SD Wythenshawe':   11,
-      'SD Cheadle':       12,
-      'SD Newcastle':     13,
-      'SD EH 12':         14,
-      'SD EH 15':         15,
-      'SD Teviot Place':  19,
-      'SD Charlotte Street': 20,
-      'DC Withington':    16,
-      'DC Cheadle':       17,
-      'DC Oxford Road':   18,
+      'SD Withington':       10,
+      'SD Wythenshawe':      11,
+      'SD Cheadle':          12,
+      'SD Newcastle':        13,
+      'SD EH 12':            14,
+      'SD EH 15':            15,
+      'SD Teviot Place':     16,
+      'SD Charlotte Street': 17,
+      'DC Withington':       18,
+      'DC Cheadle':          19,
+      'DC Oxford Road':      20,
     };
 
     const siteData = {};
